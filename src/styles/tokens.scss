@@ -1,0 +1,85 @@
+// Race Horse design tokens
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Roboto:wght@300;400;500;600;700&display=swap');
+
+:root {
+  // ── Typography ──
+  --font-display: 'Syne', sans-serif;
+  --font-body: 'Roboto', sans-serif;
+
+  // ── Sand neutrals ──
+  --sand-50: #FDFAF5;
+  --sand-100: #F5F0E8;
+  --sand-200: #EDE8DC;
+  --sand-300: #E0D9CE;
+  --sand-400: #C8BFB0;
+  --sand-500: #9B8E7E;
+  --sand-600: #6E6257;
+  --sand-700: #4A4038;
+  --sand-800: #2E271F;
+  --sand-900: #1E1A14;
+
+  // ── Semantic colors ──
+  --color-bg-base: #F5F0E8;
+  --color-bg-surface: #FDFAF5;
+  --color-bg-subtle: #EDE8DC;
+  --color-fg-primary: #1E1A14;
+  --color-fg-secondary: #6E6257;
+  --color-fg-tertiary: #9B8E7E;
+  --color-border-subtle: #E0D9CE;
+  --color-border-default: #C8BFB0;
+
+  // ── Brown (primary brand accent) ──
+  --color-brown: #7A4728;
+  --color-brown-hover: #63391F;
+  --color-brown-subtle: #F2EAE4;
+  --color-brown-mid: #C4A898;
+
+  // ── Terracotta (secondary accent) ──
+  --color-terra: #C4622D;
+  --color-terra-subtle: #F5E4D8;
+
+  // ── Olive (success/completion) ──
+  --color-olive: #5C6633;
+  --color-olive-subtle: #EBEFD4;
+
+  // ── Workout type colors ──
+  --color-workout-easy: #5C6633;
+  --color-workout-easy-bg: #EBEFD4;
+  --color-workout-long: #2A5E8A;
+  --color-workout-long-bg: #E4EDF5;
+  --color-workout-tempo: #B87A20;
+  --color-workout-tempo-bg: #F5EDD4;
+  --color-workout-threshold: #C4622D;
+  --color-workout-threshold-bg: #F5E4D8;
+  --color-workout-intervals: #7B3F8A;
+  --color-workout-intervals-bg: #EEE4F5;
+  --color-workout-recovery: #9B8E7E;
+  --color-workout-recovery-bg: #F0ECE8;
+  --color-workout-rest: #C8BFB0;
+  --color-workout-rest-bg: #F5F2EE;
+  --color-workout-race: #B83232;
+  --color-workout-race-bg: #F5E4E4;
+
+  // ── Shadows ──
+  --shadow-sm: 0 2px 8px rgba(30, 26, 20, 0.08);
+  --shadow-md: 0 4px 16px rgba(30, 26, 20, 0.10);
+  --shadow-lg: 0 8px 32px rgba(30, 26, 20, 0.14);
+
+  // ── Spacing ──
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+
+  // ── Border radius ──
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 16px;
+  --radius-pill: 999px;
+
+  // ── Shell dimensions ──
+  --shell-tabbar-height: 72px;
+  --shell-sidebar-width: 220px;
+}
