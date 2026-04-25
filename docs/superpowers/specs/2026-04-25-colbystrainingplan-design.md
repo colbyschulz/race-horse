@@ -88,6 +88,20 @@ Drizzle is TypeScript-first with a tiny runtime and effectively zero serverless 
 
 NextAuth's Drizzle adapter manages `users`, `accounts` (which holds Strava `access_token` + `refresh_token` + `expires_at`), `sessions`, and `verification_tokens`.
 
+We extend `users` with a `preferences` jsonb column for per-user app preferences:
+
+```ts
+{
+  units: "mi" | "km",          // default: "mi"
+  timezone: string,            // IANA tz, e.g. "America/Los_Angeles" — captured from browser on first sign-in
+  pace_format: "min_per_mi" | "min_per_km",
+  power_units: "watts"
+}
+```
+
+Timezone is required for date-bucketing in workout matching and "today" semantics. Captured via `Intl.DateTimeFormat().resolvedOptions().timeZone` on the client at first sign-in and persisted; user can change via a settings sheet.
+
+
 ### `plans`
 
 | column | type | notes |
@@ -276,6 +290,7 @@ All tools enforce `user_id` from the session — Claude can only see/modify the 
 | `get_activity_laps(activity_id)` | Lap-by-lap breakdown |
 | `update_activity_match({activity_id, workout_id})` | Re-match an activity to a different workout |
 | `get_athlete_summary` | Strava profile + training-volume rollup (4/12/52 weeks) |
+| `read_uploaded_file({plan_file_id})` | Returns the contents of a previously uploaded plan file (PDF passed as document block, CSV/Excel as parsed rows, text as text). Used when extraction failed or user wants the coach to interactively build a plan from a file. |
 
 Plus the server-side `web_search` tool (`web_search_20260209`) for product / gear / race research. Citations come back automatically.
 
@@ -394,14 +409,13 @@ Each phase ends in a working app deployable to a Vercel preview.
 
 | Phase | What lands | Depends on |
 |---|---|---|
-| **1. Skeleton** | Next.js + Drizzle + Neon + NextAuth(Strava) + base layout + empty pages + auth flow | — |
+| **1. Skeleton** | Next.js + Drizzle + Neon + NextAuth(Strava) + base layout + empty pages + auth flow + user preferences capture (units, TZ) | — |
 | **2. Strava sync** | Activity backfill, webhook subscription, `activities` + `activity_laps` populated, manual sync endpoint | 1 |
 | **3. Plans + manage** | Plan/workout schema, manage page, set-active, archive, delete (no upload yet) | 1 |
-| **4. Coach (read-only)** | Chat endpoint, conversation persistence, read-only tools (`get_active_plan`, `get_recent_activities`, etc.). Coach can answer questions. | 2 + 3 |
-| **5. Coach (write)** | Add write tools (`create_plan`, `update_workouts`, `set_active_plan`, `archive_plan`, `update_activity_match`). Coach can build and tweak plans. | 4 |
-| **6. Today + Calendar** | Today view (hero card + Strava match) + Calendar (week/month, type badges, matched indicator). | 2 + 3 |
-| **7. Upload pipeline** | File upload → Vercel Blob → LLM extraction → review step → save. | 5 |
-| **8. Polish** | Coach panel UX, loading states, error states, mobile QA, perf. | all |
+| **4. Coach (full)** | Chat endpoint, conversation persistence, full tool surface (read + write) — `get_active_plan`, `get_recent_activities`, `create_plan`, `update_workouts`, `set_active_plan`, etc. — plus `web_search`. Coach can answer questions and build/tweak plans. | 2 + 3 |
+| **5. Today + Calendar** | Today view (hero card + Strava match) + Calendar (week/month, type badges, matched indicator). | 2 + 3 |
+| **6. Upload pipeline** | File upload → Vercel Blob → LLM extraction → review step → save. Includes `read_uploaded_file` tool for coach fallback. | 4 |
+| **7. Polish** | Coach panel UX, loading states, error states, mobile QA, perf. | all |
 
 ## 12. Security & privacy
 
