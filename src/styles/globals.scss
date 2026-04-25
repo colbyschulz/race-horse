@@ -1,4 +1,5 @@
-@use "./tokens.scss";
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Roboto:wght@300;400;500;600;700&display=swap');
+@use "./tokens.scss" as *;
 
 *, *::before, *::after {
   box-sizing: border-box;
@@ -10,7 +11,9 @@ html, body {
   font-family: var(--font-body);
   background: var(--color-bg-base);
   color: var(--color-fg-primary);
+  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 a {
@@ -21,4 +24,27 @@ a {
 button {
   font: inherit;
   cursor: pointer;
+}
+
+img, picture, video, canvas, svg {
+  display: block;
+  max-width: 100%;
+}
+
+ul, ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  line-height: 1.1;
+  margin: 0;
+}
+
+p {
+  line-height: 1.55;
+  margin: 0;
 }

@@ -1,5 +1,4 @@
 // Race Horse design tokens
-@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Roboto:wght@300;400;500;600;700&display=swap');
 
 :root {
   // ── Typography ──
@@ -82,4 +81,13 @@
   // ── Shell dimensions ──
   --shell-tabbar-height: 72px;
   --shell-sidebar-width: 220px;
+
+  // ── Flat aliases (for component compatibility) ──
+  --color-bg: var(--color-bg-base);
+  --color-bg-alt: var(--color-bg-surface);
+  --color-fg: var(--color-fg-primary);
+  --color-muted: var(--color-fg-tertiary);
+  --color-border: var(--color-border-default);
+  --color-accent: var(--color-brown);
+  --font-sans: var(--font-body);
 }
