@@ -19,9 +19,9 @@ The product is **free**, **public**, **multi-tenant**, and **gated to athletes w
 - Triathlon / multi-sport plans (single plan = single sport; tri athletes maintain two plans).
 - Email/push notifications.
 - Public profiles, plan sharing, leaderboards, social features.
-- Compaction (defer until conversations exceed practical context length).
+- Compaction (defer until the rolling chat exceeds practical context length).
 - Per-second activity streams (laps are enough for v1 analysis).
-- Cross-conversation memory beyond what the DB stores.
+- Multiple chats per user — there is **one rolling chat** with an explicit "Clear chat" action; durable memory lives in user-level **coach notes** (see §7).
 - Apple Health / Garmin / Polar / Suunto integrations.
 
 ## 3. Stack
@@ -58,6 +58,7 @@ Drizzle is TypeScript-first with a tiny runtime and effectively zero serverless 
 | `/calendar` | Week (default on mobile) / Month (default on desktop) calendar of the active plan |
 | `/plans` | Manage page — list of plans, set active, archive, delete, upload |
 | `/coach` | Full-screen coach chat (also accessible as slide-up sheet from any view) |
+| `/settings` | Preferences (units, timezone, pace format) + coach-notes editor |
 
 ### API routes
 
@@ -65,6 +66,8 @@ Drizzle is TypeScript-first with a tiny runtime and effectively zero serverless 
 |---|---|
 | `/api/auth/*` | NextAuth (Strava OAuth) |
 | `/api/coach/chat` | Streaming chat endpoint (Server-Sent Events) with Claude + tool use |
+| `/api/coach/messages` | `GET` returns the rolling chat for the user; `DELETE` clears it ("Clear chat") |
+| `/api/coach/notes` | `GET` returns the user's coach notes; `PUT` overwrites them (user-edit path) |
 | `/api/plans` | GET list, GET by id, POST update-active, DELETE |
 | `/api/plans/upload` | Receives file → Vercel Blob → kicks off LLM extraction job |
 | `/api/plans/upload/:id` | Status poll for extraction job |
@@ -73,7 +76,7 @@ Drizzle is TypeScript-first with a tiny runtime and effectively zero serverless 
 
 ### Server-side modules
 
-- `coach/` — system prompt, tool definitions, message persistence, streaming
+- `coach/` — system prompt, tool definitions, message persistence, coach-notes read/update, streaming
 - `plans/` — schema operations (create, update workouts, set active, archive, delete)
 - `extraction/` — LLM-based parsing of uploaded plans into the workout schema
 - `strava/` — OAuth token refresh, activity fetching, lap fetching, webhook signature/subscription handling, workout matching
@@ -88,7 +91,9 @@ Drizzle is TypeScript-first with a tiny runtime and effectively zero serverless 
 
 NextAuth's Drizzle adapter manages `users`, `accounts` (which holds Strava `access_token` + `refresh_token` + `expires_at`), `sessions`, and `verification_tokens`.
 
-We extend `users` with a `preferences` jsonb column for per-user app preferences:
+We extend `users` with two columns:
+
+**`preferences` (jsonb)** — per-user app preferences:
 
 ```ts
 {
@@ -99,7 +104,9 @@ We extend `users` with a `preferences` jsonb column for per-user app preferences
 }
 ```
 
-Timezone is required for date-bucketing in workout matching and "today" semantics. Captured via `Intl.DateTimeFormat().resolvedOptions().timeZone` on the client at first sign-in and persisted; user can change via a settings sheet.
+Timezone is required for date-bucketing in workout matching and "today" semantics. Captured via `Intl.DateTimeFormat().resolvedOptions().timeZone` on the client at first sign-in and persisted; user can change in `/settings`.
+
+**`coach_notes` (text, default `''`)** — durable, user-level memory the coach maintains across the rolling chat. Capped at **4 KB** (enforced in the `update_coach_notes` tool, not at the DB layer). The coach uses this to record persistent facts that should survive a "Clear chat": current goals, injuries, training history insights, strong preferences. Injected into every coach turn (see §7) so the coach is always aware. User can view and edit in `/settings`.
 
 
 ### `plans`
@@ -191,24 +198,17 @@ All fields optional; coach picks the right one(s) per workout. Running typically
 | `elevation_gain_m` | numeric null | |
 | `start_index`, `end_index` | int null | offsets into Strava's stream — useful if streams ever added later |
 
-### `conversations`
-
-| column | type | notes |
-|---|---|---|
-| `id` | uuid pk | |
-| `user_id` | uuid fk users | |
-| `title` | text | auto-generated from first user message |
-| `created_at`, `updated_at` | timestamptz | |
-
 ### `messages`
 
+There is **one rolling chat per user**. No `conversations` table — messages are scoped directly to the user. "Clear chat" is a `DELETE` on this table for the current user.
+
 | column | type | notes |
 |---|---|---|
 | `id` | uuid pk | |
-| `conversation_id` | uuid fk conversations (cascade) | |
+| `user_id` | uuid fk users (cascade) | |
 | `role` | enum | `user` \| `assistant` |
 | `content` | jsonb | full Anthropic content-block array — preserves `text`, `tool_use`, `tool_result`, `thinking` |
-| `created_at` | timestamptz | |
+| `created_at` | timestamptz | ordering key for the rolling chat |
 
 We persist the full Anthropic `content` array (not just text) because tool calls and thinking blocks must be round-tripped exactly on the next request, per the Anthropic SDK's content-handling model.
 
@@ -234,13 +234,13 @@ We persist the full Anthropic `content` array (not just text) because tool calls
 
 ## 7. Coach loop
 
-The coach is a streaming Claude conversation with tool use, persisted per-user.
+The coach is a streaming Claude conversation with tool use. There is one rolling chat per user (no `conversation_id`), and durable per-user memory lives in `users.coach_notes`.
 
 ### Endpoint shape
 
 ```
 POST /api/coach/chat
-  body: { conversation_id, message }
+  body: { message }
   response: text/event-stream
     event: text-delta { delta }
     event: tool-use { name, input }
@@ -250,14 +250,19 @@ POST /api/coach/chat
 
 ### Per-request flow
 
-1. Verify NextAuth session; reject if conversation belongs to a different user.
-2. Load conversation history from `messages` (full jsonb content blocks preserved).
-3. Append the new user message with a small context prefix (date, units, active-plan summary). Context goes after the cached prefix so caching still hits.
-4. Persist the user message.
-5. Run `client.beta.messages.toolRunner({ stream: true, ... })` — handles the loop, streaming text deltas and executing tool calls.
-6. Forward deltas as SSE events to the client.
-7. On finish, persist the full assistant content (including `tool_use` blocks) to `messages`.
-8. End the stream.
+1. Verify NextAuth session.
+2. Load message history from `messages` where `user_id = session.user.id`, ordered by `created_at` (full jsonb content blocks preserved).
+3. Read `users.coach_notes` for this user.
+4. Append the new user message with a context prefix (date, units, active-plan summary, **and the current `coach_notes` body**). Context goes after the cached prefix so caching still hits.
+5. Persist the user message.
+6. Run `client.beta.messages.toolRunner({ stream: true, ... })` — handles the loop, streaming text deltas and executing tool calls.
+7. Forward deltas as SSE events to the client.
+8. On finish, persist the full assistant content (including `tool_use` blocks) to `messages`.
+9. End the stream.
+
+### "Clear chat"
+
+`DELETE /api/coach/messages` (user-initiated, with confirm in the UI) wipes all `messages` rows for the user. **Coach notes are not affected** — they survive across clears, which is the entire point of separating them.
 
 ### Model parameters
 
@@ -291,6 +296,7 @@ All tools enforce `user_id` from the session — Claude can only see/modify the 
 | `update_activity_match({activity_id, workout_id})` | Re-match an activity to a different workout |
 | `get_athlete_summary` | Strava profile + training-volume rollup (4/12/52 weeks) |
 | `read_uploaded_file({plan_file_id})` | Returns the contents of a previously uploaded plan file (PDF passed as document block, CSV/Excel as parsed rows, text as text). Used when extraction failed or user wants the coach to interactively build a plan from a file. |
+| `update_coach_notes({content})` | Overwrites the user's `coach_notes` with `content` (≤ 4 KB). The coach uses this to keep durable memory tight and curated — e.g., when a goal shifts or an injury heals, the coach edits the doc rather than appending. The current notes are already injected into every turn (per-request flow step 4), so there is no `read_coach_notes` tool. |
 
 Plus the server-side `web_search` tool (`web_search_20260209`) for product / gear / race research. Citations come back automatically.
 
@@ -299,6 +305,7 @@ Plus the server-side `web_search` tool (`web_search_20260209`) for product / gea
 - Role: experienced running and cycling coach for advanced athletes.
 - Available data: structured plan schema (so Claude can correctly fill `create_plan` / `update_workouts`), Strava activity + lap shape.
 - Behavior: ask before making large plan changes, acknowledge the user's stated goals, explain the *why* of training decisions, distinguish run vs bike coaching principles where relevant.
+- **Coach-notes discipline**: the notes are the coach's own durable memory — keep them concise, factual, and current. Update via `update_coach_notes` when a goal, injury, constraint, or strong preference changes. Do not duplicate transient chat content; do not exceed the 4 KB cap.
 - Safety: defer to medical professionals on injury / illness questions; do not prescribe medication or specific medical interventions.
 
 ## 8. Upload + LLM extraction pipeline
@@ -398,10 +405,16 @@ When a new activity is upserted:
 
 ### Coach panel
 
-- Conversation list (collapsible) — past chats, ability to start new.
-- Active chat: streaming responses, tool-call indicators ("checking your recent runs…"), markdown rendering.
+- One rolling chat — no conversation list, no titling, no chat switcher.
+- Header actions: **Clear chat** (with confirm dialog — "This wipes the current chat. Your coach notes will not be affected.") and a small **Coach notes** indicator showing whether notes exist; tapping it deep-links to the coach-notes editor in `/settings`.
+- Active chat: streaming responses, tool-call indicators ("checking your recent runs…", "updating coach notes…"), markdown rendering.
 - Input: text + optional context attachment ("attach today's workout / a date range / a specific activity").
 - File upload allowed in chat too — drag a plan file, coach helps build/import.
+
+### Settings (`/settings`)
+
+- Preferences: units, timezone, pace format (covered in §6).
+- **Coach notes editor**: textarea showing the current `users.coach_notes` value. Save button (`PUT /api/coach/notes`) and a "Reset notes" button (sets to empty). Same 4 KB cap enforced server-side. This is the user's escape hatch — they can correct anything the coach has written about them, or wipe it entirely.
 
 ## 11. v1 phasing
 
@@ -412,7 +425,7 @@ Each phase ends in a working app deployable to a Vercel preview.
 | **1. Skeleton** | Next.js + Drizzle + Neon + NextAuth(Strava) + base layout + empty pages + auth flow + user preferences capture (units, TZ) | — |
 | **2. Strava sync** | Activity backfill, webhook subscription, `activities` + `activity_laps` populated, manual sync endpoint | 1 |
 | **3. Plans + manage** | Plan/workout schema, manage page, set-active, archive, delete (no upload yet) | 1 |
-| **4. Coach (full)** | Chat endpoint, conversation persistence, full tool surface (read + write) — `get_active_plan`, `get_recent_activities`, `create_plan`, `update_workouts`, `set_active_plan`, etc. — plus `web_search`. Coach can answer questions and build/tweak plans. | 2 + 3 |
+| **4. Coach (full)** | Chat endpoint, single rolling chat persistence (`messages` + Clear chat), `coach_notes` (column + `update_coach_notes` tool + settings editor), full tool surface (read + write) — `get_active_plan`, `get_recent_activities`, `create_plan`, `update_workouts`, `set_active_plan`, etc. — plus `web_search`. Coach can answer questions and build/tweak plans. | 2 + 3 |
 | **5. Today + Calendar** | Today view (hero card + Strava match) + Calendar (week/month, type badges, matched indicator). | 2 + 3 |
 | **6. Upload pipeline** | File upload → Vercel Blob → LLM extraction → review step → save. Includes `read_uploaded_file` tool for coach fallback. | 4 |
 | **7. Polish** | Coach panel UX, loading states, error states, mobile QA, perf. | all |
@@ -431,7 +444,7 @@ Each phase ends in a working app deployable to a Vercel preview.
 
 These do not block v1 but should be revisited:
 
-- **Compaction:** when does the median conversation start to need it? Add `betas: ["compact-2026-01-12"]` + `context_management: { edits: [{ type: "compact_20260112" }] }` once needed.
+- **Compaction:** the rolling chat will eventually grow beyond practical context length. The "Clear chat" action gives the user a manual reset, but we should still add automatic compaction once the median chat gets long enough to need it. Add `betas: ["compact-2026-01-12"]` + `context_management: { edits: [{ type: "compact_20260112" }] }` when warranted.
 - **Notifications:** race-day reminders, weekly summary email, "you missed yesterday's run" pings — requires capturing an email separately (Strava OAuth doesn't expose it).
 - **Manual workout overrides without the coach:** should there ever be a "skip this workout" or "log a substitute" button? Currently *only* the coach edits plans, by design.
 - **Plan templates / cloning:** "build me a plan like Sarah's" or coach-curated starting-point templates.

@@ -437,6 +437,15 @@ describe("schema", () => {
     // Drizzle stores the default value internally — sanity check the shape.
     expect(prefs?.hasDefault).toBe(true);
   });
+
+  it("user table has a coach_notes text column with empty default", () => {
+    const cols = getTableConfig(users).columns;
+    const notes = cols.find((c) => c.name === "coach_notes");
+    expect(notes).toBeDefined();
+    expect(notes?.dataType).toBe("string");
+    expect(notes?.notNull).toBe(true);
+    expect(notes?.hasDefault).toBe(true);
+  });
 });
 ```
 
@@ -487,6 +496,9 @@ export const users = pgTable("user", {
     .$type<UserPreferences>()
     .default(DEFAULT_PREFERENCES)
     .notNull(),
+  // Durable, user-level memory the coach maintains across the rolling chat.
+  // 4 KB cap is enforced in the update_coach_notes tool, not at the DB layer.
+  coach_notes: text("coach_notes").notNull().default(""),
 });
 
 export const accounts = pgTable(
@@ -538,7 +550,7 @@ export const verificationTokens = pgTable(
 pnpm test
 ```
 
-Expected: all 3 tests pass.
+Expected: all 4 tests pass.
 
 - [ ] **Step 6: Commit**
 
@@ -1934,7 +1946,7 @@ git commit -m "Add error boundary, not-found, and loading states"
 pnpm test
 ```
 
-Expected: all tests pass (sanity test + schema tests + preferences route tests = ~7 tests).
+Expected: all tests pass (sanity test + schema tests + preferences route tests = ~8 tests).
 
 - [ ] **Step 2: Run typecheck**
 
@@ -1992,7 +2004,7 @@ git push origin master
 - A user can sign in with Strava and see the four tabs (Today / Calendar / Plans / Coach) with empty placeholder content.
 - The `Ask coach` floating button is visible on every authenticated page and opens a "coming soon" modal.
 - User preferences (units, timezone, pace format) are auto-captured on first sign-in and editable in `/settings`.
-- The data model has NextAuth's tables + `users.preferences` ready for Phase 2 to extend with plans, workouts, activities, and the rest.
+- The data model has NextAuth's tables + `users.preferences` + `users.coach_notes` (empty string default) ready for Phase 2 to extend with plans, workouts, activities, and the rest. The coach-notes editor in `/settings` ships in Phase 4 alongside the chat itself.
 
 ## What's next (NOT in this plan)
 
