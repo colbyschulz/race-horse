@@ -33,7 +33,7 @@ vi.mock("@/db/schema", () => ({
   workouts: { id: "id", plan_id: "plan_id", date: "date" },
 }));
 
-import { listPlans, getPlanById, createPlan } from "../queries";
+import { listPlans, getPlanById, createPlan, setActivePlan, archivePlan, deletePlan } from "../queries";
 
 describe("listPlans", () => {
   beforeEach(() => {
@@ -114,5 +114,47 @@ describe("createPlan", () => {
         source: "coach_generated",
       }),
     ).rejects.toThrow("createPlan: no row returned");
+  });
+});
+
+describe("setActivePlan", () => {
+  beforeEach(() => {
+    updateChain.set.mockClear().mockReturnThis();
+    updateChain.where.mockClear().mockResolvedValue(undefined);
+  });
+
+  it("issues a single UPDATE that flips is_active per row", async () => {
+    await setActivePlan("p1", "u1");
+    expect(updateChain.set).toHaveBeenCalledOnce();
+    expect(updateChain.where).toHaveBeenCalledOnce();
+    const setArg = updateChain.set.mock.calls[0][0];
+    expect(setArg).toHaveProperty("is_active");
+    expect(setArg).toHaveProperty("updated_at");
+  });
+});
+
+describe("archivePlan", () => {
+  beforeEach(() => {
+    updateChain.set.mockClear().mockReturnThis();
+    updateChain.where.mockClear().mockResolvedValue(undefined);
+  });
+
+  it("sets is_active=false scoped to plan + user", async () => {
+    await archivePlan("p1", "u1");
+    expect(updateChain.set).toHaveBeenCalledWith(
+      expect.objectContaining({ is_active: false }),
+    );
+    expect(updateChain.where).toHaveBeenCalledOnce();
+  });
+});
+
+describe("deletePlan", () => {
+  beforeEach(() => {
+    deleteChain.where.mockClear().mockResolvedValue(undefined);
+  });
+
+  it("issues a DELETE scoped to plan + user", async () => {
+    await deletePlan("p1", "u1");
+    expect(deleteChain.where).toHaveBeenCalledOnce();
   });
 });

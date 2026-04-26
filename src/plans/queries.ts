@@ -1,4 +1,4 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { plans } from "@/db/schema";
 import type { CreatePlanInput, Plan, PlanWithCounts } from "./types";
@@ -47,16 +47,39 @@ export async function createPlan(
   return result[0] as Plan;
 }
 
-// Placeholder exports — implemented in later tasks
-export async function setActivePlan(_planId: string, _userId: string): Promise<void> {
-  throw new Error("not implemented");
+export async function setActivePlan(
+  planId: string,
+  userId: string,
+): Promise<void> {
+  // Single UPDATE so the partial unique index is never violated mid-statement.
+  await db
+    .update(plans)
+    .set({
+      is_active: sql`(${plans.id} = ${planId})`,
+      updated_at: new Date(),
+    })
+    .where(eq(plans.userId, userId));
 }
-export async function archivePlan(_planId: string, _userId: string): Promise<void> {
-  throw new Error("not implemented");
+
+export async function archivePlan(
+  planId: string,
+  userId: string,
+): Promise<void> {
+  await db
+    .update(plans)
+    .set({ is_active: false, updated_at: new Date() })
+    .where(and(eq(plans.id, planId), eq(plans.userId, userId)));
 }
-export async function deletePlan(_planId: string, _userId: string): Promise<void> {
-  throw new Error("not implemented");
+
+export async function deletePlan(
+  planId: string,
+  userId: string,
+): Promise<void> {
+  await db
+    .delete(plans)
+    .where(and(eq(plans.id, planId), eq(plans.userId, userId)));
 }
+
 export async function listPlansWithCounts(_userId: string, _today: string): Promise<PlanWithCounts[]> {
   throw new Error("not implemented");
 }
