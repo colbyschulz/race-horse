@@ -1,5 +1,6 @@
 import { auth } from "@/auth";
 import { NavLinks } from "./NavLinks";
+import { AskCoachButton } from "./AskCoachButton";
 import styles from "./AppShell.module.scss";
 
 export async function AppShell({ children }: { children: React.ReactNode }) {
@@ -19,6 +20,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       <div className={styles.tabBar}>
         <NavLinks variant="tabs" />
       </div>
+      <AskCoachButton />
     </div>
   );
 }
