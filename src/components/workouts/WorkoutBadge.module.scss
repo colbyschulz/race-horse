@@ -1,0 +1,65 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: var(--radius-pill);
+  font-family: var(--font-body);
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  border: 1px solid transparent;
+}
+
+.md {
+  padding: 4px 10px;
+  font-size: 0.75rem;
+}
+
+.sm {
+  padding: 2px 8px;
+  font-size: 0.6875rem;
+}
+
+.easy {
+  background: var(--color-workout-easy-bg);
+  color: var(--color-workout-easy);
+}
+
+.long {
+  background: var(--color-workout-long-bg);
+  color: var(--color-workout-long);
+}
+
+.tempo {
+  background: var(--color-workout-tempo-bg);
+  color: var(--color-workout-tempo);
+}
+
+.threshold {
+  background: var(--color-workout-threshold-bg);
+  color: var(--color-workout-threshold);
+}
+
+.intervals {
+  background: var(--color-workout-intervals-bg);
+  color: var(--color-workout-intervals);
+}
+
+.recovery {
+  background: var(--color-workout-recovery-bg);
+  color: var(--color-workout-recovery);
+}
+
+.race {
+  background: var(--color-workout-race);
+  color: #fff;
+}
+
+.rest {
+  background: var(--color-workout-rest-bg);
+  color: var(--color-workout-rest);
+}
+
+.cross {
+  background: var(--color-bg-subtle);
+  color: var(--color-fg-secondary);
+}

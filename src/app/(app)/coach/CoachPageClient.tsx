@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import styles from "./Coach.module.scss";
 import type { StoredMessage, SSEEvent } from "@/coach/types";
 
@@ -19,6 +19,13 @@ export function CoachPageClient({ initialMessages, fromRoute }: Props) {
   const [streaming, setStreaming] = useState<{ text: string; tools: { name: string; summary?: string }[] } | null>(null);
   const [sending, setSending] = useState(false);
   const [clearOpen, setClearOpen] = useState(false);
+  const streamRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = streamRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
+  }, [messages, streaming?.text]);
 
   async function send(text: string) {
     setSending(true);
@@ -100,7 +107,7 @@ export function CoachPageClient({ initialMessages, fromRoute }: Props) {
         <h1 className={styles.title}>Coach</h1>
         <button className={styles.clearBtn} onClick={() => setClearOpen(true)}>Clear chat</button>
       </header>
-      <div className={styles.stream}>
+      <div className={styles.stream} ref={streamRef}>
         {messages.map((m) => <MessageBubble key={m.id} message={m} />)}
         {streaming && (
           <>
