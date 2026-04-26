@@ -8,9 +8,11 @@ import {
   activityLaps,
   plans,
   workouts,
+  messages,
   sportEnum,
   planModeEnum,
   workoutTypeEnum,
+  messageRoleEnum,
 } from "../schema";
 import { getTableConfig } from "drizzle-orm/pg-core";
 
@@ -73,6 +75,10 @@ describe("activities schema", () => {
     }
   });
 
+  it("activities table has matched_workout_id column", () => {
+    expect(Object.keys(activities)).toContain("matched_workout_id");
+  });
+
   it("strava_id is unique", () => {
     const cfg = getTableConfig(activities);
     const stravaId = cfg.columns.find((c) => c.name === "strava_id");
@@ -133,6 +139,21 @@ describe("workouts table", () => {
     ]) {
       expect(cols).toContain(c);
     }
+  });
+});
+
+describe("messages table", () => {
+  it("declares the expected columns", () => {
+    const cols = Object.keys(messages);
+    for (const c of ["id", "user_id", "role", "content", "created_at"]) {
+      expect(cols).toContain(c);
+    }
+  });
+});
+
+describe("messageRoleEnum", () => {
+  it("declares user and assistant", () => {
+    expect(messageRoleEnum.enumValues).toEqual(["user", "assistant"]);
   });
 });
 

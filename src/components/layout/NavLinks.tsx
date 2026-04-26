@@ -8,6 +8,7 @@ const LINKS = [
   { href: "/today", label: "Today" },
   { href: "/calendar", label: "Calendar" },
   { href: "/plans", label: "Plans" },
+  { href: "/settings", label: "Settings" },
 ] as const;
 
 export function NavLinks({ variant }: { variant: "tabs" | "sidebar" }) {

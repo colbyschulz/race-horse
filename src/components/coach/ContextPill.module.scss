@@ -1,0 +1,14 @@
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-family: var(--font-body);
+  font-size: 0.8125rem;
+  color: var(--color-fg-secondary);
+  text-decoration: none;
+  padding: 4px 10px;
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-full);
+  width: fit-content;
+  &:hover { color: var(--color-brown); border-color: var(--color-brown); }
+}
