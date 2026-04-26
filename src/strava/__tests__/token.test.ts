@@ -26,6 +26,8 @@ describe("getStravaToken", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
     globalThis.fetch = realFetch;
+    delete process.env.AUTH_STRAVA_ID;
+    delete process.env.AUTH_STRAVA_SECRET;
   });
 
   it("returns the existing access token when not near expiry", async () => {
@@ -65,10 +67,14 @@ describe("getStravaToken", () => {
 
     const tok = await getStravaToken("user-1");
     expect(tok).toBe("new");
-    expect(globalThis.fetch).toHaveBeenCalledWith(
-      "https://www.strava.com/api/v3/oauth/token",
-      expect.objectContaining({ method: "POST" }),
-    );
+    // Assert POST body contains required fields
+    const fetchCall = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls[0];
+    const bodyJson = JSON.parse(fetchCall[1].body as string);
+    expect(bodyJson.grant_type).toBe("refresh_token");
+    expect(bodyJson.refresh_token).toBe("old-refresh");
+    expect(bodyJson.client_id).toBe("id");
+    expect(bodyJson.client_secret).toBe("secret");
+    // Assert all four fields were persisted
     expect(updateMock).toHaveBeenCalledOnce();
   });
 

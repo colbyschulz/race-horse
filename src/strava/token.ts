@@ -7,6 +7,9 @@ const REFRESH_THRESHOLD_SECONDS = 60;
 const STRAVA_TOKEN_URL = "https://www.strava.com/api/v3/oauth/token";
 
 export async function getStravaToken(userId: string): Promise<string> {
+  // NOTE: No lock around the refresh path. In a multi-user app with concurrent requests,
+  // two simultaneous refreshes for the same user could rotate the refresh_token twice,
+  // invalidating the second. Acceptable risk for this single-user personal app.
   const rows = await db
     .select({
       access_token: accounts.access_token,
@@ -47,6 +50,9 @@ export async function getStravaToken(userId: string): Promise<string> {
     throw new Error(`Strava token refresh failed: ${res.status} ${await res.text()}`);
   }
   const json = (await res.json()) as StravaTokenResponse;
+  if (!json.access_token) {
+    throw new Error(`Strava token refresh returned unexpected response: ${JSON.stringify(json)}`);
+  }
 
   await db
     .update(accounts)
@@ -54,7 +60,7 @@ export async function getStravaToken(userId: string): Promise<string> {
       access_token: json.access_token,
       refresh_token: json.refresh_token,
       expires_at: json.expires_at,
-      token_type: json.token_type,
+      token_type: json.token_type ?? "Bearer",
     })
     .where(and(eq(accounts.userId, userId), eq(accounts.provider, "strava")));
 
