@@ -15,6 +15,13 @@
       "when": 1777203134338,
       "tag": "0001_sleepy_silver_centurion",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1777230142276,
+      "tag": "0002_stiff_luckman",
+      "breakpoints": true
     }
   ]
 }

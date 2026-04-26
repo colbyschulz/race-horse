@@ -6,6 +6,11 @@ import {
   verificationTokens,
   activities,
   activityLaps,
+  plans,
+  workouts,
+  sportEnum,
+  planModeEnum,
+  workoutTypeEnum,
 } from "../schema";
 import { getTableConfig } from "drizzle-orm/pg-core";
 
@@ -102,5 +107,46 @@ describe("activities schema", () => {
     const last = cols.find((c) => c.name === "last_synced_at");
     expect(last).toBeDefined();
     expect(last?.notNull).toBe(false);
+  });
+});
+
+describe("plans table", () => {
+  it("declares the expected columns", () => {
+    const cols = Object.keys(plans);
+    for (const c of [
+      "id", "userId", "title", "sport", "mode", "goal",
+      "start_date", "end_date", "is_active", "source",
+      "source_file_id", "created_at", "updated_at",
+    ]) {
+      expect(cols).toContain(c);
+    }
+  });
+});
+
+describe("workouts table", () => {
+  it("declares the expected columns", () => {
+    const cols = Object.keys(workouts);
+    for (const c of [
+      "id", "plan_id", "date", "sport", "type",
+      "distance_meters", "duration_seconds",
+      "target_intensity", "intervals", "notes",
+    ]) {
+      expect(cols).toContain(c);
+    }
+  });
+});
+
+describe("enums", () => {
+  it("sportEnum declares run and bike", () => {
+    expect(sportEnum.enumValues).toEqual(["run", "bike"]);
+  });
+  it("planModeEnum declares goal and indefinite", () => {
+    expect(planModeEnum.enumValues).toEqual(["goal", "indefinite"]);
+  });
+  it("workoutTypeEnum declares the 9 types", () => {
+    expect(workoutTypeEnum.enumValues).toEqual([
+      "easy", "long", "tempo", "threshold",
+      "intervals", "recovery", "race", "rest", "cross",
+    ]);
   });
 });
