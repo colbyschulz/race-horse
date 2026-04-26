@@ -12,6 +12,9 @@ export type StravaActivityType =
   | (string & {}); // accept anything else as opaque string
 
 export interface StravaSummaryActivity {
+  // NOTE: Strava IDs are 64-bit integers; using number is safe today
+  // (current IDs ~10^10, well below Number.MAX_SAFE_INTEGER ~9×10^15)
+  // but may lose precision if Strava IDs exceed 2^53.
   id: number;
   name: string;
   type: StravaActivityType;
@@ -61,6 +64,7 @@ export interface StravaTokenResponse {
 export interface StravaWebhookEvent {
   aspect_type: "create" | "update" | "delete";
   event_time: number; // unix seconds
+  // See StravaSummaryActivity.id — same 64-bit int precision caveat applies.
   object_id: number;
   object_type: "activity" | "athlete";
   owner_id: number; // Strava athlete id

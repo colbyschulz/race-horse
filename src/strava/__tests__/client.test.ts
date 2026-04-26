@@ -64,4 +64,13 @@ describe("fetchStrava", () => {
       status: 404,
     });
   });
+
+  it("throws StravaApiError when response body is not valid JSON", async () => {
+    (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
+      new Response("<html>error</html>", { status: 200 }),
+    );
+    await expect(fetchStrava("/athlete", "tok")).rejects.toMatchObject({
+      status: 200,
+    });
+  });
 });

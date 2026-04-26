@@ -19,7 +19,18 @@ interface FetchStravaOptions {
   signal?: AbortSignal;
 }
 
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+const sleep = (ms: number, signal?: AbortSignal) =>
+  new Promise<void>((resolve, reject) => {
+    const id = setTimeout(resolve, ms);
+    signal?.addEventListener(
+      "abort",
+      () => {
+        clearTimeout(id);
+        reject(signal.reason);
+      },
+      { once: true },
+    );
+  });
 
 export async function fetchStrava<T>(
   path: string,
@@ -65,7 +76,7 @@ export async function fetchStrava<T>(
     } catch (e) {
       lastErr = e;
       if (attempt === maxRetries) throw e;
-      await sleep(baseDelayMs * 2 ** attempt);
+      await sleep(baseDelayMs * 2 ** attempt, signal);
       continue;
     }
 
@@ -73,14 +84,19 @@ export async function fetchStrava<T>(
       // Strava returns 204 for some delete-like calls.
       if (res.status === 204) return undefined as T;
       const text = await res.text();
-      return text ? (JSON.parse(text) as T) : (undefined as T);
+      if (!text) return undefined as T;
+      try {
+        return JSON.parse(text) as T;
+      } catch {
+        throw new StravaApiError(200, text, url);
+      }
     }
 
     const isRetryable = res.status === 429 || res.status >= 500;
     if (!isRetryable || attempt === maxRetries) {
       throw new StravaApiError(res.status, await res.text(), url);
     }
-    await sleep(baseDelayMs * 2 ** attempt);
+    await sleep(baseDelayMs * 2 ** attempt, signal);
   }
 
   throw lastErr ?? new Error("fetchStrava: exhausted retries");
