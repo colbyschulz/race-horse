@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Race Horse — Wireframes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;600;700&family=Syne:wght@400;600;700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script type="text/babel" src="design-canvas.jsx"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #f0ece4; font-family: 'Caveat', cursive; }
+
+  /* Sketch primitives */
+  .sk-screen {
+    background: #fafaf8;
+    border: 2px solid #1E1A14;
+    border-radius: 4px;
+    overflow: hidden;
+    font-family: 'Caveat', cursive;
+    position: relative;
+  }
+  .sk-box {
+    border: 1.5px solid #1E1A14;
+    border-radius: 3px;
+    background: #fff;
+  }
+  .sk-box.dashed { border-style: dashed; background: #f5f2ec; }
+  .sk-box.filled { background: #1E1A14; color: #fff; }
+  .sk-box.accent { background: #7A4728; color: #fff; border-color: #7A4728; }
+  .sk-box.muted { background: #EDE8DC; border-color: #9B8E7E; }
+  .sk-box.pill {
+    border-radius: 999px;
+    padding: 2px 10px;
+    font-size: 11px;
+    display: inline-flex;
+    align-items: center;
+  }
+  .sk-label {
+    font-family: 'Caveat', cursive;
+    font-size: 13px;
+    color: #9B8E7E;
+  }
+  .sk-title {
+    font-family: 'Caveat', cursive;
+    font-size: 16px;
+    font-weight: 700;
+    color: #1E1A14;
+  }
+  .sk-h1 { font-size: 22px; font-weight: 700; color: #1E1A14; font-family: 'Caveat', cursive; }
+  .sk-h2 { font-size: 17px; font-weight: 700; color: #1E1A14; font-family: 'Caveat', cursive; }
+  .sk-small { font-size: 11px; color: #9B8E7E; font-family: 'Caveat', cursive; }
+  .sk-input {
+    border: 1.5px solid #9B8E7E;
+    border-radius: 3px;
+    background: #fafaf8;
+    height: 30px;
+    width: 100%;
+    padding: 0 8px;
+    font-family: 'Caveat', cursive;
+    font-size: 13px;
+    color: #1E1A14;
+  }
+  .sk-divider {
+    border: none;
+    border-top: 1.5px dashed #C8BFB0;
+    margin: 8px 0;
+  }
+  .sk-row { display: flex; align-items: center; gap: 6px; }
+  .sk-col { display: flex; flex-direction: column; gap: 4px; }
+  .sk-spacer { flex: 1; }
+  .sk-badge {
+    font-family: 'Caveat', cursive;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: 999px;
+    border: 1.5px solid currentColor;
+    white-space: nowrap;
+  }
+  .badge-easy { color: #5C6633; background: #f0f2e8; border-color: #5C6633; }
+  .badge-long { color: #2d5c8e; background: #e8f0f8; border-color: #2d5c8e; }
+  .badge-tempo { color: #8e5c2d; background: #f8ede8; border-color: #8e5c2d; }
+  .badge-threshold { color: #C4622D; background: #fdf0ec; border-color: #C4622D; }
+  .badge-intervals { color: #7b2d8e; background: #f5e8f8; border-color: #7b2d8e; }
+  .badge-recovery { color: #9B8E7E; background: #f5f2ec; border-color: #9B8E7E; }
+  .badge-rest { color: #C8BFB0; background: #f5f2ec; border-color: #C8BFB0; }
+  .badge-race { color: #8e2d2d; background: #f8e8e8; border-color: #8e2d2d; }
+  .sk-tab-bar {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    height: 48px;
+    background: #fafaf8;
+    border-top: 1.5px solid #C8BFB0;
+    display: flex;
+    align-items: stretch;
+  }
+  .sk-tab {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Caveat', cursive;
+    font-size: 11px;
+    color: #9B8E7E;
+    gap: 2px;
+    cursor: pointer;
+  }
+  .sk-tab.active { color: #1E1A14; font-weight: 700; }
+  .sk-tab-icon {
+    width: 16px; height: 16px;
+    border: 1.5px solid currentColor;
+    border-radius: 3px;
+  }
+  .sk-fab {
+    position: absolute;
+    bottom: 60px; right: 12px;
+    width: 42px; height: 42px;
+    background: #C4622D;
+    border-radius: 999px;
+    display: flex; align-items: center; justify-content: center;
+    color: #fff;
+    font-size: 20px;
+    font-weight: 700;
+    border: 2px solid #1E1A14;
+    box-shadow: 2px 2px 0 #1E1A14;
+  }
+  .sk-sidebar {
+    width: 180px;
+    border-right: 1.5px solid #C8BFB0;
+    background: #f5f0e8;
+    display: flex;
+    flex-direction: column;
+    padding: 16px 12px;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  .sk-nav-item {
+    font-family: 'Caveat', cursive;
+    font-size: 13px;
+    color: #9B8E7E;
+    padding: 6px 8px;
+    border-radius: 4px;
+  }
+  .sk-nav-item.active {
+    background: #EDE8DC;
+    color: #1E1A14;
+    font-weight: 700;
+    border: 1.5px solid #C8BFB0;
+  }
+  .sk-annotation {
+    position: absolute;
+    font-family: 'Caveat', cursive;
+    font-size: 11px;
+    color: #C4622D;
+    pointer-events: none;
+  }
+  .sk-arrow {
+    position: absolute;
+    color: #C4622D;
+    font-size: 13px;
+    font-family: 'Caveat', cursive;
+  }
+  .cal-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+  }
+  .cal-cell {
+    border: 1px solid #C8BFB0;
+    border-radius: 2px;
+    padding: 3px;
+    min-height: 48px;
+    background: #fff;
+    font-family: 'Caveat', cursive;
+  }
+  .cal-cell.today { background: #fdf0ec; border-color: #C4622D; }
+  .cal-cell.dim { background: #f5f2ec; }
+  .cal-date { font-size: 10px; color: #9B8E7E; margin-bottom: 2px; }
+  .cal-date.today-num { color: #C4622D; font-weight: 700; }
+  .cal-check { color: #5C6633; font-size: 10px; }
+  .week-row {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+  }
+  .week-cell {
+    border: 1.5px solid #C8BFB0;
+    border-radius: 3px;
+    padding: 6px 5px;
+    background: #fff;
+    min-height: 80px;
+    font-family: 'Caveat', cursive;
+  }
+  .week-cell.today { background: #fdf6f3; border-color: #C4622D; border-width: 2px; }
+  .chat-bubble {
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-family: 'Caveat', cursive;
+    font-size: 12px;
+    max-width: 80%;
+    line-height: 1.4;
+  }
+  .chat-bubble.user { background: #1E1A14; color: #fff; margin-left: auto; border-radius: 8px 8px 2px 8px; }
+  .chat-bubble.coach { background: #EDE8DC; color: #1E1A14; border-radius: 8px 8px 8px 2px; border: 1.5px solid #C8BFB0; }
+  .tool-pill {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: #f5f2ec; border: 1.5px dashed #9B8E7E;
+    border-radius: 999px; padding: 2px 8px;
+    font-size: 10px; color: #9B8E7E;
+  }
+</style>
+</head>
+<body>
+<script type="text/babel">
+const { DCSection, DCArtboard, DesignCanvas } = window;
+
+/* ─── Reusable sketch primitives ─── */
+const Box = ({ style, className = '', children, ...rest }) => (
+  <div className={`sk-box ${className}`} style={style} {...rest}>{children}</div>
+);
+
+const Label = ({ children, style }) => <div className="sk-label" style={style}>{children}</div>;
+const Title = ({ children, style }) => <div className="sk-title" style={style}>{children}</div>;
+const Small = ({ children, style }) => <div className="sk-small" style={style}>{children}</div>;
+const Divider = () => <hr className="sk-divider" />;
+const Row = ({ children, style }) => <div className="sk-row" style={style}>{children}</div>;
+const Col = ({ children, style }) => <div className="sk-col" style={style}>{children}</div>;
+const Spacer = () => <div className="sk-spacer" />;
+
+const Badge = ({ type = 'easy' }) => {
+  const labels = { easy: 'Easy Run', long: 'Long Run', tempo: 'Tempo', threshold: 'Threshold', intervals: 'Intervals', recovery: 'Recovery', rest: 'Rest', race: 'Race' };
+  return <span className={`sk-badge badge-${type}`}>{labels[type] || type}</span>;
+};
+
+const TabBar = ({ active = 'today' }) => (
+  <div className="sk-tab-bar">
+    {[['today','Today'],['calendar','Cal'],['plans','Plans']].map(([id, label]) => (
+      <div key={id} className={`sk-tab ${active === id ? 'active' : ''}`}>
+        <div className="sk-tab-icon" />
+        {label}
+      </div>
+    ))}
+  </div>
+);
+
+const FAB = () => (
+  <div className="sk-fab" title="Ask coach">✦</div>
+);
+
+const Sidebar = ({ active = 'today' }) => (
+  <div className="sk-sidebar">
+    <div style={{ marginBottom: 8 }}>
+      <div style={{ fontSize: 13, fontWeight: 700, color: '#1E1A14', fontFamily: 'Caveat' }}>Race Horse</div>
+      <div className="sk-small">Colby Schulz</div>
+    </div>
+    <Divider />
+    {[['today','Today'],['calendar','Calendar'],['plans','Plans']].map(([id, label]) => (
+      <div key={id} className={`sk-nav-item ${active === id ? 'active' : ''}`}>{label}</div>
+    ))}
+    <Spacer />
+    <Box className="accent" style={{ borderRadius: 6, padding: '8px 10px', textAlign: 'center', fontSize: 13, cursor: 'pointer', marginTop: 8 }}>
+      Ask coach ✦
+    </Box>
+  </div>
+);
+
+/* ─── SCREEN 1: Landing Page ─── */
+const LandingScreen = () => (
+  <div className="sk-screen" style={{ width: 375, height: 660, position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 32, gap: 16, background: '#F5F0E8' }}>
+    {/* logo mark placeholder */}
+    <div style={{ width: 56, height: 56, border: '2.5px solid #1E1A14', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#fff' }}>
+      <span style={{ fontSize: 28, fontFamily: 'Caveat', fontWeight: 700, color: '#C4622D' }}>🏃</span>
+    </div>
+    <div style={{ textAlign: 'center' }}>
+      <div className="sk-h1" style={{ fontSize: 26, marginBottom: 6 }}>Race Horse</div>
+      <div className="sk-label" style={{ fontSize: 13, maxWidth: 260, lineHeight: 1.4 }}>
+        A virtual running & cycling coach for athletes who think in pace zones, FTP, and threshold.
+      </div>
+    </div>
+    {/* Feature bullets */}
+    <Col style={{ width: '100%', gap: 8, marginTop: 4 }}>
+      {['Build & tweak training plans', 'Analyze your Strava workouts', 'Ask anything about training or gear'].map((f, i) => (
+        <Row key={i} style={{ gap: 8 }}>
+          <span style={{ color: '#5C6633', fontSize: 14 }}>✓</span>
+          <div className="sk-label" style={{ fontSize: 13, color: '#1E1A14' }}>{f}</div>
+        </Row>
+      ))}
+    </Col>
+    {/* CTA */}
+    <div style={{ width: '100%', marginTop: 8 }}>
+      <Box className="accent" style={{ textAlign: 'center', padding: '12px 0', fontSize: 16, fontWeight: 700, borderRadius: 6, cursor: 'pointer' }}>
+        Sign in with Strava
+      </Box>
+      <div className="sk-small" style={{ textAlign: 'center', marginTop: 8 }}>Free. No account required — just Strava.</div>
+    </div>
+    {/* annotation */}
+    <div className="sk-annotation" style={{ bottom: 16, right: 16, transform: 'rotate(-2deg)' }}>Only auth path → Strava</div>
+  </div>
+);
+
+/* ─── SCREEN 2: Today (Mobile) ─── */
+const TodayMobile = () => (
+  <div className="sk-screen" style={{ width: 375, height: 720, position: 'relative', display: 'flex', flexDirection: 'column' }}>
+    {/* Status bar */}
+    <div style={{ height: 24, background: '#F5F0E8', display: 'flex', alignItems: 'center', padding: '0 16px', justifyContent: 'space-between' }}>
+      <Small>9:41</Small>
+      <Small>●●●</Small>
+    </div>
+    {/* Header */}
+    <div style={{ padding: '12px 16px 8px', borderBottom: '1px solid #EDE8DC' }}>
+      <Row>
+        <Col>
+          <div className="sk-h2">Friday, Apr 25</div>
+          <Label>Week 8 of 16 — Boston Marathon Build</Label>
+        </Col>
+        <Spacer />
+        <div style={{ width: 32, height: 32, borderRadius: 999, border: '1.5px solid #C8BFB0', background: '#EDE8DC', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14 }}>C</div>
+      </Row>
+    </div>
+    {/* Hero workout card */}
+    <div style={{ padding: '12px 16px', flex: 1, overflowY: 'auto', paddingBottom: 80 }}>
+      <Box style={{ padding: 16, marginBottom: 12, borderColor: '#C4622D', borderWidth: 2 }}>
+        <Row style={{ marginBottom: 10 }}>
+          <Badge type="tempo" />
+          <Spacer />
+          <Small>8 mi · 60 min</Small>
+        </Row>
+        {/* Intensity block */}
+        <Box className="muted" style={{ padding: 10, marginBottom: 10, borderRadius: 4 }}>
+          <Row>
+            <Col style={{ gap: 2 }}>
+              <Small>Target Pace</Small>
+              <div style={{ fontSize: 15, fontWeight: 700, fontFamily: 'Caveat', color: '#1E1A14' }}>7:15–7:30 /mi</div>
+            </Col>
+            <Spacer />
+            <Col style={{ gap: 2, textAlign: 'right' }}>
+              <Small>HR Zone</Small>
+              <div style={{ fontSize: 15, fontWeight: 700, fontFamily: 'Caveat', color: '#1E1A14' }}>Z3–Z4</div>
+            </Col>
+          </Row>
+        </Box>
+        <div style={{ fontSize: 12, fontFamily: 'Caveat', color: '#5c5048', lineHeight: 1.4, marginBottom: 10 }}>
+          2mi easy warm-up → 4mi at tempo → 2mi cool-down. Stay relaxed, not a race effort.
+        </div>
+        {/* Strava match */}
+        <Box className="muted" style={{ padding: 8, borderRadius: 4, borderColor: '#5C6633', borderStyle: 'solid' }}>
+          <Row style={{ gap: 6 }}>
+            <span style={{ color: '#5C6633', fontSize: 14 }}>✓</span>
+            <Col style={{ gap: 0 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, fontFamily: 'Caveat', color: '#5C6633' }}>Strava matched · Morning Run</div>
+              <Small>7.9 mi · 57:42 · 7:17 avg pace · 148 bpm avg</Small>
+            </Col>
+            <Spacer />
+            <div style={{ fontSize: 10, color: '#9B8E7E', fontFamily: 'Caveat' }}>↓ laps</div>
+          </Row>
+        </Box>
+        <Divider />
+        <Box className="dashed" style={{ padding: 8, textAlign: 'center', borderRadius: 4, fontSize: 12 }}>
+          ✦ Ask coach about today's workout
+        </Box>
+      </Box>
+
+      {/* Tomorrow + day after */}
+      <Label style={{ marginBottom: 6 }}>Coming up</Label>
+      {[['Sat', 'Long Run', 'long', '18 mi · 2:30'], ['Sun', 'Recovery', 'recovery', '5 mi · 45 min']].map(([day, name, type, dist]) => (
+        <Box key={day} style={{ padding: 10, marginBottom: 6 }}>
+          <Row>
+            <Small style={{ width: 28 }}>{day}</Small>
+            <Badge type={type} />
+            <Spacer />
+            <Small>{dist}</Small>
+          </Row>
+        </Box>
+      ))}
+    </div>
+
+    <FAB />
+    <TabBar active="today" />
+  </div>
+);
+
+/* ─── SCREEN 3: Today (Desktop) ─── */
+const TodayDesktop = () => (
+  <div className="sk-screen" style={{ width: 900, height: 600, display: 'flex' }}>
+    <Sidebar active="today" />
+    {/* Main content */}
+    <div style={{ flex: 1, padding: 24, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div>
+        <div className="sk-h1" style={{ fontSize: 20 }}>Friday, April 25</div>
+        <Label>Week 8 of 16 — Boston Marathon Build</Label>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 16 }}>
+        {/* Hero card */}
+        <Box style={{ padding: 20, borderColor: '#C4622D', borderWidth: 2 }}>
+          <Row style={{ marginBottom: 12 }}>
+            <Badge type="tempo" />
+            <Spacer />
+            <Small>8 mi · 60 min</Small>
+          </Row>
+          <Box className="muted" style={{ padding: 12, marginBottom: 12 }}>
+            <Row>
+              <Col style={{ gap: 2 }}>
+                <Small>Target Pace</Small>
+                <div style={{ fontSize: 16, fontWeight: 700, fontFamily: 'Caveat' }}>7:15–7:30 /mi</div>
+              </Col>
+              <Spacer />
+              <Col style={{ gap: 2 }}>
+                <Small>HR Zone</Small>
+                <div style={{ fontSize: 16, fontWeight: 700, fontFamily: 'Caveat' }}>Z3–Z4</div>
+              </Col>
+              <Spacer />
+              <Col style={{ gap: 2 }}>
+                <Small>RPE</Small>
+                <div style={{ fontSize: 16, fontWeight: 700, fontFamily: 'Caveat' }}>7/10</div>
+              </Col>
+            </Row>
+          </Box>
+          <div style={{ fontSize: 13, fontFamily: 'Caveat', color: '#5c5048', lineHeight: 1.5, marginBottom: 12 }}>
+            2mi easy warm-up → 4mi at tempo → 2mi cool-down. Stay relaxed, not a race effort.
+          </div>
+          {/* Strava match */}
+          <Box className="muted" style={{ padding: 10, borderColor: '#5C6633' }}>
+            <Row>
+              <span style={{ color: '#5C6633' }}>✓</span>
+              <Col style={{ gap: 1 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, fontFamily: 'Caveat', color: '#5C6633' }}>Strava matched · Morning Run</div>
+                <Small>7.9 mi · 57:42 · 7:17 avg · 148 bpm</Small>
+              </Col>
+              <Spacer />
+              <div style={{ fontSize: 11, color: '#C4622D', fontFamily: 'Caveat', cursor: 'pointer' }}>View laps →</div>
+            </Row>
+          </Box>
+          <Divider />
+          <Box className="dashed" style={{ padding: 8, textAlign: 'center', fontSize: 12 }}>
+            ✦ Ask coach about today's workout
+          </Box>
+        </Box>
+        {/* Upcoming sidebar */}
+        <Col style={{ gap: 8 }}>
+          <Label>This week</Label>
+          {[['Mon','Easy','easy','✓'],['Tue','Threshold','threshold','✓'],['Wed','Rest','rest','✓'],['Thu','Easy','easy','✓'],['Fri','Tempo','tempo','→'],['Sat','Long Run','long',''],['Sun','Recovery','recovery','']].map(([d,n,t,c]) => (
+            <Row key={d} style={{ padding: '5px 8px', background: d === 'Fri' ? '#fdf0ec' : 'transparent', borderRadius: 4, border: d === 'Fri' ? '1.5px solid #C4622D' : '1px solid #EDE8DC' }}>
+              <div style={{ width: 24, fontSize: 11, fontFamily: 'Caveat', color: '#9B8E7E' }}>{d}</div>
+              <Badge type={t} />
+              <Spacer />
+              <div style={{ fontSize: 12, color: c === '✓' ? '#5C6633' : '#C8BFB0', fontWeight: 700 }}>{c}</div>
+            </Row>
+          ))}
+        </Col>
+      </div>
+    </div>
+    {/* Coach panel hint */}
+    <div style={{ width: 280, borderLeft: '1.5px solid #C8BFB0', display: 'flex', flexDirection: 'column', background: '#fdfaf5' }}>
+      <div style={{ padding: '12px 16px', borderBottom: '1px solid #EDE8DC' }}>
+        <Row>
+          <div className="sk-h2" style={{ fontSize: 14 }}>Coach</div>
+          <Spacer />
+          <Small>New chat</Small>
+        </Row>
+      </div>
+      <div style={{ flex: 1, padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div className="chat-bubble coach">Good morning! You've got a tempo run today. Ready to crush it?</div>
+        <div className="chat-bubble user">Should I do it on the track or roads?</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <div className="tool-pill">🔍 checking your recent runs…</div>
+          <div className="chat-bubble coach">Roads are fine. Aim for a flat route — the track is better for intervals, not tempo.</div>
+        </div>
+      </div>
+      <div style={{ padding: 10, borderTop: '1px solid #EDE8DC' }}>
+        <div className="sk-input" style={{ display: 'flex', alignItems: 'center' }}>Ask anything…</div>
+      </div>
+    </div>
+  </div>
+);
+
+/* ─── SCREEN 4: Calendar — Week (Mobile) ─── */
+const CalendarWeekMobile = () => (
+  <div className="sk-screen" style={{ width: 375, height: 720, display: 'flex', flexDirection: 'column' }}>
+    <div style={{ height: 24, background: '#F5F0E8', display: 'flex', alignItems: 'center', padding: '0 16px', justifyContent: 'space-between' }}>
+      <Small>9:41</Small><Small>●●●</Small>
+    </div>
+    <div style={{ padding: '12px 16px 8px', borderBottom: '1px solid #EDE8DC' }}>
+      <Row>
+        <div className="sk-h2" style={{ fontSize: 16 }}>April 2026</div>
+        <Spacer />
+        <Row style={{ gap: 6 }}>
+          <Box className="accent pill" style={{ fontSize: 10, cursor: 'pointer' }}>Week</Box>
+          <Box className="pill" style={{ fontSize: 10, cursor: 'pointer', borderColor: '#9B8E7E', color: '#9B8E7E' }}>Month</Box>
+        </Row>
+      </Row>
+      {/* Day headers */}
+      <div className="week-row" style={{ marginTop: 10, gap: 3 }}>
+        {['M','T','W','T','F','S','S'].map((d, i) => (
+          <div key={i} style={{ textAlign: 'center', fontSize: 10, color: '#9B8E7E', fontFamily: 'Caveat' }}>{d}</div>
+        ))}
+      </div>
+    </div>
+    {/* Week cells */}
+    <div style={{ padding: '8px 12px', flex: 1, overflowY: 'auto', paddingBottom: 80 }}>
+      <div className="week-row">
+        {[
+          ['21','easy','✓',4.1],
+          ['22','threshold','✓',7.2],
+          ['23','rest','',null],
+          ['24','easy','✓',5],
+          ['25','tempo','→',8],
+          ['26','long','',18],
+          ['27','recovery','',5],
+        ].map(([date, type, done, dist]) => (
+          <div key={date} className={`week-cell ${date === '25' ? 'today' : ''}`}>
+            <div className="cal-date" style={date === '25' ? { color: '#C4622D', fontWeight: 700 } : {}}>{date}</div>
+            {type !== 'rest' && <Badge type={type} />}
+            {type === 'rest' && <div style={{ fontSize: 10, color: '#C8BFB0', fontFamily: 'Caveat', marginTop: 2 }}>rest</div>}
+            {dist && <div style={{ fontSize: 11, fontFamily: 'Caveat', color: '#5c5048', marginTop: 3 }}>{dist}mi</div>}
+            {done === '✓' && <div style={{ fontSize: 11, color: '#5C6633', fontFamily: 'Caveat' }}>✓</div>}
+            {done === '→' && <div style={{ fontSize: 10, color: '#7A4728', fontFamily: 'Caveat' }}>today</div>}
+          </div>
+        ))}
+      </div>
+      {/* Weekly total */}
+      <Box className="muted" style={{ padding: 8, marginTop: 8, borderRadius: 4 }}>
+        <Row>
+          <div style={{ fontSize: 12, fontFamily: 'Caveat' }}>Week total</div>
+          <Spacer />
+          <div style={{ fontSize: 12, fontWeight: 700, fontFamily: 'Caveat' }}>47.3 mi · 6h 20min</div>
+        </Row>
+      </Box>
+      {/* Prev / next weeks hint */}
+      <Row style={{ marginTop: 8, justifyContent: 'space-between' }}>
+        <div style={{ fontSize: 12, fontFamily: 'Caveat', color: '#9B8E7E' }}>← Apr 14</div>
+        <div style={{ fontSize: 12, fontFamily: 'Caveat', color: '#9B8E7E' }}>Apr 28 →</div>
+      </Row>
+    </div>
+    <FAB />
+    <TabBar active="calendar" />
+  </div>
+);
+
+/* ─── SCREEN 5: Calendar — Month (Desktop) ─── */
+const CalendarMonthDesktop = () => {
+  const days = [
+    ['','','1','2','3','4','5'],
+    ['6','7','8','9','10','11','12'],
+    ['13','14','15','16','17','18','19'],
+    ['20','21','22','23','24','25','26'],
+    ['27','28','29','30','','',''],
+  ];
+  const workoutMap = {
+    '20': ['easy','✓'], '21': ['easy','✓'], '22': ['threshold','✓'],
+    '23': ['rest',''], '24': ['easy','✓'], '25': ['tempo','→'], '26': ['long',''],
+    '27': ['recovery',''], '28': ['easy',''], '29': ['threshold',''],
+    '30': ['rest',''], '6':['easy','✓'],'7':['intervals','✓'],'8':['rest',''],
+    '9':['easy','✓'],'10':['tempo','✓'],'11':['long','✓'],'12':['recovery','✓'],
+    '13':['easy','✓'],'14':['threshold','✓'],'15':['rest',''],
+    '16':['easy','✓'],'17':['tempo','✓'],'18':['long','✓'],'19':['recovery','✓'],
+  };
+  const weeklyTotals = { 0: '', 1: '38mi', 2: '44mi', 3: '46mi', 4: '47mi', 5: '18mi' };
+  return (
+    <div className="sk-screen" style={{ width: 900, height: 620, display: 'flex' }}>
+      <Sidebar active="calendar" />
+      <div style={{ flex: 1, padding: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <Row>
+          <div className="sk-h1" style={{ fontSize: 20 }}>April 2026</div>
+          <Spacer />
+          <Row style={{ gap: 6 }}>
+            <Box className="pill" style={{ fontSize: 11, color: '#9B8E7E', borderColor: '#9B8E7E', cursor: 'pointer' }}>Week</Box>
+            <Box className="accent pill" style={{ fontSize: 11 }}>Month</Box>
+          </Row>
+        </Row>
+        {/* Day headers */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr) 48px', gap: 3 }}>
+          {['Mon','Tue','Wed','Thu','Fri','Sat','Sun',''].map((d, i) => (
+            <div key={i} style={{ textAlign: 'center', fontSize: 11, color: '#9B8E7E', fontFamily: 'Caveat', paddingBottom: 4, borderBottom: '1px solid #EDE8DC' }}>{d}</div>
+          ))}
+        </div>
+        {/* Calendar grid */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 3, flex: 1 }}>
+          {days.map((week, wi) => (
+            <div key={wi} style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr) 48px', gap: 3, flex: 1 }}>
+              {week.map((date, di) => {
+                const w = workoutMap[date];
+                const isToday = date === '25';
+                return (
+                  <div key={di} style={{
+                    border: isToday ? '2px solid #7A4728' : '1px solid #E0D9CE',
+                    borderRadius: 3,
+                    background: isToday ? '#fdf6f3' : date ? '#fff' : '#f9f6f0',
+                    padding: '4px 5px',
+                    minHeight: 60,
+                    cursor: date ? 'pointer' : 'default'
+                  }}>
+                    {date && <div style={{ fontSize: 10, fontFamily: 'Caveat', color: isToday ? '#C4622D' : '#9B8E7E', fontWeight: isToday ? 700 : 400, marginBottom: 3 }}>{date}</div>}
+                    {date && w && w[0] !== 'rest' && <Badge type={w[0]} />}
+                    {date && w && w[1] === '✓' && <div style={{ fontSize: 10, color: '#5C6633', fontFamily: 'Caveat' }}>✓ done</div>}
+                    {date && w && w[1] === '→' && <div style={{ fontSize: 10, color: '#7A4728', fontFamily: 'Caveat' }}>today</div>}
+                  </div>
+                );
+              })}
+              {/* Weekly total column */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 4 }}>
+                {weeklyTotals[wi + 1] && <div style={{ fontSize: 10, color: '#9B8E7E', fontFamily: 'Caveat', textAlign: 'center', writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}>{weeklyTotals[wi + 1]}</div>}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* ─── SCREEN 6: Plans ─── */
+const PlansScreen = () => (
+  <div className="sk-screen" style={{ width: 375, height: 720, display: 'flex', flexDirection: 'column' }}>
+    <div style={{ height: 24, background: '#F5F0E8', display: 'flex', alignItems: 'center', padding: '0 16px', justifyContent: 'space-between' }}>
+      <Small>9:41</Small><Small>●●●</Small>
+    </div>
+    <div style={{ padding: '12px 16px 8px', borderBottom: '1px solid #EDE8DC' }}>
+      <div className="sk-h2">My Plans</div>
+    </div>
+    {/* CTAs */}
+    <div style={{ padding: '12px 16px', display: 'flex', gap: 8 }}>
+      <Box className="accent" style={{ flex: 1, padding: '9px 10px', textAlign: 'center', fontSize: 13, borderRadius: 6, cursor: 'pointer' }}>
+        ✦ Build with coach
+      </Box>
+      <Box className="dashed" style={{ flex: 1, padding: '9px 10px', textAlign: 'center', fontSize: 13, borderRadius: 6, cursor: 'pointer' }}>
+        ↑ Upload plan
+      </Box>
+    </div>
+    <Divider />
+    {/* Plan list */}
+    <div style={{ padding: '0 16px', flex: 1, overflowY: 'auto', paddingBottom: 80, display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {/* Active plan */}
+      <Box style={{ padding: 14, borderColor: '#C4622D', borderWidth: 2 }}>
+        <Row style={{ marginBottom: 6 }}>
+          <div style={{ flex: 1, fontSize: 14, fontWeight: 700, fontFamily: 'Caveat' }}>Boston Marathon Build</div>
+          <span className="sk-badge badge-easy" style={{ background: '#C4622D', color: '#fff', borderColor: '#C4622D' }}>Active</span>
+        </Row>
+        <Row>
+          <span style={{ fontSize: 12, fontFamily: 'Caveat', color: '#9B8E7E' }}>🏃 Run · 16 weeks · Goal: 3:05</span>
+        </Row>
+        <Row style={{ marginTop: 4 }}>
+          <Small>Jan 13 – May 5, 2026</Small>
+          <Spacer />
+          <Small>coach-generated</Small>
+        </Row>
+        <Divider />
+        <Row style={{ gap: 12 }}>
+          {['Archive','Delete'].map(a => (
+            <div key={a} style={{ fontSize: 12, fontFamily: 'Caveat', color: '#9B8E7E', cursor: 'pointer' }}>{a}</div>
+          ))}
+          <Spacer />
+          <div style={{ fontSize: 12, fontFamily: 'Caveat', color: '#C4622D', cursor: 'pointer' }}>View →</div>
+        </Row>
+      </Box>
+
+      {/* Archived plans */}
+      <Label style={{ marginTop: 4 }}>Archived</Label>
+      {[
+        ['Fall 50k Training','Run · 20 wks · uploaded','Sep 2025'],
+        ['Base Build Cycling','Bike · indefinite · coach-generated','Mar 2025'],
+      ].map(([name, meta, date]) => (
+        <Box key={name} className="muted" style={{ padding: 12 }}>
+          <Row>
+            <Col style={{ flex: 1, gap: 2 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, fontFamily: 'Caveat', color: '#5c5048' }}>{name}</div>
+              <Small>{meta} · {date}</Small>
+            </Col>
+            <Spacer />
+            <Row style={{ gap: 8 }}>
+              <div style={{ fontSize: 11, fontFamily: 'Caveat', color: '#9B8E7E' }}>Restore</div>
+              <div style={{ fontSize: 11, fontFamily: 'Caveat', color: '#9B8E7E' }}>Delete</div>
+            </Row>
+          </Row>
+        </Box>
+      ))}
+    </div>
+    <FAB />
+    <TabBar active="plans" />
+  </div>
+);
+
+/* ─── SCREEN 7: Upload flow (sheet) ─── */
+const UploadSheet = () => (
+  <div className="sk-screen" style={{ width: 375, height: 500, display: 'flex', flexDirection: 'column' }}>
+    {/* Sheet handle */}
+    <div style={{ padding: '10px 0 4px', display: 'flex', justifyContent: 'center' }}>
+      <div style={{ width: 36, height: 4, background: '#C8BFB0', borderRadius: 999 }} />
+    </div>
+    <div style={{ padding: '8px 20px 12px', borderBottom: '1px solid #EDE8DC' }}>
+      <div className="sk-h2">Upload Training Plan</div>
+      <Small>PDF, CSV, Excel, or Markdown</Small>
+    </div>
+    <div style={{ padding: '20px 20px', flex: 1, display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {/* Drop zone */}
+      <Box className="dashed" style={{ padding: 32, textAlign: 'center', borderRadius: 8, borderWidth: 2 }}>
+        <div style={{ fontSize: 28, marginBottom: 6 }}>↑</div>
+        <div className="sk-h2" style={{ fontSize: 14, marginBottom: 4 }}>Drop your plan here</div>
+        <Small>or tap to browse</Small>
+      </Box>
+      {/* Extracting state */}
+      <Box className="muted" style={{ padding: 12, borderRadius: 6 }}>
+        <Row>
+          <div style={{ width: 8, height: 8, background: '#7A4728', borderRadius: 999, animation: 'pulse 1s infinite' }} />
+          <div style={{ flex: 1, fontSize: 13, fontFamily: 'Caveat' }}>Extracting plan…</div>
+          <Small>~15s</Small>
+        </Row>
+        <div style={{ marginTop: 6, height: 4, background: '#E0D9CE', borderRadius: 999 }}>
+          <div style={{ width: '60%', height: '100%', background: '#7A4728', borderRadius: 999 }} />
+        </div>
+      </Box>
+      {/* Review step */}
+      <Box style={{ padding: 12, borderRadius: 6, borderColor: '#5C6633' }}>
+        <Row style={{ marginBottom: 6 }}>
+          <span style={{ color: '#5C6633', fontSize: 14 }}>✓</span>
+          <div style={{ fontSize: 13, fontWeight: 700, fontFamily: 'Caveat' }}>Extracted — review before saving</div>
+        </Row>
+        <Small>16 weeks · 84 workouts · some paces missing</Small>
+        <Row style={{ marginTop: 8, gap: 8 }}>
+          <Box className="accent" style={{ flex: 1, padding: '7px 0', textAlign: 'center', fontSize: 12, borderRadius: 4 }}>Save</Box>
+          <Box className="dashed" style={{ flex: 1, padding: '7px 0', textAlign: 'center', fontSize: 12, borderRadius: 4 }}>Ask coach to fill gaps</Box>
+        </Row>
+      </Box>
+    </div>
+  </div>
+);
+
+/* ─── SCREEN 8: Coach (Full) — one rolling chat ─── */
+const CoachScreen = () => (
+  <div className="sk-screen" style={{ width: 375, height: 720, display: 'flex', flexDirection: 'column' }}>
+    <div style={{ height: 24, background: '#F5F0E8', display: 'flex', alignItems: 'center', padding: '0 16px', justifyContent: 'space-between' }}>
+      <Small>9:41</Small><Small>●●●</Small>
+    </div>
+    {/* Header — no conversation list; Clear chat + Coach notes */}
+    <div style={{ padding: '10px 16px 8px', borderBottom: '1px solid #EDE8DC' }}>
+      <Row>
+        <div className="sk-h2" style={{ fontSize: 15 }}>Coach</div>
+        <Spacer />
+        <Row style={{ gap: 8 }}>
+          {/* Coach notes indicator — links to /settings */}
+          <Box className="muted pill" style={{ fontSize: 10, color: '#5C6633', borderColor: '#5C6633', cursor: 'pointer' }}>📋 Coach notes</Box>
+          {/* Clear chat — shows confirm dialog */}
+          <Box className="dashed pill" style={{ fontSize: 10, color: '#9B8E7E', borderColor: '#9B8E7E', cursor: 'pointer' }}>Clear chat</Box>
+        </Row>
+      </Row>
+    </div>
+    {/* Messages — rolling single chat */}
+    <div style={{ flex: 1, padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 10, overflowY: 'auto' }}>
+      <div className="chat-bubble coach">
+        I've reviewed your last 4 weeks. Your easy pace has dropped by ~8 sec/mi — solid aerobic adaptation. Ready to increase the long run to 20 miles this weekend?
+      </div>
+      <div className="chat-bubble user">Yeah, but my left achilles felt tight after Saturday. Should I still do 20?</div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <div className="tool-pill">🔍 checking your last 3 runs…</div>
+        <div className="tool-pill">🔍 looking at your achilles history…</div>
+      </div>
+      <div className="chat-bubble coach">
+        Let's dial back to 17 miles at easy effort. If the achilles feels fine by mile 10, you can extend to 18. We're not trading a peak week for an injury.
+      </div>
+      <div className="chat-bubble user">Can you update the plan?</div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <div className="tool-pill">✏️ updating Saturday's workout…</div>
+        <div className="tool-pill">📋 updating coach notes…</div>
+      </div>
+      <div className="chat-bubble coach">Done — Saturday is now 17mi easy. The plan is updated, and I've noted the achilles issue.</div>
+    </div>
+    {/* Context attachment + input */}
+    <div style={{ borderTop: '1px solid #EDE8DC', padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <Row style={{ gap: 6 }}>
+        <Box className="muted pill" style={{ fontSize: 10, color: '#5c5048' }}>📎 Today's workout</Box>
+        <Box className="dashed pill" style={{ fontSize: 10, color: '#9B8E7E' }}>+ attach</Box>
+      </Row>
+      <Row style={{ gap: 6 }}>
+        <div className="sk-input" style={{ flex: 1 }}>Ask anything…</div>
+        <Box className="accent" style={{ padding: '5px 12px', borderRadius: 4, fontSize: 13 }}>↑</Box>
+      </Row>
+    </div>
+  </div>
+);
+
+/* ─── "Clear chat" confirm dialog ─── */
+const ClearChatConfirm = () => (
+  <div className="sk-screen" style={{ width: 375, height: 260, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: 24, gap: 14, background: 'rgba(30,26,20,0.04)' }}>
+    <Box style={{ padding: 20, borderRadius: 8, display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div className="sk-h2" style={{ fontSize: 15 }}>Clear chat?</div>
+      <div style={{ fontSize: 12, fontFamily: 'Caveat', color: '#5c5048', lineHeight: 1.5 }}>
+        This wipes the current chat. Your coach notes will not be affected.
+      </div>
+      <Row style={{ gap: 8 }}>
+        <Box className="dashed" style={{ flex: 1, padding: '8px 0', textAlign: 'center', fontSize: 13, borderRadius: 4, cursor: 'pointer' }}>Cancel</Box>
+        <Box style={{ flex: 1, padding: '8px 0', textAlign: 'center', fontSize: 13, borderRadius: 4, cursor: 'pointer', background: '#1E1A14', color: '#fff', border: '1.5px solid #1E1A14' }}>Clear chat</Box>
+      </Row>
+    </Box>
+  </div>
+);
+
+/* ─── SCREEN 9: Settings ─── */
+const SettingsScreen = () => (
+  <div className="sk-screen" style={{ width: 375, height: 720, display: 'flex', flexDirection: 'column' }}>
+    <div style={{ height: 24, background: '#F5F0E8', display: 'flex', alignItems: 'center', padding: '0 16px', justifyContent: 'space-between' }}>
+      <Small>9:41</Small><Small>●●●</Small>
+    </div>
+    <div style={{ padding: '12px 16px 8px', borderBottom: '1px solid #EDE8DC' }}>
+      <div className="sk-h2">Settings</div>
+    </div>
+    <div style={{ flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: 20, paddingBottom: 80 }}>
+
+      {/* Preferences */}
+      <Col style={{ gap: 10 }}>
+        <Label>Preferences</Label>
+        {[
+          ['Units', 'Miles'],
+          ['Pace format', 'min/mi'],
+          ['Timezone', 'America/Los_Angeles'],
+        ].map(([label, val]) => (
+          <Box key={label} style={{ padding: '10px 12px' }}>
+            <Row>
+              <div style={{ fontSize: 13, fontFamily: 'Caveat', color: '#1E1A14' }}>{label}</div>
+              <Spacer />
+              <div style={{ fontSize: 13, fontFamily: 'Caveat', color: '#9B8E7E' }}>{val} ›</div>
+            </Row>
+          </Box>
+        ))}
+      </Col>
+
+      <Divider />
+
+      {/* Coach notes editor */}
+      <Col style={{ gap: 8 }}>
+        <Row>
+          <Label>Coach notes</Label>
+          <Spacer />
+          <div style={{ fontSize: 11, fontFamily: 'Caveat', color: '#9B8E7E' }}>312 / 4096 chars</div>
+        </Row>
+        <div style={{ fontSize: 11, fontFamily: 'Caveat', color: '#9B8E7E', lineHeight: 1.4 }}>
+          The coach keeps notes about you here — goals, injuries, preferences. You can edit or reset them.
+        </div>
+        <Box className="dashed" style={{ padding: 12, borderRadius: 4, minHeight: 120 }}>
+          <div style={{ fontSize: 12, fontFamily: 'Caveat', color: '#5c5048', lineHeight: 1.6 }}>
+            Goal: Boston Marathon, May 5 2026. Target 3:05.<br />
+            Left achilles has been tight — monitor on long runs.<br />
+            Prefers roads over track. No treadmill.<br />
+            Runs Tuesday / Thursday / Saturday / Sunday.
+          </div>
+        </Box>
+        <Row style={{ gap: 8 }}>
+          <Box className="accent" style={{ flex: 1, padding: '8px 0', textAlign: 'center', fontSize: 13, borderRadius: 4, cursor: 'pointer' }}>Save notes</Box>
+          <Box className="dashed" style={{ padding: '8px 12px', textAlign: 'center', fontSize: 13, borderRadius: 4, cursor: 'pointer', color: '#9B8E7E' }}>Reset</Box>
+        </Row>
+      </Col>
+
+      <Divider />
+
+      {/* Strava */}
+      <Col style={{ gap: 8 }}>
+        <Label>Strava</Label>
+        <Box style={{ padding: '10px 12px' }}>
+          <Row>
+            <div style={{ fontSize: 13, fontFamily: 'Caveat' }}>Connected as Colby Schulz</div>
+            <Spacer />
+            <div style={{ fontSize: 12, fontFamily: 'Caveat', color: '#9B8E7E', cursor: 'pointer' }}>Disconnect</div>
+          </Row>
+        </Box>
+        <Box className="dashed" style={{ padding: '10px 12px', textAlign: 'center', fontSize: 12, cursor: 'pointer' }}>
+          Sync last 7 days manually
+        </Box>
+      </Col>
+    </div>
+    <TabBar active="" />
+  </div>
+);
+
+/* ─── Main render ─── */
+function App() {
+  return (
+    <DesignCanvas title="Race Horse — Wireframes">
+      <DCSection id="landing" title="Landing Page">
+        <DCArtboard id="landing-mobile" label="Mobile — Sign In" width={375} height={660}>
+          <LandingScreen />
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection id="today" title="Today">
+        <DCArtboard id="today-mobile" label="Mobile" width={375} height={720}>
+          <TodayMobile />
+        </DCArtboard>
+        <DCArtboard id="today-desktop" label="Desktop w/ Coach Panel" width={900} height={600}>
+          <TodayDesktop />
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection id="calendar" title="Calendar">
+        <DCArtboard id="cal-week" label="Mobile — Week View" width={375} height={720}>
+          <CalendarWeekMobile />
+        </DCArtboard>
+        <DCArtboard id="cal-month" label="Desktop — Month View" width={900} height={620}>
+          <CalendarMonthDesktop />
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection id="plans" title="Plans">
+        <DCArtboard id="plans-mobile" label="Mobile — Plan List" width={375} height={720}>
+          <PlansScreen />
+        </DCArtboard>
+        <DCArtboard id="upload-sheet" label="Mobile — Upload Sheet" width={375} height={500}>
+          <UploadSheet />
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection id="coach" title="Coach">
+        <DCArtboard id="coach-full" label="Mobile — Rolling Chat" width={375} height={720}>
+          <CoachScreen />
+        </DCArtboard>
+        <DCArtboard id="coach-clear" label="Clear Chat Confirm" width={375} height={260}>
+          <ClearChatConfirm />
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection id="settings" title="Settings">
+        <DCArtboard id="settings-mobile" label="Mobile — Preferences + Coach Notes" width={375} height={720}>
+          <SettingsScreen />
+        </DCArtboard>
+      </DCSection>
+    </DesignCanvas>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+<div id="root"></div>
+</body>
+</html>

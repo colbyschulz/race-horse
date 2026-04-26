@@ -1,0 +1,1047 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Race Horse — Hi-Fi</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script type="text/babel" src="design-canvas.jsx"></script>
+<style>* { box-sizing: border-box; margin: 0; padding: 0; }</style>
+</head>
+<body style="background:#F5F0E8">
+<script type="text/babel">
+const { DCSection, DCArtboard, DesignCanvas } = window;
+
+/* ── Design tokens ─────────────────────────────────────── */
+const T = {
+  // Primary: Saddle brown
+  brown:        '#7A4728',
+  brownHover:   '#63391F',
+  brownSubtle:  '#F2EAE4',
+  brownMid:     '#C4A898',
+
+  // Secondary accent: Terracotta
+  terra:        '#C4622D',
+  terra100:     '#F5E4D8',
+
+  // Olive (completion / success)
+  olive:        '#5C6633',
+  olive100:     '#EBEFD4',
+
+  // Sand neutrals
+  sand50:  '#FDFAF5', sand100: '#F5F0E8', sand200: '#EDE8DC',
+  sand300: '#E0D9CE', sand400: '#C8BFB0', sand500: '#9B8E7E',
+  sand600: '#6E6257', sand700: '#4A4038', sand800: '#2E271F', sand900: '#1E1A14',
+
+  // Semantic
+  bgBase:    '#F5F0E8',
+  bgSurface: '#FDFAF5',
+  bgSubtle:  '#EDE8DC',
+  fgPrimary: '#1E1A14',
+  fgSecond:  '#6E6257',
+  fgTertiary:'#9B8E7E',
+  borderSubtle:  '#E0D9CE',
+  borderDefault: '#C8BFB0',
+
+  // Type
+  fontDisplay: "'Syne', sans-serif",
+  fontBody:    "'Roboto', sans-serif",
+
+  // Shadows
+  shadowSm: '0 2px 8px rgba(30,26,20,0.08)',
+  shadowMd: '0 4px 16px rgba(30,26,20,0.10)',
+  shadowLg: '0 8px 32px rgba(30,26,20,0.14)',
+
+  // Radius
+  rSm: 4, rMd: 8, rLg: 16, rPill: 999,
+};
+
+/* ── Workout type system ───────────────────────────────── */
+const W = {
+  easy:      { label: 'Easy Run',   color: '#5C6633', bg: '#EBEFD4', bar: '#849948' },
+  long:      { label: 'Long Run',   color: '#2A5E8A', bg: '#E4EDF5', bar: '#4A8EC4' },
+  tempo:     { label: 'Tempo',      color: '#B87A20', bg: '#F5EDD4', bar: '#D4922A' },
+  threshold: { label: 'Threshold',  color: '#C4622D', bg: '#F5E4D8', bar: '#C4622D' },
+  intervals: { label: 'Intervals',  color: '#7B3F8A', bg: '#EEE4F5', bar: '#9B5EAA' },
+  recovery:  { label: 'Recovery',   color: '#9B8E7E', bg: '#F0ECE8', bar: '#C8BFB0' },
+  rest:      { label: 'Rest day',   color: '#C8BFB0', bg: '#F5F2EE', bar: '#E0D9CE' },
+  race:      { label: 'Race',       color: '#B83232', bg: '#F5E4E4', bar: '#B83232' },
+};
+
+/* ── Primitives ────────────────────────────────────────── */
+const Screen = ({ w = 390, h = 844, bg = T.bgBase, style = {}, children }) => (
+  <div style={{ width: w, height: h, background: bg, overflow: 'hidden', position: 'relative', fontFamily: T.fontBody, flexShrink: 0, ...style }}>
+    {children}
+  </div>
+);
+
+const Card = ({ children, style = {} }) => (
+  <div style={{ background: T.bgSurface, borderRadius: T.rMd, border: `1px solid ${T.borderSubtle}`, boxShadow: T.shadowSm, ...style }}>
+    {children}
+  </div>
+);
+
+const Badge = ({ type = 'easy', sm }) => {
+  const w = W[type] || W.easy;
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', background: w.bg, color: w.color, border: `1px solid ${w.color}30`, borderRadius: T.rPill, padding: sm ? '2px 8px' : '3px 10px', fontSize: sm ? 10 : 12, fontWeight: 500, fontFamily: T.fontBody, letterSpacing: '0.01em', whiteSpace: 'nowrap' }}>
+      {w.label}
+    </span>
+  );
+};
+
+const Row = ({ children, style = {} }) => <div style={{ display: 'flex', alignItems: 'center', gap: 8, ...style }}>{children}</div>;
+const Col = ({ children, style = {} }) => <div style={{ display: 'flex', flexDirection: 'column', ...style }}>{children}</div>;
+const Spacer = () => <div style={{ flex: 1 }} />;
+const Hr = ({ style = {} }) => <div style={{ height: 1, background: T.borderSubtle, ...style }} />;
+
+const Disp = ({ children, size = 24, style = {} }) => (
+  <div style={{ fontFamily: T.fontDisplay, fontWeight: 700, fontSize: size, letterSpacing: '-0.03em', lineHeight: 1.05, color: T.fgPrimary, ...style }}>{children}</div>
+);
+const Hdg = ({ children, size = 15, style = {} }) => (
+  <div style={{ fontFamily: T.fontDisplay, fontWeight: 600, fontSize: size, letterSpacing: '-0.01em', lineHeight: 1.25, color: T.fgPrimary, ...style }}>{children}</div>
+);
+const Lbl = ({ children, style = {} }) => (
+  <div style={{ fontFamily: T.fontBody, fontSize: 10, fontWeight: 500, letterSpacing: '0.07em', textTransform: 'uppercase', color: T.fgTertiary, ...style }}>{children}</div>
+);
+const Body = ({ children, style = {} }) => (
+  <div style={{ fontFamily: T.fontBody, fontSize: 14, lineHeight: 1.55, color: T.fgSecond, ...style }}>{children}</div>
+);
+const Sm = ({ children, style = {} }) => (
+  <div style={{ fontFamily: T.fontBody, fontSize: 12, color: T.fgTertiary, lineHeight: 1.4, ...style }}>{children}</div>
+);
+
+const BtnPrimary = ({ children, style = {} }) => (
+  <div style={{ background: T.brown, color: '#fff', borderRadius: T.rMd, padding: '12px 20px', fontFamily: T.fontBody, fontSize: 14, fontWeight: 500, cursor: 'pointer', textAlign: 'center', ...style }}>{children}</div>
+);
+const BtnSecondary = ({ children, style = {} }) => (
+  <div style={{ background: 'transparent', color: T.fgPrimary, border: `1px solid ${T.borderDefault}`, borderRadius: T.rMd, padding: '11px 20px', fontFamily: T.fontBody, fontSize: 14, fontWeight: 400, cursor: 'pointer', textAlign: 'center', ...style }}>{children}</div>
+);
+
+const StatGrid = ({ stats }) => (
+  <div style={{ display: 'grid', gridTemplateColumns: `repeat(${stats.length}, 1fr)`, gap: 1, background: T.borderSubtle, borderRadius: T.rMd, overflow: 'hidden' }}>
+    {stats.map(({ lbl, val, unit }) => (
+      <div key={lbl} style={{ background: T.bgSurface, padding: '9px 10px' }}>
+        <Lbl style={{ marginBottom: 3 }}>{lbl}</Lbl>
+        <Row style={{ alignItems: 'baseline', gap: 2 }}>
+          <Disp size={18}>{val}</Disp>
+          {unit && <span style={{ fontSize: 10, color: T.fgTertiary, fontFamily: T.fontBody }}>{unit}</span>}
+        </Row>
+      </div>
+    ))}
+  </div>
+);
+
+const StatusBar = ({ dark }) => (
+  <div style={{ height: 44, display: 'flex', alignItems: 'center', padding: '0 20px', justifyContent: 'space-between', flexShrink: 0 }}>
+    <span style={{ fontSize: 15, fontWeight: 600, fontFamily: T.fontBody, color: dark ? '#fff' : T.fgPrimary }}>9:41</span>
+    <span style={{ fontSize: 11, color: dark ? '#ffffff60' : T.fgTertiary, letterSpacing: 2 }}>●●●</span>
+  </div>
+);
+
+const BottomNav = ({ active = 'today' }) => {
+  const tabs = [{ id: 'today', label: 'Today' }, { id: 'calendar', label: 'Calendar' }, { id: 'plans', label: 'Plans' }];
+  return (
+    <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 72, background: T.bgSurface, borderTop: `1px solid ${T.borderSubtle}`, display: 'flex', paddingBottom: 12 }}>
+      {tabs.map(({ id, label }) => {
+        const on = active === id;
+        return (
+          <div key={id} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3, cursor: 'pointer' }}>
+            <div style={{ width: 32, height: 22, borderRadius: T.rMd, background: on ? T.brownSubtle : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div style={{ width: on ? 18 : 16, height: on ? 18 : 14, borderRadius: 3, background: on ? T.brown : T.fgTertiary, opacity: on ? 1 : 0.4 }} />
+            </div>
+            <span style={{ fontFamily: T.fontBody, fontSize: 10, fontWeight: on ? 500 : 400, color: on ? T.brown : T.fgTertiary }}>{label}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+const FAB = () => (
+  <div style={{ position: 'absolute', bottom: 84, right: 16, height: 44, borderRadius: T.rPill, background: T.brown, color: '#fff', display: 'flex', alignItems: 'center', gap: 6, padding: '0 18px', boxShadow: T.shadowMd, fontFamily: T.fontBody, fontSize: 14, fontWeight: 500, cursor: 'pointer', letterSpacing: '-0.01em' }}>
+    <span style={{ fontSize: 14, opacity: 0.9 }}>✦</span> Coach
+  </div>
+);
+
+const Sidebar = ({ active = 'today' }) => {
+  const items = [{ id: 'today', label: 'Today' }, { id: 'calendar', label: 'Calendar' }, { id: 'plans', label: 'Plans' }];
+  return (
+    <div style={{ width: 220, background: T.bgSurface, borderRight: `1px solid ${T.borderSubtle}`, display: 'flex', flexDirection: 'column', padding: '28px 16px 24px', flexShrink: 0 }}>
+      <Disp size={18} style={{ color: T.brown, marginBottom: 4, letterSpacing: '-0.02em' }}>Race Horse</Disp>
+      <Sm style={{ marginBottom: 28 }}>Colby Schulz</Sm>
+      <Col style={{ gap: 1 }}>
+        {items.map(({ id, label }) => {
+          const on = active === id;
+          return (
+            <div key={id} style={{ padding: '9px 12px', borderRadius: T.rMd, background: on ? T.brownSubtle : 'transparent', color: on ? T.brown : T.fgSecond, fontFamily: T.fontBody, fontSize: 14, fontWeight: on ? 500 : 400, cursor: 'pointer', transition: 'all 200ms' }}>{label}</div>
+          );
+        })}
+      </Col>
+      <Spacer />
+      <BtnPrimary style={{ fontSize: 13, padding: '10px 14px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+        <span style={{ opacity: 0.8 }}>✦</span> Ask coach
+      </BtnPrimary>
+    </div>
+  );
+};
+
+/* ════════════════════════════════════════════════════════
+   SCREENS
+   ════════════════════════════════════════════════════════ */
+
+/* ── Landing A – Light + editorial ── */
+const LandingA = () => (
+  <Screen>
+    <StatusBar />
+    <Col style={{ padding: '12px 28px 44px', height: 'calc(100% - 44px)', justifyContent: 'space-between' }}>
+      {/* Editorial hero type */}
+      <Col style={{ gap: 0 }}>
+        <Disp size={72} style={{ letterSpacing: '-0.05em', lineHeight: 0.88, color: T.fgPrimary }}>Race<br />Horse</Disp>
+        <Hr style={{ margin: '20px 0', background: T.borderDefault }} />
+        <Body style={{ fontSize: 15, color: T.fgSecond, lineHeight: 1.65, maxWidth: 290 }}>
+          A virtual coach for runners and cyclists who think in pace zones, FTP, and threshold.
+        </Body>
+      </Col>
+      {/* Feature list — tight, editorial */}
+      <Col style={{ gap: 0 }}>
+        {[
+          'Build & tweak training plans',
+          'Analyze your Strava workouts lap-by-lap',
+          'Ask anything — gear, races, pacing strategy',
+        ].map((line, i, arr) => (
+          <div key={line} style={{ padding: '12px 0', borderBottom: i < arr.length - 1 ? `1px solid ${T.borderSubtle}` : 'none' }}>
+            <Row style={{ gap: 10 }}>
+              <div style={{ width: 4, height: 4, borderRadius: 999, background: T.brown, flexShrink: 0 }} />
+              <span style={{ fontFamily: T.fontBody, fontSize: 14, color: T.fgPrimary }}>{line}</span>
+            </Row>
+          </div>
+        ))}
+      </Col>
+      <Col style={{ gap: 10 }}>
+        <BtnPrimary>Sign in with Strava</BtnPrimary>
+        <Sm style={{ textAlign: 'center' }}>Free · race.horse</Sm>
+      </Col>
+    </Col>
+  </Screen>
+);
+
+/* ── Landing B – Editorial, dark ── */
+const LandingB = () => (
+  <Screen bg={T.sand900}>
+    <StatusBar dark />
+    <Col style={{ padding: '16px 28px 44px', height: 'calc(100% - 44px)', justifyContent: 'space-between' }}>
+      <Col>
+        <Disp size={68} style={{ color: '#fff', lineHeight: 0.9, letterSpacing: '-0.05em', marginBottom: 28 }}>
+          Race<br />Horse
+        </Disp>
+        <Body style={{ color: T.sand500, fontSize: 15, lineHeight: 1.65, maxWidth: 290 }}>
+          A coach that knows your training history, your goals, and exactly the right questions to ask.
+        </Body>
+      </Col>
+      <Col style={{ gap: 20 }}>
+        <Hr style={{ background: T.sand700 }} />
+        <Col style={{ gap: 10 }}>
+          {['Strava-connected — always in sync', 'Plans, workouts, analysis in one place', 'Free · race.horse'].map(line => (
+            <Row key={line} style={{ gap: 10 }}>
+              <div style={{ width: 4, height: 4, borderRadius: 999, background: T.brown, flexShrink: 0 }} />
+              <span style={{ fontFamily: T.fontBody, fontSize: 13, color: T.sand500 }}>{line}</span>
+            </Row>
+          ))}
+        </Col>
+        <BtnPrimary style={{ marginTop: 4 }}>Sign in with Strava</BtnPrimary>
+      </Col>
+    </Col>
+  </Screen>
+);
+
+/* ── Today A – Card-heavy ── */
+const TodayA = () => (
+  <Screen>
+    <StatusBar />
+    <div style={{ padding: '0 20px 10px', borderBottom: `1px solid ${T.borderSubtle}` }}>
+      <Disp size={22}>Friday, Apr 25</Disp>
+      <Sm style={{ marginTop: 2 }}>Week 8 of 16 — Boston Marathon Build</Sm>
+    </div>
+    <div style={{ height: 'calc(100% - 136px)', overflowY: 'auto', padding: '14px 16px 80px' }}>
+      {/* Hero card */}
+      <Card style={{ padding: 16, marginBottom: 12, borderColor: T.brown, borderWidth: 2 }}>
+        <Row style={{ marginBottom: 12 }}>
+          <Badge type="tempo" />
+          <Spacer />
+          <Sm style={{ color: T.brown, fontWeight: 500 }}>Today</Sm>
+        </Row>
+        <Disp size={30} style={{ marginBottom: 14 }}>Tempo Run</Disp>
+        <StatGrid stats={[
+          { lbl: 'Distance', val: '8', unit: 'mi' },
+          { lbl: 'Duration', val: '60', unit: 'min' },
+          { lbl: 'Pace', val: '7:15', unit: '/mi' },
+          { lbl: 'HR', val: 'Z3–4', unit: '' },
+        ]} />
+        <Body style={{ fontSize: 13, lineHeight: 1.6, margin: '12px 0' }}>
+          2mi easy warm-up → 4mi at tempo effort → 2mi cool-down. Controlled — not a race effort.
+        </Body>
+        {/* Strava match */}
+        <div style={{ background: T.olive100, borderRadius: T.rMd, padding: 12, border: `1px solid ${T.olive}25`, marginBottom: 12 }}>
+          <Row style={{ marginBottom: 8, gap: 6 }}>
+            <span style={{ color: T.olive, fontSize: 13, fontWeight: 600 }}>✓</span>
+            <span style={{ fontFamily: T.fontBody, fontSize: 13, fontWeight: 500, color: T.olive }}>Strava matched — Morning Run</span>
+            <Spacer />
+            <span style={{ fontFamily: T.fontBody, fontSize: 12, color: T.fgTertiary, cursor: 'pointer' }}>Laps →</span>
+          </Row>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
+            {[['7.9mi','Dist'],['57:42','Time'],['7:17','Pace'],['148','HR avg']].map(([v,l]) => (
+              <Col key={l} style={{ gap: 1 }}>
+                <Disp size={15}>{v}</Disp>
+                <Lbl>{l}</Lbl>
+              </Col>
+            ))}
+          </div>
+        </div>
+        <div style={{ border: `1px dashed ${T.borderDefault}`, borderRadius: T.rMd, padding: '9px 14px', textAlign: 'center', color: T.brown, fontFamily: T.fontBody, fontSize: 13, fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+          <span style={{ opacity: 0.8 }}>✦</span> Ask coach about today
+        </div>
+      </Card>
+      {/* Coming up */}
+      <Lbl style={{ marginBottom: 8 }}>Coming up</Lbl>
+      <Col style={{ gap: 6 }}>
+        {[['Sat','long','18 mi','2:30 hr'],['Sun','recovery','5 mi','45 min']].map(([day, type, dist, dur]) => (
+          <Card key={day} style={{ padding: '10px 14px' }}>
+            <Row>
+              <Sm style={{ width: 26, flexShrink: 0, fontWeight: 500 }}>{day}</Sm>
+              <Badge type={type} sm />
+              <Spacer />
+              <Col style={{ alignItems: 'flex-end', gap: 1 }}>
+                <Hdg size={14}>{dist}</Hdg>
+                <Sm>{dur}</Sm>
+              </Col>
+            </Row>
+          </Card>
+        ))}
+      </Col>
+    </div>
+    <FAB />
+    <BottomNav active="today" />
+  </Screen>
+);
+
+/* ── Today B – Editorial big type ── */
+const TodayB = () => (
+  <Screen>
+    <StatusBar />
+    <div style={{ padding: '0 20px 10px', borderBottom: `1px solid ${T.borderSubtle}` }}>
+      <Row>
+        <Col style={{ gap: 2 }}>
+          <Lbl>Fri Apr 25 · Week 8 / 16</Lbl>
+          <Hdg size={13} style={{ color: T.fgSecond }}>Boston Marathon Build</Hdg>
+        </Col>
+        <Spacer />
+        <Badge type="tempo" sm />
+      </Row>
+    </div>
+    {/* Big editorial block */}
+    <div style={{ padding: '22px 20px 18px', borderBottom: `1px solid ${T.borderSubtle}` }}>
+      <Disp size={54} style={{ letterSpacing: '-0.05em', lineHeight: 0.88, marginBottom: 18 }}>Tempo<br />Run</Disp>
+      <Row style={{ gap: 0 }}>
+        {[{ v: '8', u: 'mi' }, { v: '60', u: 'min' }, { v: '7:15', u: '/mi' }].map(({ v, u }, i) => (
+          <React.Fragment key={i}>
+            {i > 0 && <div style={{ width: 1, height: 36, background: T.borderDefault, margin: '0 14px' }} />}
+            <Row style={{ alignItems: 'baseline', gap: 3 }}>
+              <Disp size={26}>{v}</Disp>
+              <span style={{ fontSize: 11, color: T.fgTertiary, fontFamily: T.fontBody }}>{u}</span>
+            </Row>
+          </React.Fragment>
+        ))}
+      </Row>
+    </div>
+    {/* Intensity zones */}
+    <div style={{ padding: '14px 20px', borderBottom: `1px solid ${T.borderSubtle}` }}>
+      <Row style={{ gap: 6, marginBottom: 12 }}>
+        {[['Pace', '7:15–7:30'], ['HR', 'Z3–4'], ['RPE', '7 / 10']].map(([l, v]) => (
+          <div key={l} style={{ flex: 1, background: T.bgSubtle, borderRadius: T.rMd, padding: '8px 10px' }}>
+            <Lbl style={{ marginBottom: 4 }}>{l}</Lbl>
+            <Hdg size={13}>{v}</Hdg>
+          </div>
+        ))}
+      </Row>
+      <Body style={{ fontSize: 13, color: T.fgSecond, lineHeight: 1.6 }}>
+        Warm-up 2mi → tempo 4mi → cool-down 2mi. Stay smooth — not a race.
+      </Body>
+    </div>
+    {/* Strava row */}
+    <div style={{ padding: '12px 20px', borderBottom: `1px solid ${T.borderSubtle}` }}>
+      <Row style={{ background: T.olive100, borderRadius: T.rMd, padding: '10px 14px', gap: 10 }}>
+        <span style={{ color: T.olive, fontWeight: 600 }}>✓</span>
+        <Col style={{ flex: 1, gap: 1 }}>
+          <span style={{ fontFamily: T.fontBody, fontSize: 13, fontWeight: 500, color: T.olive }}>Strava matched</span>
+          <Sm>7.9 mi · 57:42 · 7:17/mi · 148 bpm avg</Sm>
+        </Col>
+        <span style={{ fontFamily: T.fontBody, fontSize: 12, color: T.fgTertiary, cursor: 'pointer' }}>Laps →</span>
+      </Row>
+    </div>
+    {/* Upcoming — compact list */}
+    <div style={{ padding: '0 20px 80px' }}>
+      <Lbl style={{ padding: '12px 0 8px' }}>Up next</Lbl>
+      {[['Sat','long','18 mi'],['Sun','recovery','5 mi']].map(([d, t, v]) => (
+        <Row key={d} style={{ padding: '11px 0', borderBottom: `1px solid ${T.borderSubtle}`, gap: 10 }}>
+          <Sm style={{ width: 24, flexShrink: 0 }}>{d}</Sm>
+          <Badge type={t} sm />
+          <Spacer />
+          <Hdg size={14}>{v}</Hdg>
+        </Row>
+      ))}
+    </div>
+    <FAB />
+    <BottomNav active="today" />
+  </Screen>
+);
+
+/* ── Today Desktop ── */
+const TodayDesktop = () => (
+  <div style={{ width: 1280, height: 800, display: 'flex', fontFamily: T.fontBody, background: T.bgBase }}>
+    <Sidebar active="today" />
+    {/* Main */}
+    <div style={{ flex: 1, padding: '28px 32px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <div>
+        <Disp size={28}>Friday, April 25</Disp>
+        <Sm style={{ marginTop: 3 }}>Week 8 of 16 · Boston Marathon Build</Sm>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 20 }}>
+        {/* Hero card */}
+        <Card style={{ padding: 24, borderColor: T.brown, borderWidth: 2 }}>
+          <Row style={{ marginBottom: 14 }}>
+            <Badge type="tempo" />
+            <Spacer />
+            <Sm style={{ color: T.brown, fontWeight: 500 }}>Today</Sm>
+          </Row>
+          <Disp size={36} style={{ marginBottom: 20 }}>Tempo Run</Disp>
+          <StatGrid stats={[
+            { lbl: 'Distance', val: '8', unit: 'mi' },
+            { lbl: 'Duration', val: '60', unit: 'min' },
+            { lbl: 'Target Pace', val: '7:15', unit: '/mi' },
+            { lbl: 'HR Zone', val: 'Z3–4', unit: '' },
+            { lbl: 'RPE', val: '7', unit: '/10' },
+          ]} />
+          <Body style={{ fontSize: 14, margin: '16px 0', lineHeight: 1.65 }}>
+            2mi easy warm-up → 4mi at tempo effort → 2mi cool-down. Controlled — not a race effort.
+          </Body>
+          <div style={{ background: T.olive100, borderRadius: T.rMd, padding: 14, border: `1px solid ${T.olive}25`, marginBottom: 16 }}>
+            <Row style={{ marginBottom: 10 }}>
+              <span style={{ fontFamily: T.fontBody, fontSize: 13, fontWeight: 500, color: T.olive }}>✓ Strava matched — Morning Run</span>
+              <Spacer />
+              <span style={{ fontFamily: T.fontBody, fontSize: 12, color: T.fgTertiary, cursor: 'pointer' }}>View laps →</span>
+            </Row>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10 }}>
+              {[['7.9 mi','Dist'],['57:42','Time'],['7:17/mi','Pace'],['148','HR avg'],['162','HR max']].map(([v, l]) => (
+                <Col key={l} style={{ gap: 2 }}>
+                  <Disp size={16}>{v}</Disp>
+                  <Lbl>{l}</Lbl>
+                </Col>
+              ))}
+            </div>
+          </div>
+          <div style={{ border: `1px dashed ${T.borderDefault}`, borderRadius: T.rMd, padding: '10px 16px', textAlign: 'center', color: T.brown, fontFamily: T.fontBody, fontSize: 14, fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+            <span style={{ opacity: 0.8 }}>✦</span> Ask coach about today
+          </div>
+        </Card>
+        {/* Week column */}
+        <Col style={{ gap: 4 }}>
+          <Lbl style={{ marginBottom: 4 }}>This week</Lbl>
+          {[['Mon','easy','✓'],['Tue','threshold','✓'],['Wed','rest','✓'],['Thu','easy','✓'],['Fri','tempo','→'],['Sat','long',''],['Sun','recovery','']].map(([d, t, s]) => (
+            <div key={d} style={{ padding: '8px 12px', borderRadius: T.rMd, background: d === 'Fri' ? T.brownSubtle : T.bgSurface, border: `1px solid ${d === 'Fri' ? T.brown : T.borderSubtle}`, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Sm style={{ width: 28, flexShrink: 0 }}>{d}</Sm>
+              <Badge type={t} sm />
+              <Spacer />
+              <span style={{ fontSize: 12, color: s === '✓' ? T.olive : s === '→' ? T.brown : T.borderDefault, fontWeight: 600 }}>
+                {s === '✓' ? '✓' : s === '→' ? '●' : '○'}
+              </span>
+            </div>
+          ))}
+        </Col>
+      </div>
+    </div>
+    {/* Coach panel */}
+    <div style={{ width: 300, borderLeft: `1px solid ${T.borderSubtle}`, background: T.bgSurface, display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+      <div style={{ padding: '16px 20px', borderBottom: `1px solid ${T.borderSubtle}` }}>
+        <Row>
+          <Hdg size={15}>Coach</Hdg>
+          <Spacer />
+          <Row style={{ gap: 14 }}>
+            <span style={{ fontFamily: T.fontBody, fontSize: 12, color: T.brown, fontWeight: 500, cursor: 'pointer' }}>Notes</span>
+            <span style={{ fontFamily: T.fontBody, fontSize: 12, color: T.fgTertiary, cursor: 'pointer' }}>Clear</span>
+          </Row>
+        </Row>
+      </div>
+      <div style={{ flex: 1, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 10, overflowY: 'auto' }}>
+        <div style={{ background: T.bgSubtle, borderRadius: '10px 10px 10px 3px', padding: '10px 14px', border: `1px solid ${T.borderSubtle}`, maxWidth: '90%' }}>
+          <Body style={{ fontSize: 13, lineHeight: 1.55 }}>Good morning! Tempo run today — 8 miles. Your easy pace has been dropping nicely.</Body>
+        </div>
+        <div style={{ background: T.brown, borderRadius: '10px 10px 3px 10px', padding: '10px 14px', marginLeft: 'auto', maxWidth: '82%' }}>
+          <Body style={{ fontSize: 13, color: '#fff', lineHeight: 1.55 }}>Roads or track today?</Body>
+        </div>
+        <div style={{ background: T.terra100, borderRadius: T.rMd, padding: '5px 12px', display: 'inline-flex', gap: 6, alignItems: 'center', alignSelf: 'flex-start' }}>
+          <div style={{ width: 5, height: 5, borderRadius: 999, background: T.terra }} />
+          <Sm>Checking your recent runs…</Sm>
+        </div>
+        <div style={{ background: T.bgSubtle, borderRadius: '10px 10px 10px 3px', padding: '10px 14px', border: `1px solid ${T.borderSubtle}`, maxWidth: '90%' }}>
+          <Body style={{ fontSize: 13, lineHeight: 1.55 }}>Roads are better for tempo. Flat route, controlled effort — save the track for interval days.</Body>
+        </div>
+      </div>
+      <div style={{ padding: '10px 14px', borderTop: `1px solid ${T.borderSubtle}` }}>
+        <Row style={{ gap: 8 }}>
+          <div style={{ flex: 1, background: T.bgSubtle, border: `1px solid ${T.borderDefault}`, borderRadius: T.rMd, padding: '9px 14px', fontFamily: T.fontBody, fontSize: 13, color: T.fgTertiary }}>Ask anything…</div>
+          <div style={{ width: 36, height: 36, borderRadius: T.rMd, background: T.brown, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', cursor: 'pointer', flexShrink: 0, fontSize: 16 }}>↑</div>
+        </Row>
+      </div>
+    </div>
+  </div>
+);
+
+/* ── Calendar A – Grid cells ── */
+const CalendarWeekA = () => (
+  <Screen>
+    <StatusBar />
+    <div style={{ padding: '0 16px 10px', borderBottom: `1px solid ${T.borderSubtle}` }}>
+      <Row style={{ marginBottom: 10 }}>
+        <Disp size={20}>April 2026</Disp>
+        <Spacer />
+        <Row style={{ gap: 4 }}>
+          {['Week','Month'].map((t, i) => (
+            <div key={t} style={{ padding: '4px 12px', borderRadius: T.rPill, fontSize: 12, fontFamily: T.fontBody, background: i === 0 ? T.brown : 'transparent', color: i === 0 ? '#fff' : T.fgTertiary, border: i === 1 ? `1px solid ${T.borderDefault}` : 'none', cursor: 'pointer' }}>{t}</div>
+          ))}
+        </Row>
+      </Row>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 4 }}>
+        {['M','T','W','T','F','S','S'].map((d, i) => (
+          <div key={i} style={{ textAlign: 'center', fontFamily: T.fontBody, fontSize: 10, color: T.fgTertiary, fontWeight: 500 }}>{d}</div>
+        ))}
+      </div>
+    </div>
+    <div style={{ padding: '10px 14px 80px', overflowY: 'auto', height: 'calc(100% - 128px)' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 5, marginBottom: 14 }}>
+        {[
+          ['21','easy',true,'4.1'],['22','threshold',true,'7.2'],['23','rest',true,null],
+          ['24','easy',true,'5'],['25','tempo',false,'8'],['26','long',false,'18'],['27','recovery',false,'5'],
+        ].map(([date, type, done, dist]) => {
+          const isToday = date === '25';
+          const w = W[type];
+          return (
+            <div key={date} style={{ borderRadius: T.rMd, overflow: 'hidden', border: isToday ? `2px solid ${T.brown}` : `1px solid ${T.borderSubtle}`, background: isToday ? T.brownSubtle : T.bgSurface, minHeight: 80, display: 'flex', flexDirection: 'column', cursor: 'pointer' }}>
+              <div style={{ height: 3, background: w?.bar || T.borderDefault, flexShrink: 0 }} />
+              <div style={{ padding: '5px 6px', flex: 1, display: 'flex', flexDirection: 'column', gap: 3 }}>
+                <span style={{ fontSize: 11, fontFamily: T.fontBody, color: isToday ? T.brown : T.fgTertiary, fontWeight: isToday ? 700 : 400 }}>{date}</span>
+                {type !== 'rest' && <span style={{ fontSize: 9, fontFamily: T.fontBody, color: w?.color, fontWeight: 500, lineHeight: 1.2 }}>{w?.label}</span>}
+                {dist && <Disp size={14} style={{ lineHeight: 1 }}>{dist}<span style={{ fontSize: 9, fontFamily: T.fontBody, fontWeight: 400, color: T.fgTertiary }}>mi</span></Disp>}
+                {done && type !== 'rest' && <span style={{ fontSize: 10, color: T.olive, fontWeight: 600 }}>✓</span>}
+                {!done && isToday && <span style={{ fontSize: 8, color: T.brown, fontFamily: T.fontBody, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em' }}>now</span>}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      {/* Weekly total */}
+      <Card style={{ padding: '12px 16px', marginBottom: 14 }}>
+        <Row>
+          <Lbl>Week total</Lbl>
+          <Spacer />
+          <Row style={{ gap: 16 }}>
+            <Row style={{ alignItems: 'baseline', gap: 3 }}><Disp size={20}>47.3</Disp><Sm>mi</Sm></Row>
+            <Row style={{ alignItems: 'baseline', gap: 3 }}><Disp size={20}>6h 20</Disp><Sm>min</Sm></Row>
+          </Row>
+        </Row>
+      </Card>
+      <Row style={{ justifyContent: 'space-between' }}>
+        <span style={{ fontFamily: T.fontBody, fontSize: 13, color: T.fgTertiary, cursor: 'pointer' }}>← Apr 14</span>
+        <span style={{ fontFamily: T.fontBody, fontSize: 13, color: T.fgTertiary, cursor: 'pointer' }}>Apr 28 →</span>
+      </Row>
+    </div>
+    <FAB />
+    <BottomNav active="calendar" />
+  </Screen>
+);
+
+/* ── Calendar B – Agenda rows ── */
+const CalendarWeekB = () => {
+  const [weekOffset, setWeekOffset] = React.useState(0);
+  const weeks = [
+    { label: 'Apr 14–20', days: [
+      { date: 'Mon 14', type: 'easy',      dist: '5.0', dur: '44', pace: '8:50' },
+      { date: 'Tue 15', type: 'intervals', dist: '7.0', dur: '58', pace: '7:30' },
+      { date: 'Wed 16', type: 'rest',      dist: null,  dur: null,  pace: null },
+      { date: 'Thu 17', type: 'easy',      dist: '5.0', dur: '43', pace: '8:44' },
+      { date: 'Fri 18', type: 'tempo',     dist: '8',   dur: '60', pace: '7:20' },
+      { date: 'Sat 19', type: 'long',      dist: '16',  dur: '2:15', pace: '8:26' },
+      { date: 'Sun 20', type: 'recovery',  dist: '4',   dur: '36', pace: '9:10' },
+    ], total: '45.0 mi · 5h 56min' },
+    { label: 'Apr 21–27', days: [
+      { date: 'Mon 21', type: 'easy',      dist: '4.1', dur: '36', pace: '8:47' },
+      { date: 'Tue 22', type: 'threshold', dist: '7.2', dur: '56', pace: '7:46' },
+      { date: 'Wed 23', type: 'rest',      dist: null,  dur: null,  pace: null },
+      { date: 'Thu 24', type: 'easy',      dist: '5.0', dur: '44', pace: '8:52' },
+      { date: 'Fri 25', type: 'tempo',     dist: '8',   dur: '60', pace: '7:15', isToday: true },
+      { date: 'Sat 26', type: 'long',      dist: '18',  dur: '2:30', pace: '8:20' },
+      { date: 'Sun 27', type: 'recovery',  dist: '5',   dur: '45', pace: '9:30' },
+    ], total: '47.3 mi · 6h 20min' },
+    { label: 'Apr 28–May 4', days: [
+      { date: 'Mon 28', type: 'easy',      dist: '5',   dur: '44', pace: '8:48' },
+      { date: 'Tue 29', type: 'threshold', dist: '7',   dur: '54', pace: '7:42' },
+      { date: 'Wed 30', type: 'rest',      dist: null,  dur: null,  pace: null },
+      { date: 'Thu May 1', type: 'easy',   dist: '5',   dur: '43', pace: '8:40' },
+      { date: 'Fri May 2', type: 'tempo',  dist: '6',   dur: '46', pace: '7:38' },
+      { date: 'Sat May 3', type: 'long',   dist: '12',  dur: '1:42', pace: '8:30' },
+      { date: 'Sun May 4', type: 'rest',   dist: null,  dur: null,  pace: null },
+    ], total: '35.0 mi · 4h 49min' },
+  ];
+  const idx = weekOffset + 1;
+  const week = weeks[Math.max(0, Math.min(idx, weeks.length - 1))];
+  const canPrev = idx > 0;
+  const canNext = idx < weeks.length - 1;
+
+  return (
+    <Screen>
+      <StatusBar />
+      <div style={{ padding: '0 20px 10px', borderBottom: `1px solid ${T.borderSubtle}` }}>
+        <Row style={{ marginBottom: 10 }}>
+          <Disp size={20}>{week.label}</Disp>
+          <Spacer />
+          <Row style={{ gap: 4 }}>
+            {['Week','Month'].map((t, i) => (
+              <div key={t} style={{ padding: '4px 12px', borderRadius: T.rPill, fontSize: 12, fontFamily: T.fontBody, background: i === 0 ? T.brown : 'transparent', color: i === 0 ? '#fff' : T.fgTertiary, border: i === 1 ? `1px solid ${T.borderDefault}` : 'none', cursor: 'pointer' }}>{t}</div>
+            ))}
+          </Row>
+        </Row>
+        {/* Prev / Next week buttons */}
+        <Row style={{ gap: 8 }}>
+          <div onClick={() => canPrev && setWeekOffset(o => o - 1)} style={{ flex: 1, padding: '7px 0', textAlign: 'center', borderRadius: T.rMd, border: `1px solid ${canPrev ? T.borderDefault : T.borderSubtle}`, background: canPrev ? T.bgSurface : 'transparent', fontFamily: T.fontBody, fontSize: 13, color: canPrev ? T.fgPrimary : T.fgTertiary, cursor: canPrev ? 'pointer' : 'default' }}>← Prev week</div>
+          <div onClick={() => canNext && setWeekOffset(o => o + 1)} style={{ flex: 1, padding: '7px 0', textAlign: 'center', borderRadius: T.rMd, border: `1px solid ${canNext ? T.borderDefault : T.borderSubtle}`, background: canNext ? T.bgSurface : 'transparent', fontFamily: T.fontBody, fontSize: 13, color: canNext ? T.fgPrimary : T.fgTertiary, cursor: canNext ? 'pointer' : 'default' }}>Next week →</div>
+        </Row>
+      </div>
+      <div style={{ height: 'calc(100% - 160px)', overflowY: 'auto' }}>
+        {week.days.map(({ date, type, dist, dur, pace, isToday }) => (
+          <div key={date} style={{ padding: '13px 20px', borderBottom: `1px solid ${T.borderSubtle}`, background: isToday ? T.brownSubtle : 'transparent', cursor: 'pointer' }}>
+            <Row style={{ marginBottom: type === 'rest' ? 0 : 8 }}>
+              <div style={{ width: 60, flexShrink: 0 }}>
+                <span style={{ fontFamily: T.fontBody, fontSize: 12, color: isToday ? T.brown : T.fgTertiary, fontWeight: isToday ? 600 : 400 }}>{date}</span>
+              </div>
+              {type === 'rest' ? <Sm>Rest day</Sm> : <Badge type={type} sm />}
+              <Spacer />
+              {isToday && <span style={{ fontFamily: T.fontBody, fontSize: 10, fontWeight: 600, color: T.brown, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Today</span>}
+            </Row>
+            {type !== 'rest' && (
+              <div style={{ marginLeft: 60 }}>
+                <Row style={{ gap: 16 }}>
+                  <Row style={{ alignItems: 'baseline', gap: 2 }}><Disp size={18}>{dist}</Disp><Sm>mi</Sm></Row>
+                  <Row style={{ alignItems: 'baseline', gap: 2 }}><Disp size={18}>{dur}</Disp><Sm>{type === 'long' ? 'hr' : 'min'}</Sm></Row>
+                  <Row style={{ alignItems: 'baseline', gap: 2 }}><Disp size={18}>{pace}</Disp><Sm>/mi</Sm></Row>
+                </Row>
+              </div>
+            )}
+          </div>
+        ))}
+        <div style={{ padding: '14px 20px' }}>
+          <Row>
+            <Lbl>Week total</Lbl>
+            <Spacer />
+            <Disp size={15}>{week.total}</Disp>
+          </Row>
+        </div>
+      </div>
+      <FAB />
+      <BottomNav active="calendar" />
+    </Screen>
+  );
+};
+
+/* ── Calendar Desktop – Month ── */
+const CalendarDesktop = () => {
+  const weeks = [
+    [null,null,1,2,3,4,5],[6,7,8,9,10,11,12],
+    [13,14,15,16,17,18,19],[20,21,22,23,24,25,26],[27,28,29,30,null,null,null],
+  ];
+  const wmap = {1:'easy',2:'threshold',3:'rest',4:'easy',5:'tempo',6:'easy',7:'threshold',8:'rest',9:'easy',10:'tempo',11:'long',12:'recovery',13:'easy',14:'threshold',15:'rest',16:'easy',17:'tempo',18:'long',19:'recovery',20:'easy',21:'threshold',22:'rest',23:'easy',24:'easy',25:'tempo',26:'long',27:'recovery',28:'easy',29:'threshold',30:'rest'};
+  const done = new Set([1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24]);
+  const totals = ['','42mi','44mi','46mi','47mi','18mi'];
+  return (
+    <div style={{ width: 1280, height: 800, display: 'flex', fontFamily: T.fontBody, background: T.bgBase }}>
+      <Sidebar active="calendar" />
+      <div style={{ flex: 1, padding: '24px 28px', display: 'flex', flexDirection: 'column' }}>
+        <Row style={{ marginBottom: 18 }}>
+          <Disp size={24}>April 2026</Disp>
+          <Spacer />
+          <Row style={{ gap: 6 }}>
+            {['Week','Month'].map((t, i) => (
+              <div key={t} style={{ padding: '6px 16px', borderRadius: T.rPill, fontSize: 13, fontFamily: T.fontBody, background: i === 1 ? T.brown : 'transparent', color: i === 1 ? '#fff' : T.fgTertiary, border: i === 0 ? `1px solid ${T.borderDefault}` : 'none', cursor: 'pointer' }}>{t}</div>
+            ))}
+          </Row>
+        </Row>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr) 52px', gap: 4, marginBottom: 4 }}>
+          {['Mon','Tue','Wed','Thu','Fri','Sat','Sun',''].map((d, i) => (
+            <div key={i} style={{ textAlign: 'center', fontFamily: T.fontBody, fontSize: 11, color: T.fgTertiary, fontWeight: 500, paddingBottom: 6, borderBottom: `1px solid ${T.borderSubtle}` }}>{d}</div>
+          ))}
+        </div>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
+          {weeks.map((week, wi) => (
+            <div key={wi} style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr) 52px', gap: 4, flex: 1 }}>
+              {week.map((date, di) => {
+                const type = wmap[date];
+                const w = W[type];
+                const isToday = date === 25;
+                const isDone = done.has(date);
+                return (
+                  <div key={di} style={{ border: isToday ? `2px solid ${T.brown}` : `1px solid ${T.borderSubtle}`, borderRadius: T.rMd, background: date ? (isToday ? T.brownSubtle : T.bgSurface) : 'transparent', overflow: 'hidden', cursor: date ? 'pointer' : 'default', display: 'flex', flexDirection: 'column' }}>
+                    {date && type && type !== 'rest' && <div style={{ height: 2, background: w?.bar, flexShrink: 0 }} />}
+                    {date && (
+                      <div style={{ padding: '5px 7px', flex: 1 }}>
+                        <div style={{ fontSize: 11, fontFamily: T.fontBody, color: isToday ? T.brown : T.fgTertiary, fontWeight: isToday ? 700 : 400, marginBottom: 3 }}>{date}</div>
+                        {type && type !== 'rest' && <div style={{ fontSize: 10, fontFamily: T.fontBody, color: w?.color, fontWeight: 500, marginBottom: 2 }}>{w?.label}</div>}
+                        {isDone && type !== 'rest' && <div style={{ fontSize: 10, color: T.olive, fontWeight: 600 }}>✓</div>}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {totals[wi + 1] && <span style={{ fontFamily: T.fontBody, fontSize: 10, color: T.fgTertiary, writingMode: 'vertical-rl', transform: 'rotate(180deg)', letterSpacing: '0.02em' }}>{totals[wi + 1]}</span>}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* ── Plans A – Card list ── */
+const PlansA = () => (
+  <Screen>
+    <StatusBar />
+    <div style={{ padding: '0 20px 12px', borderBottom: `1px solid ${T.borderSubtle}` }}>
+      <Disp size={22}>Plans</Disp>
+    </div>
+    <div style={{ padding: '14px 16px', display: 'flex', gap: 10, borderBottom: `1px solid ${T.borderSubtle}` }}>
+      <BtnPrimary style={{ flex: 1, fontSize: 14, padding: '10px 12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}><span style={{ opacity: 0.8 }}>✦</span> Build with coach</BtnPrimary>
+      <BtnSecondary style={{ flex: 1, fontSize: 14, padding: '10px 12px' }}>↑ Upload plan</BtnSecondary>
+    </div>
+    <div style={{ height: 'calc(100% - 188px)', overflowY: 'auto', padding: '14px 16px 80px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <Card style={{ padding: 18, borderColor: T.brown, borderWidth: 2 }}>
+        <Row style={{ marginBottom: 10 }}>
+          <Hdg size={16} style={{ flex: 1 }}>Boston Marathon Build</Hdg>
+          <div style={{ fontSize: 10, fontFamily: T.fontBody, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', background: T.brown, color: '#fff', borderRadius: T.rPill, padding: '3px 10px' }}>Active</div>
+        </Row>
+        <Row style={{ gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>
+          <Sm>🏃 Run</Sm>
+          <Sm>16 weeks</Sm>
+          <Sm>Goal: 3:05 · May 5</Sm>
+        </Row>
+        <StatGrid stats={[
+          { lbl: 'Weeks left', val: '8', unit: '' },
+          { lbl: 'Workouts', val: '84', unit: '' },
+          { lbl: 'Completed', val: '46', unit: '' },
+        ]} />
+        <Hr style={{ margin: '12px 0' }} />
+        <Row style={{ gap: 14 }}>
+          <span style={{ fontFamily: T.fontBody, fontSize: 13, color: T.fgTertiary, cursor: 'pointer' }}>Archive</span>
+          <span style={{ fontFamily: T.fontBody, fontSize: 13, color: T.fgTertiary, cursor: 'pointer' }}>Delete</span>
+          <Spacer />
+          <span style={{ fontFamily: T.fontBody, fontSize: 13, color: T.brown, fontWeight: 500, cursor: 'pointer' }}>View plan →</span>
+        </Row>
+      </Card>
+      <Lbl style={{ marginTop: 4 }}>Archived</Lbl>
+      {[['Fall 50k Training','🏃 Run · 20 wks · uploaded','Sep 2025'],['Base Build — Cycling','🚴 Bike · indefinite · coach-generated','Mar 2025']].map(([name, meta, date]) => (
+        <Card key={name} style={{ padding: 14 }}>
+          <Row style={{ marginBottom: 5 }}>
+            <Hdg size={14} style={{ flex: 1 }}>{name}</Hdg>
+          </Row>
+          <Row>
+            <Sm style={{ flex: 1 }}>{meta} · {date}</Sm>
+            <span style={{ fontFamily: T.fontBody, fontSize: 12, color: T.fgTertiary, cursor: 'pointer' }}>Restore</span>
+          </Row>
+        </Card>
+      ))}
+    </div>
+    <FAB />
+    <BottomNav active="plans" />
+  </Screen>
+);
+
+/* ── Plans B – Bold active strip ── */
+const PlansB = () => (
+  <Screen>
+    <StatusBar />
+    <div style={{ padding: '0 20px 12px', borderBottom: `1px solid ${T.borderSubtle}` }}>
+      <Row>
+        <Disp size={22}>Plans</Disp>
+        <Spacer />
+        <Row style={{ gap: 8 }}>
+          <div style={{ height: 34, border: `1px solid ${T.borderDefault}`, borderRadius: T.rMd, display: 'flex', alignItems: 'center', padding: '0 12px', fontSize: 13, fontFamily: T.fontBody, color: T.fgSecond, gap: 5, cursor: 'pointer' }}>↑ Upload</div>
+          <div style={{ height: 34, background: T.brown, borderRadius: T.rMd, display: 'flex', alignItems: 'center', padding: '0 14px', fontSize: 13, fontFamily: T.fontBody, color: '#fff', gap: 6, cursor: 'pointer' }}><span>✦</span> Coach</div>
+        </Row>
+      </Row>
+    </div>
+    {/* Active plan hero strip */}
+    <div style={{ background: T.brown, padding: '18px 20px' }}>
+      <Row style={{ marginBottom: 12 }}>
+        <div style={{ fontFamily: T.fontDisplay, fontSize: 17, fontWeight: 700, color: '#fff', letterSpacing: '-0.02em' }}>Boston Marathon Build</div>
+        <Spacer />
+        <div style={{ fontFamily: T.fontBody, fontSize: 10, fontWeight: 600, color: '#ffffff70', textTransform: 'uppercase', letterSpacing: '0.07em' }}>Active</div>
+      </Row>
+      <Row style={{ gap: 24 }}>
+        {[['8','wks left'],['46 / 84','done'],['May 5','race day']].map(([v, l]) => (
+          <Col key={l} style={{ gap: 2 }}>
+            <Disp size={22} style={{ color: '#fff' }}>{v}</Disp>
+            <div style={{ fontFamily: T.fontBody, fontSize: 10, color: '#ffffff60', textTransform: 'uppercase', letterSpacing: '0.07em' }}>{l}</div>
+          </Col>
+        ))}
+      </Row>
+    </div>
+    <div style={{ height: 'calc(100% - 254px)', overflowY: 'auto', paddingBottom: 80 }}>
+      <div style={{ padding: '10px 20px', borderBottom: `1px solid ${T.borderSubtle}` }}>
+        <Lbl>Archived plans</Lbl>
+      </div>
+      {[{name:'Fall 50k Training',meta:'🏃 Run · 20 wks',date:'Sep 2025',src:'uploaded'},{name:'Base Build — Cycling',meta:'🚴 Bike · indefinite',date:'Mar 2025',src:'coach'}].map(plan => (
+        <div key={plan.name} style={{ padding: '14px 20px', borderBottom: `1px solid ${T.borderSubtle}` }}>
+          <Row style={{ marginBottom: 4 }}>
+            <Hdg size={14} style={{ flex: 1 }}>{plan.name}</Hdg>
+            <span style={{ fontFamily: T.fontBody, fontSize: 12, color: T.fgTertiary, cursor: 'pointer' }}>Restore</span>
+          </Row>
+          <Row style={{ gap: 12 }}>
+            <Sm>{plan.meta}</Sm><Sm>{plan.date}</Sm><Sm>{plan.src}</Sm>
+          </Row>
+        </div>
+      ))}
+      <div style={{ padding: 20 }}>
+        <div style={{ border: `1.5px dashed ${T.borderDefault}`, borderRadius: T.rMd, padding: 24, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+          <div style={{ fontSize: 22, color: T.fgTertiary }}>↑</div>
+          <Hdg size={14}>Upload a plan</Hdg>
+          <Sm>PDF, CSV, Excel or Markdown</Sm>
+        </div>
+      </div>
+    </div>
+    <FAB />
+    <BottomNav active="plans" />
+  </Screen>
+);
+
+/* ── Coach Sheet A – Slide-up (75%) ── */
+const CoachSheetA = () => (
+  <Screen>
+    {/* Dimmed bg showing underlying screen */}
+    <div style={{ position: 'absolute', inset: 0, background: T.sand900, opacity: 0.08 }} />
+    <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '78%', background: T.bgSurface, borderRadius: `${T.rLg}px ${T.rLg}px 0 0`, boxShadow: T.shadowLg, display: 'flex', flexDirection: 'column' }}>
+      <div style={{ padding: '12px 0 6px', display: 'flex', justifyContent: 'center', flexShrink: 0 }}>
+        <div style={{ width: 32, height: 4, borderRadius: T.rPill, background: T.borderDefault }} />
+      </div>
+      <div style={{ padding: '0 20px 12px', borderBottom: `1px solid ${T.borderSubtle}`, flexShrink: 0 }}>
+        <Row>
+          <Hdg size={16}>Coach</Hdg>
+          <Spacer />
+          <Row style={{ gap: 14 }}>
+            <span style={{ fontFamily: T.fontBody, fontSize: 13, color: T.brown, fontWeight: 500, cursor: 'pointer' }}>📋 Notes</span>
+            <span style={{ fontFamily: T.fontBody, fontSize: 13, color: T.fgTertiary, cursor: 'pointer' }}>Clear</span>
+          </Row>
+        </Row>
+      </div>
+      <div style={{ flex: 1, padding: '14px 20px', display: 'flex', flexDirection: 'column', gap: 10, overflowY: 'auto' }}>
+        <div style={{ background: T.bgSubtle, borderRadius: '10px 10px 10px 3px', padding: '10px 14px', border: `1px solid ${T.borderSubtle}`, maxWidth: '88%' }}>
+          <Body style={{ fontSize: 13, lineHeight: 1.55 }}>Good morning! Tempo run today — 8 miles. Ready to go?</Body>
+        </div>
+        <div style={{ background: T.brown, borderRadius: '10px 10px 3px 10px', padding: '10px 14px', marginLeft: 'auto', maxWidth: '80%' }}>
+          <Body style={{ fontSize: 13, color: '#fff', lineHeight: 1.55 }}>Achilles is still a bit tender from Saturday.</Body>
+        </div>
+        <div style={{ background: T.terra100, borderRadius: T.rMd, padding: '5px 12px', display: 'inline-flex', gap: 6, alignItems: 'center', alignSelf: 'flex-start' }}>
+          <div style={{ width: 5, height: 5, borderRadius: 999, background: T.terra }} />
+          <Sm>Checking your last 3 runs…</Sm>
+        </div>
+        <div style={{ background: T.terra100, borderRadius: T.rMd, padding: '5px 12px', display: 'inline-flex', gap: 6, alignItems: 'center', alignSelf: 'flex-start' }}>
+          <div style={{ width: 5, height: 5, borderRadius: 999, background: T.terra }} />
+          <Sm>Updating coach notes…</Sm>
+        </div>
+        <div style={{ background: T.bgSubtle, borderRadius: '10px 10px 10px 3px', padding: '10px 14px', border: `1px solid ${T.borderSubtle}`, maxWidth: '90%' }}>
+          <Body style={{ fontSize: 13, lineHeight: 1.55 }}>I'd cut it to 6 miles, easy effort. Don't push tempo on a tender achilles — not worth it this far out.</Body>
+        </div>
+      </div>
+      <div style={{ padding: '10px 16px 14px', borderTop: `1px solid ${T.borderSubtle}`, flexShrink: 0 }}>
+        <Row style={{ gap: 6, marginBottom: 8 }}>
+          <div style={{ background: T.brownSubtle, borderRadius: T.rPill, padding: '3px 10px', fontSize: 11, fontFamily: T.fontBody, color: T.brown }}>📎 Today's tempo run</div>
+          <div style={{ border: `1px dashed ${T.borderDefault}`, borderRadius: T.rPill, padding: '3px 10px', fontSize: 11, fontFamily: T.fontBody, color: T.fgTertiary }}>+ attach</div>
+        </Row>
+        <Row style={{ gap: 8 }}>
+          <div style={{ flex: 1, background: T.bgSubtle, border: `1px solid ${T.borderDefault}`, borderRadius: T.rMd, padding: '9px 14px', fontFamily: T.fontBody, fontSize: 13, color: T.fgTertiary }}>Ask anything…</div>
+          <div style={{ width: 36, height: 36, borderRadius: T.rMd, background: T.brown, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', cursor: 'pointer', flexShrink: 0, fontSize: 16 }}>↑</div>
+        </Row>
+      </div>
+    </div>
+  </Screen>
+);
+
+/* ── Coach Sheet B – Full screen ── */
+const CoachSheetB = () => (
+  <Screen>
+    <StatusBar />
+    <div style={{ padding: '0 20px 12px', borderBottom: `1px solid ${T.borderSubtle}` }}>
+      <Row>
+        <Disp size={20}>Coach</Disp>
+        <Spacer />
+        <Row style={{ gap: 14 }}>
+          <span style={{ fontFamily: T.fontBody, fontSize: 13, color: T.brown, fontWeight: 500, cursor: 'pointer' }}>📋 Notes</span>
+          <span style={{ fontFamily: T.fontBody, fontSize: 13, color: T.fgTertiary, cursor: 'pointer' }}>Clear</span>
+        </Row>
+      </Row>
+    </div>
+    <div style={{ height: 'calc(100% - 178px)', padding: '14px 20px', display: 'flex', flexDirection: 'column', gap: 10, overflowY: 'auto' }}>
+      <div style={{ background: T.bgSubtle, borderRadius: '10px 10px 10px 3px', padding: '10px 14px', border: `1px solid ${T.borderSubtle}`, maxWidth: '88%' }}>
+        <Body style={{ fontSize: 13, lineHeight: 1.55 }}>Good morning! Achilles — is it feeling any better?</Body>
+      </div>
+      <div style={{ background: T.brown, borderRadius: '10px 10px 3px 10px', padding: '10px 14px', marginLeft: 'auto', maxWidth: '80%' }}>
+        <Body style={{ fontSize: 13, color: '#fff', lineHeight: 1.55 }}>Still a bit tender. Thinking of cutting today short.</Body>
+      </div>
+      <div style={{ background: T.terra100, borderRadius: T.rMd, padding: '5px 12px', display: 'inline-flex', gap: 6, alignItems: 'center', alignSelf: 'flex-start' }}>
+        <div style={{ width: 5, height: 5, borderRadius: 999, background: T.terra }} />
+        <Sm>Updating Saturday's plan…</Sm>
+      </div>
+      <div style={{ background: T.bgSubtle, borderRadius: '10px 10px 10px 3px', padding: '10px 14px', border: `1px solid ${T.borderSubtle}`, maxWidth: '90%' }}>
+        <Body style={{ fontSize: 13, lineHeight: 1.55 }}>Good call. Saturday is now 17mi easy. If it feels fine at mile 10, you can extend — but I wouldn't.</Body>
+      </div>
+      <div style={{ background: T.brown, borderRadius: '10px 10px 3px 10px', padding: '10px 14px', marginLeft: 'auto', maxWidth: '80%' }}>
+        <Body style={{ fontSize: 13, color: '#fff', lineHeight: 1.55 }}>Can you update the plan?</Body>
+      </div>
+      <div style={{ background: T.terra100, borderRadius: T.rMd, padding: '5px 12px', display: 'inline-flex', gap: 6, alignItems: 'center', alignSelf: 'flex-start' }}>
+        <div style={{ width: 5, height: 5, borderRadius: 999, background: T.terra }} />
+        <Sm>Updating Saturday's workout…</Sm>
+      </div>
+      <div style={{ background: T.bgSubtle, borderRadius: '10px 10px 10px 3px', padding: '10px 14px', border: `1px solid ${T.borderSubtle}`, maxWidth: '90%' }}>
+        <Body style={{ fontSize: 13, lineHeight: 1.55 }}>Done — Saturday is 17mi easy. Plan updated.</Body>
+      </div>
+    </div>
+    <div style={{ padding: '10px 16px 20px', borderTop: `1px solid ${T.borderSubtle}` }}>
+      <Row style={{ gap: 6, marginBottom: 8 }}>
+        <div style={{ background: T.brownSubtle, borderRadius: T.rPill, padding: '3px 10px', fontSize: 11, fontFamily: T.fontBody, color: T.brown }}>📎 Today's workout</div>
+        <div style={{ border: `1px dashed ${T.borderDefault}`, borderRadius: T.rPill, padding: '3px 10px', fontSize: 11, fontFamily: T.fontBody, color: T.fgTertiary }}>+ attach</div>
+      </Row>
+      <Row style={{ gap: 8 }}>
+        <div style={{ flex: 1, background: T.bgSubtle, border: `1px solid ${T.borderDefault}`, borderRadius: T.rMd, padding: '9px 14px', fontFamily: T.fontBody, fontSize: 13, color: T.fgTertiary }}>Ask anything…</div>
+        <div style={{ width: 36, height: 36, borderRadius: T.rMd, background: T.brown, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', cursor: 'pointer', flexShrink: 0, fontSize: 16 }}>↑</div>
+      </Row>
+    </div>
+  </Screen>
+);
+
+/* ── Settings ── */
+const SettingsScreen = () => (
+  <Screen>
+    <StatusBar />
+    <div style={{ padding: '0 20px 12px', borderBottom: `1px solid ${T.borderSubtle}` }}>
+      <Disp size={22}>Settings</Disp>
+    </div>
+    <div style={{ height: 'calc(100% - 96px)', overflowY: 'auto', padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 24, paddingBottom: 40 }}>
+      <Col style={{ gap: 8 }}>
+        <Lbl style={{ marginBottom: 2 }}>Preferences</Lbl>
+        <Card style={{ padding: 0, overflow: 'hidden' }}>
+          {[['Units','Miles'],['Pace format','min/mi'],['Timezone','America/Los_Angeles']].map(([l, v], i, arr) => (
+            <React.Fragment key={l}>
+              <div style={{ padding: '13px 16px' }}>
+                <Row>
+                  <Body style={{ fontSize: 14, color: T.fgPrimary }}>{l}</Body>
+                  <Spacer />
+                  <Row style={{ gap: 6 }}>
+                    <Sm style={{ color: T.fgSecond }}>{v}</Sm>
+                    <Sm>›</Sm>
+                  </Row>
+                </Row>
+              </div>
+              {i < arr.length - 1 && <Hr />}
+            </React.Fragment>
+          ))}
+        </Card>
+      </Col>
+      <Col style={{ gap: 8 }}>
+        <Row>
+          <Lbl>Coach notes</Lbl>
+          <Spacer />
+          <Sm>312 / 4096</Sm>
+        </Row>
+        <Sm style={{ lineHeight: 1.5 }}>The coach maintains these notes — goals, injuries, preferences. You can edit or wipe them.</Sm>
+        <div style={{ background: T.bgSubtle, borderRadius: T.rMd, border: `1px solid ${T.borderDefault}`, padding: '12px 14px', minHeight: 120 }}>
+          <Body style={{ fontSize: 13, lineHeight: 1.75, color: T.fgSecond }}>
+            Goal: Boston Marathon, May 5 2026. Target 3:05.<br />
+            Left achilles has been tender — flag on long runs + tempo.<br />
+            Prefers roads. No treadmill. Doesn't like back-to-back hard days.<br />
+            Runs Mon / Tue / Thu / Sat / Sun.
+          </Body>
+        </div>
+        <Row style={{ gap: 8 }}>
+          <BtnPrimary style={{ flex: 1, fontSize: 14, padding: '11px' }}>Save notes</BtnPrimary>
+          <BtnSecondary style={{ width: 80, fontSize: 14, padding: '11px' }}>Reset</BtnSecondary>
+        </Row>
+      </Col>
+      <Col style={{ gap: 8 }}>
+        <Lbl style={{ marginBottom: 2 }}>Strava</Lbl>
+        <Card style={{ padding: 0, overflow: 'hidden' }}>
+          <div style={{ padding: '13px 16px' }}>
+            <Row>
+              <Body style={{ fontSize: 14, color: T.fgPrimary }}>Connected as Colby Schulz</Body>
+              <Spacer />
+              <span style={{ fontFamily: T.fontBody, fontSize: 13, color: T.terra, cursor: 'pointer' }}>Disconnect</span>
+            </Row>
+          </div>
+          <Hr />
+          <div style={{ padding: '13px 16px' }}>
+            <Row>
+              <Body style={{ fontSize: 14, color: T.fgPrimary }}>Sync last 7 days</Body>
+              <Spacer />
+              <span style={{ fontFamily: T.fontBody, fontSize: 13, color: T.brown, fontWeight: 500, cursor: 'pointer' }}>Sync now</span>
+            </Row>
+          </div>
+        </Card>
+      </Col>
+    </div>
+  </Screen>
+);
+
+/* ── Main ── */
+function App() {
+  return (
+    <DesignCanvas title="Race Horse — Hi-Fi">
+      <DCSection id="landing" title="Landing">
+        <DCArtboard id="la" label="✓ Light editorial" width={390} height={844}><LandingA /></DCArtboard>
+        <DCArtboard id="lb" label="Alt — Dark editorial" width={390} height={844}><LandingB /></DCArtboard>
+      </DCSection>
+
+      <DCSection id="today" title="Today">
+        <DCArtboard id="tb" label="✓ Editorial type" width={390} height={844}><TodayB /></DCArtboard>
+        <DCArtboard id="td" label="Desktop w/ Coach panel" width={1280} height={800}><TodayDesktop /></DCArtboard>
+        <DCArtboard id="ta" label="Alt — Card-heavy" width={390} height={844}><TodayA /></DCArtboard>
+      </DCSection>
+
+      <DCSection id="calendar" title="Calendar">
+        <DCArtboard id="cb" label="✓ Agenda rows (interactive)" width={390} height={844}><CalendarWeekB /></DCArtboard>
+        <DCArtboard id="cd" label="Desktop — Month view" width={1280} height={800}><CalendarDesktop /></DCArtboard>
+        <DCArtboard id="ca" label="Alt — Grid cells" width={390} height={844}><CalendarWeekA /></DCArtboard>
+      </DCSection>
+
+      <DCSection id="plans" title="Plans">
+        <DCArtboard id="pa" label="✓ Card list" width={390} height={844}><PlansA /></DCArtboard>
+        <DCArtboard id="pb" label="Alt — Bold active strip" width={390} height={844}><PlansB /></DCArtboard>
+      </DCSection>
+
+      <DCSection id="coach" title="Coach">
+        <DCArtboard id="coa" label="✓ Slide-up sheet" width={390} height={844}><CoachSheetA /></DCArtboard>
+        <DCArtboard id="cob" label="Alt — Full screen" width={390} height={844}><CoachSheetB /></DCArtboard>
+      </DCSection>
+
+      <DCSection id="settings" title="Settings">
+        <DCArtboard id="set" label="Mobile" width={390} height={844}><SettingsScreen /></DCArtboard>
+      </DCSection>
+    </DesignCanvas>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+<div id="root"></div>
+</body>
+</html>
