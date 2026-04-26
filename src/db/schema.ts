@@ -6,6 +6,9 @@ import {
   integer,
   jsonb,
   uuid,
+  bigint,
+  numeric,
+  index,
 } from "drizzle-orm/pg-core";
 import type { AdapterAccountType } from "next-auth/adapters";
 
@@ -34,6 +37,10 @@ export const users = pgTable("user", {
     .default(DEFAULT_PREFERENCES)
     .notNull(),
   coach_notes: text("coach_notes").notNull().default(""),
+  last_synced_at: timestamp("last_synced_at", {
+    withTimezone: true,
+    mode: "date",
+  }),
 });
 
 export const accounts = pgTable(
@@ -76,4 +83,63 @@ export const verificationTokens = pgTable(
     expires: timestamp("expires", { mode: "date" }).notNull(),
   },
   (vt) => [primaryKey({ columns: [vt.identifier, vt.token] })],
+);
+
+export const activities = pgTable(
+  "activity",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    strava_id: bigint("strava_id", { mode: "number" }).notNull().unique(),
+    start_date: timestamp("start_date", {
+      withTimezone: true,
+      mode: "date",
+    }).notNull(),
+    name: text("name").notNull(),
+    type: text("type").notNull(),
+    distance_meters: numeric("distance_meters"),
+    moving_time_seconds: integer("moving_time_seconds"),
+    elapsed_time_seconds: integer("elapsed_time_seconds"),
+    avg_hr: numeric("avg_hr"),
+    max_hr: numeric("max_hr"),
+    avg_pace_seconds_per_km: numeric("avg_pace_seconds_per_km"),
+    avg_power_watts: numeric("avg_power_watts"),
+    elevation_gain_m: numeric("elevation_gain_m"),
+    raw: jsonb("raw").notNull(),
+    created_at: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updated_at: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index("activity_user_start_idx").on(t.userId, t.start_date),
+  ],
+);
+
+export const activityLaps = pgTable(
+  "activity_lap",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    activity_id: uuid("activity_id")
+      .notNull()
+      .references(() => activities.id, { onDelete: "cascade" }),
+    lap_index: integer("lap_index").notNull(),
+    distance_meters: numeric("distance_meters").notNull(),
+    moving_time_seconds: integer("moving_time_seconds").notNull(),
+    elapsed_time_seconds: integer("elapsed_time_seconds").notNull(),
+    avg_pace_seconds_per_km: numeric("avg_pace_seconds_per_km"),
+    avg_power_watts: numeric("avg_power_watts"),
+    avg_hr: numeric("avg_hr"),
+    max_hr: numeric("max_hr"),
+    elevation_gain_m: numeric("elevation_gain_m"),
+    start_index: integer("start_index"),
+    end_index: integer("end_index"),
+  },
+  (t) => [
+    index("activity_lap_activity_idx").on(t.activity_id, t.lap_index),
+  ],
 );
