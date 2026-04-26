@@ -1,10 +1,15 @@
-import { EmptyState } from "@/components/EmptyState";
+import { auth } from "@/auth";
+import { redirect } from "next/navigation";
+import { SettingsForm } from "./SettingsForm";
 
-export default function SettingsPage() {
+export default async function SettingsPage() {
+  const session = await auth();
+  if (!session?.user) redirect("/");
+
   return (
-    <EmptyState
-      title="Settings"
-      body="Preferences UI lands in Task 12."
-    />
+    <>
+      <h1>Settings</h1>
+      <SettingsForm initial={session.user.preferences} />
+    </>
   );
 }
