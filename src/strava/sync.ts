@@ -63,6 +63,7 @@ export async function syncActivities(opts: {
       }
     }
 
+    if (summaries.length < LIST_PAGE_SIZE) break;
     page += 1;
   }
 
