@@ -35,12 +35,17 @@ export default async function AppLayout({
     const sinceDate = new Date(
       Date.now() - INITIAL_BACKFILL_DAYS * 24 * 60 * 60 * 1000,
     );
+    // Write a sentinel immediately so repeated page loads don't queue multiple syncs.
+    await db
+      .update(users)
+      .set({ last_synced_at: startedAt })
+      .where(eq(users.id, userId));
     after(async () => {
       try {
         await syncActivities({ userId, sinceDate });
         await db
           .update(users)
-          .set({ last_synced_at: startedAt })
+          .set({ last_synced_at: new Date() })
           .where(eq(users.id, userId));
       } catch (err) {
         console.error("initial backfill failed", userId, err);

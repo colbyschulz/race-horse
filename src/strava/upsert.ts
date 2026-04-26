@@ -27,6 +27,7 @@ export async function upsertActivity(row: ActivityInsertRow): Promise<string> {
     })
     .returning({ id: activities.id });
 
+  if (!result[0]) throw new Error(`upsertActivity: no row returned for strava_id ${row.strava_id}`);
   return result[0].id;
 }
 

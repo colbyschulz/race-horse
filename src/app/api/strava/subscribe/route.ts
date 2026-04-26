@@ -34,7 +34,13 @@ export async function GET(req: Request) {
 // POST — create a subscription. Body: { callback_url }
 export async function POST(req: Request) {
   if (!checkAdmin(req)) return unauthorized();
-  const { callback_url } = (await req.json()) as { callback_url: string };
+  let body: { callback_url?: string };
+  try {
+    body = (await req.json()) as { callback_url?: string };
+  } catch {
+    return NextResponse.json({ error: "invalid JSON" }, { status: 400 });
+  }
+  const { callback_url } = body;
   if (!callback_url) {
     return NextResponse.json({ error: "callback_url required" }, { status: 400 });
   }
@@ -59,7 +65,13 @@ export async function POST(req: Request) {
 // DELETE — remove subscription by id. Body: { id }
 export async function DELETE(req: Request) {
   if (!checkAdmin(req)) return unauthorized();
-  const { id } = (await req.json()) as { id: number };
+  let body: { id?: number };
+  try {
+    body = (await req.json()) as { id?: number };
+  } catch {
+    return NextResponse.json({ error: "invalid JSON" }, { status: 400 });
+  }
+  const { id } = body;
   if (!id) {
     return NextResponse.json({ error: "id required" }, { status: 400 });
   }
