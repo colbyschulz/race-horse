@@ -47,11 +47,20 @@ export async function createPlan(
   return result[0] as Plan;
 }
 
+/**
+ * Activates `planId` for `userId` and deactivates all of the user's other plans.
+ *
+ * Single UPDATE so the partial unique index `(userId) WHERE is_active` is never
+ * violated mid-statement (Postgres evaluates SET per row atomically).
+ *
+ * **Precondition:** caller MUST verify `planId` belongs to `userId` first
+ * (e.g. via `getPlanById`). If `planId` is foreign, this becomes a no-op activation
+ * AND deactivates every plan the user owns — the API route does this guard for us.
+ */
 export async function setActivePlan(
   planId: string,
   userId: string,
 ): Promise<void> {
-  // Single UPDATE so the partial unique index is never violated mid-statement.
   await db
     .update(plans)
     .set({
