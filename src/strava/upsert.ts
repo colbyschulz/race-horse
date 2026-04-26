@@ -35,12 +35,10 @@ export async function replaceLaps(
   activityId: string,
   laps: LapInsertRow[],
 ): Promise<void> {
-  await db.transaction(async (tx) => {
-    await tx.delete(activityLaps).where(eq(activityLaps.activity_id, activityId));
-    if (laps.length > 0) {
-      await tx.insert(activityLaps).values(laps);
-    }
-  });
+  await db.delete(activityLaps).where(eq(activityLaps.activity_id, activityId));
+  if (laps.length > 0) {
+    await db.insert(activityLaps).values(laps);
+  }
 }
 
 export async function deleteActivityByStravaId(stravaId: number): Promise<void> {

@@ -5,19 +5,10 @@ const insertChain = {
   onConflictDoUpdate: vi.fn().mockReturnThis(),
   returning: vi.fn(),
 };
-const insertLapsChain = {
-  values: vi.fn().mockResolvedValue(undefined),
-};
 const deleteChain = { where: vi.fn().mockResolvedValue(undefined) };
-
-const txMock = {
-  insert: vi.fn(),
-  delete: vi.fn(() => deleteChain),
-};
 
 vi.mock("@/db", () => ({
   db: {
-    transaction: (fn: (tx: typeof txMock) => Promise<unknown>) => fn(txMock),
     insert: () => insertChain,
     delete: () => deleteChain,
   },
@@ -63,14 +54,11 @@ describe("upsertActivity", () => {
 
 describe("replaceLaps", () => {
   beforeEach(() => {
-    txMock.insert.mockReset();
-    txMock.delete.mockClear();
-    deleteChain.where.mockClear();
-    insertLapsChain.values.mockClear().mockResolvedValue(undefined);
+    deleteChain.where.mockClear().mockResolvedValue(undefined);
+    insertChain.values.mockClear().mockReturnThis();
   });
 
-  it("deletes existing laps and inserts new ones in a transaction", async () => {
-    txMock.insert.mockReturnValue(insertLapsChain);
+  it("deletes existing laps and inserts new ones", async () => {
     const laps: LapInsertRow[] = [
       {
         activity_id: "act-1",
@@ -88,15 +76,14 @@ describe("replaceLaps", () => {
       },
     ];
     await replaceLaps("act-1", laps);
-    expect(txMock.delete).toHaveBeenCalledOnce();
     expect(deleteChain.where).toHaveBeenCalledOnce();
-    expect(insertLapsChain.values).toHaveBeenCalledWith(laps);
+    expect(insertChain.values).toHaveBeenCalledWith(laps);
   });
 
-  it("is a no-op insert when laps array is empty (still deletes)", async () => {
+  it("skips insert when laps array is empty (still deletes)", async () => {
     await replaceLaps("act-1", []);
-    expect(txMock.delete).toHaveBeenCalled();
-    expect(txMock.insert).not.toHaveBeenCalled();
+    expect(deleteChain.where).toHaveBeenCalledOnce();
+    expect(insertChain.values).not.toHaveBeenCalled();
   });
 });
 
