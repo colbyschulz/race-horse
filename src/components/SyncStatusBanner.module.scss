@@ -1,0 +1,24 @@
+.banner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-5);
+  background: var(--color-brown-subtle);
+  color: var(--color-brown);
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--color-brown);
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 800ms linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}

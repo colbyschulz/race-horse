@@ -1,8 +1,15 @@
 "use client";
 
 import { useEffect } from "react";
+import type { UserPreferences } from "@/db/schema";
 
-export function PreferencesCapture({ needsCapture }: { needsCapture: boolean }) {
+export function PreferencesCapture({
+  preferences,
+}: {
+  preferences?: UserPreferences | null;
+}) {
+  const needsCapture = preferences?.timezone === "UTC";
+
   useEffect(() => {
     if (!needsCapture) return;
     const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
