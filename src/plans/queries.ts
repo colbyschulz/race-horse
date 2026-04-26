@@ -1,6 +1,6 @@
 import { and, desc, eq, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { plans } from "@/db/schema";
+import { plans, workouts } from "@/db/schema";
 import type { CreatePlanInput, Plan, PlanWithCounts } from "./types";
 
 export async function listPlans(userId: string): Promise<Plan[]> {
@@ -80,6 +80,40 @@ export async function deletePlan(
     .where(and(eq(plans.id, planId), eq(plans.userId, userId)));
 }
 
-export async function listPlansWithCounts(_userId: string, _today: string): Promise<PlanWithCounts[]> {
-  throw new Error("not implemented");
+export async function listPlansWithCounts(
+  userId: string,
+  today: string,
+): Promise<PlanWithCounts[]> {
+  const totalCount = sql<number>`(
+    SELECT COUNT(*)::int FROM ${workouts}
+    WHERE ${workouts.plan_id} = ${plans.id}
+  )`.as("workout_count");
+
+  const completedCount = sql<number>`(
+    SELECT COUNT(*)::int FROM ${workouts}
+    WHERE ${workouts.plan_id} = ${plans.id}
+      AND ${workouts.date} <= ${today}::date
+  )`.as("completed_count");
+
+  return db
+    .select({
+      id: plans.id,
+      userId: plans.userId,
+      title: plans.title,
+      sport: plans.sport,
+      mode: plans.mode,
+      goal: plans.goal,
+      start_date: plans.start_date,
+      end_date: plans.end_date,
+      is_active: plans.is_active,
+      source: plans.source,
+      source_file_id: plans.source_file_id,
+      created_at: plans.created_at,
+      updated_at: plans.updated_at,
+      workout_count: totalCount,
+      completed_count: completedCount,
+    })
+    .from(plans)
+    .where(eq(plans.userId, userId))
+    .orderBy(desc(plans.is_active), desc(plans.start_date)) as Promise<PlanWithCounts[]>;
 }

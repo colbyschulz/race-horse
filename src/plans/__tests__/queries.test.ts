@@ -33,7 +33,7 @@ vi.mock("@/db/schema", () => ({
   workouts: { id: "id", plan_id: "plan_id", date: "date" },
 }));
 
-import { listPlans, getPlanById, createPlan, setActivePlan, archivePlan, deletePlan } from "../queries";
+import { listPlans, getPlanById, createPlan, setActivePlan, archivePlan, deletePlan, listPlansWithCounts } from "../queries";
 
 describe("listPlans", () => {
   beforeEach(() => {
@@ -156,5 +156,29 @@ describe("deletePlan", () => {
   it("issues a DELETE scoped to plan + user", async () => {
     await deletePlan("p1", "u1");
     expect(deleteChain.where).toHaveBeenCalledOnce();
+  });
+});
+
+describe("listPlansWithCounts", () => {
+  beforeEach(() => {
+    fromChain.where.mockClear().mockReturnThis();
+    fromChain.orderBy.mockClear().mockReturnThis();
+  });
+
+  it("annotates each plan with workout_count + completed_count", async () => {
+    fromChain.orderBy.mockResolvedValueOnce([
+      {
+        id: "p1", userId: "u1", title: "Boston", is_active: true,
+        start_date: "2026-01-01", end_date: "2026-04-20",
+        workout_count: 84, completed_count: 46,
+      },
+    ]);
+    const out = await listPlansWithCounts("u1", "2026-03-01");
+    expect(out).toHaveLength(1);
+    expect(out[0]).toEqual(expect.objectContaining({
+      id: "p1",
+      workout_count: 84,
+      completed_count: 46,
+    }));
   });
 });
