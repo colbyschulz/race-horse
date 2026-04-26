@@ -25,6 +25,10 @@ export default function Strava<P extends StravaProfile>(
     },
     token: "https://www.strava.com/api/v3/oauth/token",
     userinfo: "https://www.strava.com/api/v3/athlete",
+    checks: ["state"],
+    client: {
+      token_endpoint_auth_method: "client_secret_post",
+    },
     profile(profile) {
       return {
         id: String(profile.id),
