@@ -49,6 +49,8 @@ export const workoutTypeEnum = pgEnum("workout_type", [
   "cross",
 ]);
 
+export const messageRoleEnum = pgEnum("message_role", ["user", "assistant"]);
+
 export type Goal = {
   race_date?: string;
   race_distance?: string;
@@ -151,6 +153,7 @@ export const activities = pgTable(
     avg_pace_seconds_per_km: numeric("avg_pace_seconds_per_km"),
     avg_power_watts: numeric("avg_power_watts"),
     elevation_gain_m: numeric("elevation_gain_m"),
+    matched_workout_id: uuid("matched_workout_id").references(() => workouts.id, { onDelete: "set null" }),
     raw: jsonb("raw").notNull(),
     created_at: timestamp("created_at", { withTimezone: true })
       .notNull()
@@ -237,5 +240,24 @@ export const workouts = pgTable(
   },
   (t) => [
     index("workout_plan_date_idx").on(t.plan_id, t.date),
+  ],
+);
+
+export const messages = pgTable(
+  "message",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    user_id: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    role: messageRoleEnum("role").notNull(),
+    // Anthropic content-block array. Preserves text + tool_use + tool_result + thinking blocks.
+    content: jsonb("content").notNull(),
+    created_at: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index("message_user_created_idx").on(t.user_id, t.created_at),
   ],
 );

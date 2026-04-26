@@ -1,30 +1,17 @@
 "use client";
 
-import * as Dialog from "@radix-ui/react-dialog";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import styles from "./AskCoachButton.module.scss";
 
 export function AskCoachButton() {
+  const pathname = usePathname();
+  if (pathname === "/coach") return null;
+  const href = pathname ? `/coach?from=${encodeURIComponent(pathname)}` : "/coach";
   return (
-    <Dialog.Root>
-      <Dialog.Trigger asChild>
-        <button className={styles.fab} aria-label="Ask coach">
-          <span aria-hidden>✦</span>
-          Coach
-        </button>
-      </Dialog.Trigger>
-      <Dialog.Portal>
-        <Dialog.Overlay className={styles.overlay} />
-        <Dialog.Content className={styles.content}>
-          <Dialog.Title className={styles.title}>Coach coming soon</Dialog.Title>
-          <Dialog.Description className={styles.body}>
-            The AI coach launches in Phase 4. In the meantime, explore the
-            Today, Calendar, and Plans tabs.
-          </Dialog.Description>
-          <Dialog.Close asChild>
-            <button className={styles.close}>Close</button>
-          </Dialog.Close>
-        </Dialog.Content>
-      </Dialog.Portal>
-    </Dialog.Root>
+    <Link href={href} className={styles.fab} aria-label="Ask coach">
+      <span aria-hidden>✦</span>
+      Coach
+    </Link>
   );
 }

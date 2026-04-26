@@ -1,0 +1,2 @@
+ALTER TABLE "activity" ADD COLUMN "matched_workout_id" uuid;--> statement-breakpoint
+ALTER TABLE "activity" ADD CONSTRAINT "activity_matched_workout_id_workout_id_fk" FOREIGN KEY ("matched_workout_id") REFERENCES "public"."workout"("id") ON DELETE set null ON UPDATE no action;
