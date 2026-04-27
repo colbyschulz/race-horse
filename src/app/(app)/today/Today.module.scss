@@ -5,6 +5,14 @@
   padding: var(--space-6) var(--space-4);
   max-width: 680px;
   margin: 0 auto;
+  // Lock to the available viewport so nothing on this page scrolls
+  height: calc(100dvh - var(--shell-tabbar-height) - var(--space-3) * 2);
+  box-sizing: border-box;
+  overflow: hidden;
+
+  @media (min-width: 768px) {
+    height: calc(100dvh - var(--space-6) * 2);
+  }
 }
 
 .header {
@@ -167,6 +175,15 @@
 }
 
 /* Up Next */
+.upNextSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
 .upNextList {
   list-style: none;
   padding: 0;

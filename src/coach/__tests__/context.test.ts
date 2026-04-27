@@ -37,7 +37,7 @@ describe("renderContextPrefix", () => {
     expect(out).toContain("2026-04-26");
     expect(out).toContain("mi");
     expect(out).toContain("Boston Build");
-    expect(out).toContain("Coach notes:");
+    expect(out).toContain("General coach notes:");
     expect(out).toContain("Goal: sub-3:05 Boston");
     expect(out).toContain("Today view");
   });
@@ -51,7 +51,7 @@ describe("renderContextPrefix", () => {
       fromLabel: null,
     });
     expect(out).not.toContain("Active plan:");
-    expect(out).not.toContain("Coach notes:");
+    expect(out).not.toContain("coach notes:");
     expect(out).not.toContain("opened coach from:");
   });
 });
@@ -80,5 +80,75 @@ describe("renderContextPrefix planFile branch", () => {
       today: "2026-04-27", units: "mi", activePlan: null, coachNotes: "", fromLabel: null,
     });
     expect(out).not.toContain("read_uploaded_file");
+  });
+});
+
+describe("renderContextPrefix build branch", () => {
+  it("includes Cold-start plan build flag when coldStartBuild is true", () => {
+    const out = renderContextPrefix({
+      today: "2026-04-27",
+      units: "mi",
+      activePlan: null,
+      coachNotes: "",
+      fromLabel: null,
+      coldStartBuild: true,
+    });
+    expect(out).toContain("Cold-start plan build: true");
+  });
+
+  it("omits Cold-start plan build line when flag is absent or false", () => {
+    const out = renderContextPrefix({
+      today: "2026-04-27",
+      units: "mi",
+      activePlan: null,
+      coachNotes: "",
+      fromLabel: null,
+    });
+    expect(out).not.toContain("Cold-start plan build");
+  });
+
+  it("includes a Strava preload section when stravaPreload is provided", () => {
+    const out = renderContextPrefix({
+      today: "2026-04-27",
+      units: "mi",
+      activePlan: null,
+      coachNotes: "",
+      fromLabel: null,
+      coldStartBuild: true,
+      stravaPreload: {
+        athlete_summary: {
+          four_week: { count: 1, total_distance_meters: 1, total_moving_time_seconds: 1, by_type: {} },
+          twelve_week: { count: 5, total_distance_meters: 5, total_moving_time_seconds: 5, by_type: {} },
+          fifty_two_week: { count: 10, total_distance_meters: 10, total_moving_time_seconds: 10, by_type: {} },
+        },
+        recent_activities_summary: { count: 5, total_distance_meters: 5, total_moving_time_seconds: 5 },
+        minimal: false,
+      },
+    });
+    expect(out).toContain("Strava preload");
+    // JSON shape sanity-check (whitespace-tolerant)
+    expect(out).toMatch(/"twelve_week"\s*:\s*\{[^}]*"count"\s*:\s*5/);
+    expect(out).not.toContain("Strava history: minimal");
+  });
+
+  it("flags Strava history: minimal when the preload says so", () => {
+    const out = renderContextPrefix({
+      today: "2026-04-27",
+      units: "mi",
+      activePlan: null,
+      coachNotes: "",
+      fromLabel: null,
+      coldStartBuild: true,
+      stravaPreload: {
+        athlete_summary: {
+          four_week: { count: 0, total_distance_meters: 0, total_moving_time_seconds: 0, by_type: {} },
+          twelve_week: { count: 0, total_distance_meters: 0, total_moving_time_seconds: 0, by_type: {} },
+          fifty_two_week: { count: 0, total_distance_meters: 0, total_moving_time_seconds: 0, by_type: {} },
+        },
+        recent_activities_summary: { count: 0, total_distance_meters: 0, total_moving_time_seconds: 0 },
+        minimal: true,
+      },
+    });
+    expect(out).toContain("Strava history: minimal");
   });
 });

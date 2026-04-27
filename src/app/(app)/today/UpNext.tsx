@@ -18,7 +18,7 @@ function fmtDur(s: number | null | undefined): string | null {
 
 export function UpNext({ workouts, units }: { workouts: WorkoutRow[]; units: "mi" | "km" }) {
   return (
-    <section className={styles.section}>
+    <section className={styles.upNextSection}>
       <h2 className={styles.h2}>Up next</h2>
       <ul className={styles.upNextList}>
         {workouts.map((w) => {

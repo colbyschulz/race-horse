@@ -1,13 +1,14 @@
 import { eq, and, sql, count } from "drizzle-orm";
 import { db } from "@/db";
 import { users, plans, workouts } from "@/db/schema";
-import { getAnthropic, COACH_MODEL } from "./anthropic";
+import { getAnthropic, COACH_MODEL, COACH_BUILD_MODEL } from "./anthropic";
 import { COACH_SYSTEM_PROMPT } from "./systemPrompt";
 import { renderContextPrefix, routeLabel } from "./context";
 import { loadHistory, appendMessage } from "./messages";
-import { TOOLS, HANDLERS, summarizeToolResult } from "./tools/index";
+import { getTools, getColdStartTools, HANDLERS, summarizeToolResult } from "./tools/index";
 import type { SSEEvent, ToolName, ContentBlock } from "./types";
 import type { Anthropic } from "@anthropic-ai/sdk";
+import type { StravaPreload } from "./stravaPreload";
 
 /**
  * Drop any trailing messages that form an incomplete tool_use/tool_result pair.
@@ -45,13 +46,16 @@ function sanitizeMessages(msgs: Anthropic.MessageParam[]): Anthropic.MessagePara
 export interface RunInput {
   userId: string;
   message: string;
+  planId?: string | null;
   fromRoute?: string;
   planFileId?: string;
   today: string; // YYYY-MM-DD
+  stravaPreload?: StravaPreload | null;
+  coldStartBuild?: boolean;
 }
 
 export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
-  const { userId, message, fromRoute, planFileId, today } = input;
+  const { userId, message, planId = null, fromRoute, planFileId, today } = input;
 
   try {
     // 1. Load user context (units + coach_notes + active plan summary)
@@ -119,6 +123,17 @@ export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
       };
     }
 
+    // Plan-specific coach notes
+    let planCoachNotes = "";
+    if (planId) {
+      const [planRow] = await db
+        .select({ coach_notes: plans.coach_notes })
+        .from(plans)
+        .where(and(eq(plans.id, planId), eq(plans.userId, userId)))
+        .limit(1);
+      planCoachNotes = planRow?.coach_notes ?? "";
+    }
+
     let planFileSummary: { id: string; original_filename: string; status: "extracting" | "extracted" | "failed"; extraction_error: string | null } | null = null;
     if (planFileId) {
       const { getPlanFileById } = await import("@/plans/files");
@@ -139,17 +154,20 @@ export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
       units,
       activePlan: activePlanSummary,
       coachNotes,
+      planCoachNotes,
       fromLabel: routeLabel(fromRoute),
       planFile: planFileSummary,
+      stravaPreload: input.stravaPreload ?? null,
+      coldStartBuild: input.coldStartBuild ?? false,
     });
 
     // 3. Persist user message
     await appendMessage(userId, "user", [
       { type: "text", text: `${contextPrefix}\n\n${message}` },
-    ]);
+    ], planId);
 
     // 4. Reload full history
-    const history = await loadHistory(userId);
+    const history = await loadHistory(userId, planId);
 
     // Build Anthropic messages array from history, stripping any trailing
     // incomplete tool_use/tool_result exchange from a previous crashed run.
@@ -180,10 +198,10 @@ export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
 
     while (true) {
       const stream = client.messages.stream({
-        model: COACH_MODEL,
+        model: input.coldStartBuild ? COACH_BUILD_MODEL : COACH_MODEL,
         max_tokens: 8096,
         system: systemBlocks,
-        tools: TOOLS,
+        tools: input.coldStartBuild ? getColdStartTools(planId) : getTools(planId),
         messages: currentMessages,
       });
 
@@ -261,7 +279,7 @@ export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
 
       if (effectiveStopReason !== "tool_use") {
         // Final turn — persist assistant message (text only, no tool_use blocks)
-        const storedMsg = await appendMessage(userId, "assistant", finalTurnBlocks);
+        const storedMsg = await appendMessage(userId, "assistant", finalTurnBlocks, planId);
         assistantMessageId = storedMsg.id;
         break;
       }
@@ -275,7 +293,7 @@ export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
       }[];
 
       // Persist intermediate assistant turn (with tool_use blocks) so history stays valid
-      await appendMessage(userId, "assistant", finalTurnBlocks as ContentBlock[]);
+      await appendMessage(userId, "assistant", finalTurnBlocks as ContentBlock[], planId);
 
       // Add assistant turn to in-memory messages
       currentMessages = [
@@ -296,7 +314,7 @@ export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
         let resultText: string;
 
         if (handler) {
-          resultValue = await handler(toolBlock.input, { userId });
+          resultValue = await handler(toolBlock.input, { userId, planId });
           resultText = JSON.stringify(resultValue);
         } else {
           resultValue = { error: `Unknown tool: ${toolName}` };
@@ -317,7 +335,7 @@ export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
       }
 
       // Persist tool results as a user turn so history stays valid across requests
-      await appendMessage(userId, "user", toolResultContent as ContentBlock[]);
+      await appendMessage(userId, "user", toolResultContent as ContentBlock[], planId);
 
       // Add tool results as user message in-memory
       currentMessages = [
@@ -330,6 +348,5 @@ export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     yield { type: "error", error: message };
-    throw err;
   }
 }

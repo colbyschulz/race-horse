@@ -34,7 +34,7 @@ export default async function TodayPage() {
           <h1 className={styles.date}>{formatLongDate(today)}</h1>
           {activePlan && <p className={styles.planTitle}>{activePlan.title}</p>}
         </div>
-        <CoachLink />
+        <CoachLink planId={activePlan?.id} />
       </header>
 
       {!activePlan && <NoActivePlan context="today" />}

@@ -41,6 +41,7 @@ export async function POST(req: Request): Promise<Response> {
         for await (const event of runCoach({
           userId: session.user.id!,
           message: body.message,
+          planId: body.plan_id ?? null,
           fromRoute: body.from_route,
           planFileId: body.plan_file_id,
           today: isoToday(),

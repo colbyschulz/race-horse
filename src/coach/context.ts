@@ -1,3 +1,5 @@
+import type { StravaPreload } from "./stravaPreload";
+
 type ActivePlanSummary = {
   title: string;
   weeks_left: number | null;
@@ -38,18 +40,21 @@ export function routeLabel(from: string | undefined | null): string | null {
 }
 
 export function renderContextPrefix(params: {
-  today: string;                       // YYYY-MM-DD
+  today: string;
   units: "mi" | "km";
   activePlan: ActivePlanSummary | null;
   coachNotes: string;
+  planCoachNotes?: string;
   fromLabel: string | null;
   planFile?: PlanFileSummary | null;
+  stravaPreload?: StravaPreload | null;
+  coldStartBuild?: boolean;
 }): string {
   const lines: string[] = [];
   lines.push(`<context>`);
   lines.push(`Today: ${params.today}`);
   lines.push(`User units: ${params.units}`);
-  if (params.activePlan) {
+  if (params.activePlan && !params.coldStartBuild) {
     const a = params.activePlan;
     const wks = a.weeks_left == null ? "indefinite" : `${a.weeks_left} weeks left`;
     lines.push(
@@ -58,8 +63,13 @@ export function renderContextPrefix(params: {
   }
   if (params.coachNotes.trim()) {
     lines.push(``);
-    lines.push(`Coach notes:`);
+    lines.push(`General coach notes:`);
     lines.push(params.coachNotes.trim());
+  }
+  if (params.planCoachNotes?.trim()) {
+    lines.push(``);
+    lines.push(`Plan notes (this plan only):`);
+    lines.push(params.planCoachNotes.trim());
   }
   if (params.fromLabel) {
     lines.push(``);
@@ -72,6 +82,26 @@ export function renderContextPrefix(params: {
     lines.push(`Filename: ${params.planFile.original_filename}`);
     lines.push(`Status: ${params.planFile.status}${params.planFile.extraction_error ? ` (error: ${params.planFile.extraction_error.slice(0, 256)})` : ""}`);
     lines.push(`Call \`read_uploaded_file({ plan_file_id })\` to read it and help build a plan.`);
+  }
+  if (params.coldStartBuild) {
+    lines.push(``);
+    lines.push(`Cold-start plan build: true`);
+  }
+  if (params.stravaPreload) {
+    lines.push(``);
+    lines.push(`Strava preload (last 12 weeks + 4/12/52 rollups):`);
+    lines.push(JSON.stringify(
+      {
+        athlete_summary: params.stravaPreload.athlete_summary,
+        recent_activities_summary: params.stravaPreload.recent_activities_summary,
+      },
+      null,
+      2,
+    ));
+    if (params.stravaPreload.minimal) {
+      lines.push(``);
+      lines.push(`Strava history: minimal`);
+    }
   }
   lines.push(`</context>`);
   return lines.join("\n");

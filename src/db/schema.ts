@@ -213,6 +213,7 @@ export const plans = pgTable(
     is_active: boolean("is_active").notNull().default(false),
     source: planSourceEnum("source").notNull(),
     source_file_id: uuid("source_file_id"),
+    coach_notes: text("coach_notes").notNull().default(""),
     created_at: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -256,6 +257,7 @@ export const messages = pgTable(
     user_id: uuid("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
+    plan_id: uuid("plan_id").references(() => plans.id, { onDelete: "cascade" }),
     role: messageRoleEnum("role").notNull(),
     // Anthropic content-block array. Preserves text + tool_use + tool_result + thinking blocks.
     content: jsonb("content").notNull(),
@@ -264,7 +266,7 @@ export const messages = pgTable(
       .defaultNow(),
   },
   (t) => [
-    index("message_user_created_idx").on(t.user_id, t.created_at),
+    index("message_user_plan_created_idx").on(t.user_id, t.plan_id, t.created_at),
   ],
 );
 

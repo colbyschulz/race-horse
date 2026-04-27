@@ -117,6 +117,7 @@ export async function listPlansWithCounts(
       is_active: plans.is_active,
       source: plans.source,
       source_file_id: plans.source_file_id,
+      coach_notes: plans.coach_notes,
       created_at: plans.created_at,
       updated_at: plans.updated_at,
       workout_count: totalCount,

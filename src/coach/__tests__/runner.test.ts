@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { SSEEvent } from "../types";
+import type { StravaPreload } from "../stravaPreload";
 
 // ---------------------------------------------------------------------------
 // DB mock
@@ -90,13 +91,15 @@ vi.mock("@/coach/anthropic", () => ({
     },
   }),
   COACH_MODEL: "claude-test",
+  COACH_BUILD_MODEL: "claude-test-build",
 }));
 
 // ---------------------------------------------------------------------------
 // Tools mock — replace HANDLERS with a simple mock
 // ---------------------------------------------------------------------------
 vi.mock("@/coach/tools/index", () => ({
-  TOOLS: [],
+  getTools: vi.fn().mockReturnValue([]),
+  getColdStartTools: vi.fn().mockReturnValue([]),
   HANDLERS: {
     get_active_plan: vi.fn().mockResolvedValue({ id: "plan-1", title: "Marathon Base" }),
   },
@@ -238,5 +241,58 @@ describe("runCoach", () => {
       expect.anything(),
       expect.objectContaining({ userId: "u1" }),
     );
+  });
+
+  it("passes stravaPreload and coldStartBuild to renderContextPrefix", async () => {
+    const preload: StravaPreload = {
+      athlete_summary: {
+        four_week: { count: 0, total_distance_meters: 0, total_moving_time_seconds: 0, by_type: {} },
+        twelve_week: { count: 0, total_distance_meters: 0, total_moving_time_seconds: 0, by_type: {} },
+        fifty_two_week: { count: 0, total_distance_meters: 0, total_moving_time_seconds: 0, by_type: {} },
+      },
+      recent_activities_summary: { count: 0, total_distance_meters: 0, total_moving_time_seconds: 0 },
+      minimal: true,
+    };
+
+    const streamEvents = [
+      { type: "content_block_start", index: 0, content_block: { type: "text", text: "" } },
+      { type: "content_block_delta", index: 0, delta: { type: "text_delta", text: "Hello!" } },
+      { type: "content_block_stop", index: 0 },
+      { type: "message_delta", delta: { stop_reason: "end_turn", stop_sequence: null, container: null, stop_details: null }, usage: { output_tokens: 5 } },
+      { type: "message_stop" },
+    ] as import("@anthropic-ai/sdk/resources/messages").RawMessageStreamEvent[];
+
+    const fakeStream = {
+      [Symbol.asyncIterator]: async function* () {
+        for (const e of streamEvents) yield e;
+      },
+      finalMessage: vi.fn().mockResolvedValue({
+        id: "msg-api",
+        stop_reason: "end_turn",
+        content: [{ type: "text", text: "Hello!" }],
+      }),
+    };
+    mockStream.mockReturnValue(fakeStream);
+
+    const { runCoach } = await import("../runner");
+    const gen = runCoach({
+      userId: "u1",
+      message: "hi",
+      today: "2026-04-27",
+      stravaPreload: preload,
+      coldStartBuild: true,
+    });
+    // Drain the generator (mocks short-circuit the Anthropic call).
+    for await (const _ of gen) { /* drain */ }
+
+    // The first appendMessage call (role="user") should contain a context prefix
+    // that includes both new sections.
+    const firstUserCall = (mockAppendMessage as unknown as { mock: { calls: unknown[][] } }).mock.calls.find(
+      (c) => c[1] === "user",
+    );
+    const content = firstUserCall?.[2] as { type: string; text: string }[];
+    const text = content[0]?.text ?? "";
+    expect(text).toContain("Cold-start plan build: true");
+    expect(text).toContain("Strava history: minimal");
   });
 });

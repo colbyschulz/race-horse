@@ -1,3 +1,4 @@
+import Link from "next/link";
 import styles from "./PlanActionRow.module.scss";
 
 interface Props {
@@ -8,9 +9,9 @@ interface Props {
 export function PlanActionRow({ onUpload, uploadDisabled }: Props) {
   return (
     <div className={styles.row} aria-label="Plan actions">
-      <a href="/coach?from=/plans" className={styles.btnPrimary}>
+      <Link href="/coach?intent=build" className={styles.btnPrimary}>
         <span className={styles.icon}>✦</span> Build with coach
-      </a>
+      </Link>
       <button
         type="button"
         disabled={uploadDisabled}

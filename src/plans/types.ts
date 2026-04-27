@@ -20,6 +20,7 @@ export type Plan = {
   is_active: boolean;
   source: PlanSource;
   source_file_id: string | null;
+  coach_notes: string;
   created_at: Date;
   updated_at: Date;
 };

@@ -61,7 +61,7 @@ export function TrainingClient({ planTitle, monday, weekTitle, weekRange, prevHr
           <h1 className={styles.pageTitle}>Training</h1>
           <p className={styles.pageSubtitle}>{planTitle}</p>
         </div>
-        <CoachLink />
+        <CoachLink planId={activePlanId} />
       </header>
       <WeekNavigator
         weekTitle={weekTitle}

@@ -8,6 +8,7 @@ export type ContentBlock = Anthropic.ContentBlockParam;
 export type StoredMessage = {
   id: string;
   role: Role;
+  plan_id: string | null;
   content: ContentBlock[];
   created_at: Date;
 };
@@ -25,11 +26,12 @@ export type ToolName =
   | "update_activity_match"
   | "get_athlete_summary"
   | "update_coach_notes"
+  | "update_plan_notes"
   | "read_uploaded_file";
 
 export type ToolHandler<I = unknown, O = unknown> = (
   input: I,
-  ctx: { userId: string },
+  ctx: { userId: string; planId?: string | null },
 ) => Promise<O>;
 
 export type SSEEvent =
@@ -43,4 +45,14 @@ export type ChatRequestBody = {
   message: string;
   from_route?: string; // e.g. "/today", "/training", "/plans"
   plan_file_id?: string;
+  plan_id?: string | null;
+};
+
+export type BuildRequestBody = {
+  sport: "run" | "bike";
+  goal_type: "race" | "indefinite";
+  race_date?: string;       // YYYY-MM-DD, required when goal_type === "race"
+  race_event?: string;      // required when goal_type === "race"
+  target_time?: string;     // optional
+  context?: string;         // optional free-text "Goals & context"
 };

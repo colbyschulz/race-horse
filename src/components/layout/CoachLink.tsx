@@ -4,9 +4,10 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import styles from "./CoachLink.module.scss";
 
-export function CoachLink() {
+export function CoachLink({ planId }: { planId?: string }) {
   const pathname = usePathname();
-  const href = `/coach?from=${encodeURIComponent(pathname ?? "/")}`;
+  const base = `/coach?from=${encodeURIComponent(pathname ?? "/")}`;
+  const href = planId ? `${base}&plan_id=${encodeURIComponent(planId)}` : base;
   return (
     <Link href={href} className={styles.link}>
       <span aria-hidden>✦</span> Ask Coach

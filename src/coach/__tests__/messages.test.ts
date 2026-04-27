@@ -19,7 +19,7 @@ vi.mock("@/db", () => ({
   },
 }));
 vi.mock("@/db/schema", () => ({
-  messages: { id: "id", user_id: "user_id", role: "role", content: "content", created_at: "created_at" },
+  messages: { id: "id", user_id: "user_id", plan_id: "plan_id", role: "role", content: "content", created_at: "created_at" },
 }));
 
 import { loadHistory, appendMessage, clearMessages } from "../messages";
@@ -31,7 +31,7 @@ describe("loadHistory", () => {
   });
   it("returns rows ordered by created_at asc", async () => {
     fromChain.orderBy.mockResolvedValueOnce([{ id: "m1" }, { id: "m2" }]);
-    const out = await loadHistory("u1");
+    const out = await loadHistory("u1", null);
     expect(out).toEqual([{ id: "m1" }, { id: "m2" }]);
     expect(fromChain.where).toHaveBeenCalled();
     expect(fromChain.orderBy).toHaveBeenCalled();
@@ -56,7 +56,7 @@ describe("appendMessage", () => {
 describe("clearMessages", () => {
   beforeEach(() => { deleteChain.where.mockClear().mockResolvedValue(undefined); });
   it("issues DELETE scoped to user", async () => {
-    await clearMessages("u1");
+    await clearMessages("u1", null);
     expect(deleteChain.where).toHaveBeenCalledOnce();
   });
 });

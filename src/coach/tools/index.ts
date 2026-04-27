@@ -32,7 +32,12 @@ import {
 } from "./activities";
 
 // Notes
-import { update_coach_notes, update_coach_notes_handler } from "./notes";
+import {
+  update_coach_notes,
+  update_coach_notes_handler,
+  update_plan_notes,
+  update_plan_notes_handler,
+} from "./notes";
 
 // Files
 import { readUploadedFileTool, read_uploaded_file_handler } from "./files";
@@ -41,7 +46,7 @@ import { readUploadedFileTool, read_uploaded_file_handler } from "./files";
 // Tool definitions
 // ---------------------------------------------------------------------------
 
-export const TOOLS: Anthropic.Messages.Tool[] = [
+const BASE_TOOLS: Anthropic.Messages.Tool[] = [
   getActivePlanTool,
   listPlansTool,
   getPlanTool,
@@ -57,6 +62,23 @@ export const TOOLS: Anthropic.Messages.Tool[] = [
   { type: "web_search_20260209", name: "web_search" } as unknown as Anthropic.Messages.Tool,
   readUploadedFileTool,
 ];
+
+/** Returns the tool list for a conversation. Plan-context adds update_plan_notes. */
+export function getTools(planId: string | null): Anthropic.Messages.Tool[] {
+  return planId ? [...BASE_TOOLS, update_plan_notes] : BASE_TOOLS;
+}
+
+// During a cold-start build the coach has Strava preloaded and only needs to
+// create + populate a new plan. Strip plan-read and plan-management tools so
+// the model can't accidentally read or modify the existing active plan.
+const COLD_START_EXCLUDED = new Set(["get_active_plan", "list_plans", "get_plan", "set_active_plan", "archive_plan"]);
+export function getColdStartTools(planId: string | null): Anthropic.Messages.Tool[] {
+  return getTools(planId).filter((t) => !COLD_START_EXCLUDED.has(t.name));
+}
+
+// Keep TOOLS / COLD_START_TOOLS as aliases for compatibility (no plan context).
+export const TOOLS = BASE_TOOLS;
+export const COLD_START_TOOLS = getColdStartTools(null);
 
 // ---------------------------------------------------------------------------
 // Handlers
@@ -78,6 +100,7 @@ export const HANDLERS: Record<ToolName, ToolHandler> = {
   update_activity_match: update_activity_match_handler as AnyHandler,
   get_athlete_summary: get_athlete_summary_handler as AnyHandler,
   update_coach_notes: update_coach_notes_handler as AnyHandler,
+  update_plan_notes: update_plan_notes_handler as AnyHandler,
   read_uploaded_file: read_uploaded_file_handler as AnyHandler,
 };
 
@@ -111,7 +134,9 @@ export function summarizeToolResult(name: ToolName, result: unknown): string {
     case "get_athlete_summary":
       return "Read athlete summary";
     case "update_coach_notes":
-      return "Updated coach notes";
+      return "Updated general notes";
+    case "update_plan_notes":
+      return "Updated plan notes";
     case "read_uploaded_file":
       return "Read uploaded file";
   }

@@ -65,7 +65,7 @@ export function WorkoutDetailSheet({ workout, planId = "", units, onClose }: Pro
   const t = hasNotes ? ({} as TargetIntensity) : ((workout.target_intensity ?? {}) as TargetIntensity);
   const intervals = hasNotes ? null : ((workout.intervals ?? null) as IntervalSpec[] | null);
   const headline = TYPE_HEADLINE[workout.type] ?? workout.type;
-  const coachHref = `/coach?from=${encodeURIComponent(`/plans/${planId}/${workout.date}`)}`;
+  const coachHref = `/coach?from=${encodeURIComponent(`/plans/${planId}`)}&from_label=${encodeURIComponent(`${headline} — ${workout.date}`)}`;
   const paceText = t.pace ? fmtPaceRange(t.pace, units) : null;
 
   return (
