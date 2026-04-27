@@ -18,6 +18,7 @@ export function Skeleton({
 }: Props) {
   return (
     <div
+      aria-hidden="true"
       className={`${styles.skeleton}${className ? ` ${className}` : ""}`}
       style={{ width, height, borderRadius, ...style }}
     />
