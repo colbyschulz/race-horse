@@ -5,6 +5,7 @@ import { db } from "@/db";
 import { users } from "@/db/schema";
 import { SettingsForm } from "./SettingsForm";
 import { CoachNotesEditor } from "@/components/coach/CoachNotesEditor";
+import styles from "./Settings.module.scss";
 
 export default async function SettingsPage() {
   const session = await auth();
@@ -18,10 +19,10 @@ export default async function SettingsPage() {
   const coachNotes = rows[0]?.coach_notes ?? "";
 
   return (
-    <>
-      <h1>Settings</h1>
+    <div className={styles.page}>
+      <h1 className={styles.header}>Settings</h1>
       <SettingsForm initial={session.user.preferences} />
       <CoachNotesEditor initialContent={coachNotes} />
-    </>
+    </div>
   );
 }

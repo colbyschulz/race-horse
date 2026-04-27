@@ -48,3 +48,11 @@ export async function getNextWorkouts(
     .orderBy(asc(workouts.date))
     .limit(n);
 }
+
+export async function getWorkoutsForPlan(planId: string): Promise<WorkoutRow[]> {
+  return db
+    .select()
+    .from(workouts)
+    .where(eq(workouts.plan_id, planId))
+    .orderBy(asc(workouts.date));
+}

@@ -40,5 +40,5 @@ export type SSEEvent =
 
 export type ChatRequestBody = {
   message: string;
-  from_route?: string; // e.g. "/today", "/calendar", "/plans"
+  from_route?: string; // e.g. "/today", "/training", "/plans"
 };

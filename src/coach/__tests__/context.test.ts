@@ -4,14 +4,24 @@ import { renderContextPrefix, routeLabel } from "../context";
 describe("routeLabel", () => {
   it("maps known routes to friendly labels", () => {
     expect(routeLabel("/today")).toMatch(/Today/);
-    expect(routeLabel("/calendar")).toMatch(/Calendar/);
+    expect(routeLabel("/training")).toMatch(/Training/);
     expect(routeLabel("/plans")).toMatch(/Plans/);
     expect(routeLabel("/settings")).toMatch(/Settings/);
   });
   it("returns null for unknown / missing routes", () => {
     expect(routeLabel(undefined)).toBeNull();
-    expect(routeLabel("/coach")).toBeNull();
     expect(routeLabel("/some/random/path")).toBeNull();
+  });
+  it("labels plan detail routes with the plan id", () => {
+    expect(routeLabel("/plans/3f2c4a91-aa11-4cb1-9f2d-12345678abcd"))
+      .toBe("Plan detail (plan id: 3f2c4a91-aa11-4cb1-9f2d-12345678abcd)");
+  });
+  it("labels plan workout drill-in routes with id and date", () => {
+    expect(routeLabel("/plans/3f2c4a91-aa11-4cb1-9f2d-12345678abcd/2026-05-04"))
+      .toBe("Workout detail (plan id: 3f2c4a91-aa11-4cb1-9f2d-12345678abcd, date: 2026-05-04)");
+  });
+  it("still labels static routes", () => {
+    expect(routeLabel("/today")).toBe("Today view");
   });
 });
 

@@ -1,0 +1,144 @@
+.agenda { display: flex; flex-direction: column; }
+
+.row {
+  border-bottom: 1px solid var(--color-border-subtle);
+  &:last-of-type { border-bottom: none; }
+}
+
+.rowToday {
+  background: var(--color-brown-subtle);
+  margin: 0 calc(var(--space-4) * -1);
+  padding: 0 var(--space-4);
+}
+
+.btn {
+  appearance: none;
+  background: transparent;
+  border: none;
+  width: 100%;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 13px 0;
+  cursor: pointer;
+  &:disabled { cursor: default; opacity: 1; }
+  &:not(:disabled):hover { opacity: 0.75; }
+}
+
+.dayLabel {
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: var(--color-fg-tertiary);
+  width: 52px;
+  flex-shrink: 0;
+}
+
+.dayLabelToday {
+  color: var(--color-brown);
+  font-weight: 600;
+}
+
+.rest {
+  font-size: 0.875rem;
+  color: var(--color-fg-tertiary);
+}
+
+.now {
+  margin-left: auto;
+  font-size: 0.625rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--color-brown);
+}
+
+.meta {
+  margin-left: auto;
+  display: flex;
+  align-items: baseline;
+  gap: 3px;
+}
+
+.metaVal {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--color-fg-primary);
+}
+
+.metaUnit {
+  font-size: 0.6875rem;
+  color: var(--color-fg-tertiary);
+}
+
+.metaSep {
+  font-size: 0.6875rem;
+  color: var(--color-fg-tertiary);
+  margin: 0 1px;
+}
+
+.activityRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 5px 0 7px calc(52px + var(--space-3));
+  border-top: 1px solid var(--color-border-subtle);
+  text-decoration: none;
+  cursor: pointer;
+
+  &:hover {
+    .activityName { text-decoration: underline; }
+  }
+}
+
+.activityDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--color-olive);
+  flex-shrink: 0;
+}
+
+.activityName {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--color-olive);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.activityMeta {
+  font-size: 0.75rem;
+  color: var(--color-fg-tertiary);
+  flex-shrink: 0;
+}
+
+.weekTotal {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) 0;
+  margin-top: var(--space-2);
+  border-top: 1px solid var(--color-border-default);
+}
+
+.totalLabel {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-fg-tertiary);
+}
+
+.totalValue {
+  font-family: var(--font-display);
+  font-size: 0.9375rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--color-fg-primary);
+}

@@ -17,7 +17,7 @@ export const authConfig = {
       const path = request.nextUrl.pathname;
       const isAppRoute =
         path.startsWith("/today") ||
-        path.startsWith("/calendar") ||
+        path.startsWith("/training") ||
         path.startsWith("/plans") ||
         path.startsWith("/settings");
       if (isAppRoute && !isLoggedIn) return false;

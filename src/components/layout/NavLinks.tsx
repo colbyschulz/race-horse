@@ -6,7 +6,7 @@ import styles from "./AppShell.module.scss";
 
 const LINKS = [
   { href: "/today", label: "Today" },
-  { href: "/calendar", label: "Calendar" },
+  { href: "/training", label: "Training" },
   { href: "/plans", label: "Plans" },
   { href: "/settings", label: "Settings" },
 ] as const;

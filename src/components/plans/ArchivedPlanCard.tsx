@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import styles from "./ArchivedPlanCard.module.scss";
 import { formatDuration, formatSport } from "@/plans/stats";
 import type { PlanWithCounts } from "@/plans/types";
@@ -21,40 +22,25 @@ function formatMonthYear(iso: string): string {
 
 interface Props {
   plan: PlanWithCounts;
-  onRestore: () => void;
-  onDelete: () => void;
-  busy?: boolean;
 }
 
-export function ArchivedPlanCard({ plan, onRestore, onDelete, busy }: Props) {
+export function ArchivedPlanCard({ plan }: Props) {
   return (
-    <article className={styles.card}>
-      <div className={styles.headRow}>
-        <h3 className={styles.title}>{plan.title}</h3>
-      </div>
-      <div className={styles.metaRow}>
-        <span className={styles.metaItem}>
-          {formatSport(plan.sport)} · {formatDuration(plan.start_date, plan.end_date)} · {SOURCE_LABEL[plan.source] ?? plan.source}
-        </span>
-        <span className={styles.metaItem}>{formatMonthYear(plan.start_date)}</span>
-        <span className={styles.spacer} />
-        <button
-          type="button"
-          onClick={onRestore}
-          disabled={busy}
-          className={styles.actionGhost}
-        >
-          Restore
-        </button>
-        <button
-          type="button"
-          onClick={onDelete}
-          disabled={busy}
-          className={styles.actionDanger}
-        >
-          Delete
-        </button>
-      </div>
-    </article>
+    <Link
+      href={`/plans/${plan.id}`}
+      style={{ display: "block", textDecoration: "none", color: "inherit" }}
+    >
+      <article className={styles.card}>
+        <div className={styles.headRow}>
+          <h3 className={styles.title}>{plan.title}</h3>
+        </div>
+        <div className={styles.metaRow}>
+          <span className={styles.metaItem}>
+            {formatSport(plan.sport)} · {formatDuration(plan.start_date, plan.end_date)} · {SOURCE_LABEL[plan.source] ?? plan.source}
+          </span>
+          <span className={styles.metaItem}>{formatMonthYear(plan.start_date)}</span>
+        </div>
+      </article>
+    </Link>
   );
 }

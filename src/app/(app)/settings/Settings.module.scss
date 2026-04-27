@@ -16,18 +16,3 @@
   color: var(--color-fg-primary);
   margin: 0;
 }
-
-.archivedLabel {
-  font-family: var(--font-body);
-  font-size: 0.6875rem;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-  color: var(--color-fg-tertiary);
-  margin: var(--space-4) 0 var(--space-1);
-}
-
-.archivedList {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}

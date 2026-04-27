@@ -43,6 +43,8 @@ vi.mock("drizzle-orm", () => ({
   asc: vi.fn(),
 }));
 
+import { eq } from "drizzle-orm";
+
 import {
   getActivePlan,
   getWorkoutsForDateRange,
@@ -130,5 +132,23 @@ describe("getNextWorkouts", () => {
     expect(result).toEqual(workoutRows);
     // limit should be called twice: once with 1 (getActivePlan), once with n=3
     expect(fromChain.limit).toHaveBeenCalledWith(3);
+  });
+});
+
+// ---------- getWorkoutsForPlan ----------
+
+describe("getWorkoutsForPlan", () => {
+  beforeEach(resetChains);
+
+  it("returns rows for the given plan_id, ordered by date asc", async () => {
+    const rows = [
+      { id: "w1", plan_id: "p1", date: "2026-04-21", type: "easy" },
+      { id: "w2", plan_id: "p1", date: "2026-04-22", type: "tempo" },
+    ];
+    fromChain.orderBy.mockResolvedValueOnce(rows);
+    const { getWorkoutsForPlan } = await import("../dateQueries");
+    const result = await getWorkoutsForPlan("p1");
+    expect(result).toEqual(rows);
+    expect(eq).toHaveBeenCalledWith(expect.anything(), "p1");
   });
 });
