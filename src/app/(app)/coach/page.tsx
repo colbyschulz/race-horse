@@ -1,8 +1,9 @@
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
 import { auth } from "@/auth";
-import { loadHistory } from "@/coach/messages";
 import { getPlanById } from "@/plans/queries";
-import { CoachPageClient } from "./CoachPageClient";
+import { MessagesSection } from "./MessagesSection";
+import { MessagesSkeleton } from "./MessagesSkeleton";
 
 const UUID_RE = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
 const PLAN_FROM_RE = new RegExp(`^/plans/(${UUID_RE})$`);
@@ -21,11 +22,9 @@ export default async function CoachPage({
   let planId: string | null = plan_id ?? null;
 
   if (planId) {
-    // Explicit plan_id (e.g. from Today/Training) — look up title for the pill
     const plan = await getPlanById(planId, userId);
     if (plan) fromLabel = fromLabel ?? plan.title;
   } else if (from) {
-    // Derive plan_id from plan detail URL
     const planMatch = from.match(PLAN_FROM_RE);
     if (planMatch) {
       planId = planMatch[1];
@@ -36,15 +35,16 @@ export default async function CoachPage({
     }
   }
 
-  const messages = await loadHistory(userId, planId);
   return (
-    <CoachPageClient
-      initialMessages={messages}
-      fromRoute={from}
-      fromLabel={fromLabel}
-      planId={planId}
-      planFileId={plan_file_id}
-      intent={intent}
-    />
+    <Suspense fallback={<MessagesSkeleton />}>
+      <MessagesSection
+        userId={userId}
+        planId={planId}
+        fromRoute={from}
+        fromLabel={fromLabel}
+        planFileId={plan_file_id}
+        intent={intent}
+      />
+    </Suspense>
   );
 }
