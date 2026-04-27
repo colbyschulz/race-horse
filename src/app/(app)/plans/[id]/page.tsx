@@ -1,13 +1,13 @@
 import { notFound, redirect } from "next/navigation";
+import { Suspense } from "react";
 import { auth } from "@/auth";
 import { db } from "@/db";
 import { eq } from "drizzle-orm";
 import { users } from "@/db/schema";
 import { getPlanById } from "@/plans/queries";
-import { getWorkoutsForPlan } from "@/plans/dateQueries";
-import { getActivitiesForDateRange } from "@/strava/dateQueries";
 import { addDays, mondayOf, todayIso } from "@/lib/dates";
-import { PlanDetailClient } from "./PlanDetailClient";
+import { PlanWeekSection } from "./PlanWeekSection";
+import { WeekAgendaSkeleton } from "@/app/(app)/training/WeekAgendaSkeleton";
 import styles from "./PlanDetail.module.scss";
 
 export default async function PlanDetailPage({
@@ -23,15 +23,17 @@ export default async function PlanDetailPage({
   const { id } = await params;
   const { week } = await searchParams;
 
-  const plan = await getPlanById(id, userId);
+  const [[pref], plan] = await Promise.all([
+    db.select({ preferences: users.preferences }).from(users).where(eq(users.id, userId)).limit(1),
+    getPlanById(id, userId),
+  ]);
   if (!plan) notFound();
 
+  const units = (pref?.preferences?.units === "km" ? "km" : "mi") as "mi" | "km";
   const today = todayIso();
   const planFirstMonday = mondayOf(plan.start_date);
-  // Day-before trick: a plan ending on a Monday doesn't generate a spurious extra week
   const planLastMonday = plan.end_date ? mondayOf(addDays(plan.end_date, -1)) : null;
 
-  // Default to today's week if inside plan, else clamp to first/last week
   const defaultMonday =
     planLastMonday == null || mondayOf(today) <= planLastMonday
       ? mondayOf(today) >= planFirstMonday
@@ -39,40 +41,29 @@ export default async function PlanDetailPage({
         : planFirstMonday
       : planLastMonday;
 
-  const monday =
-    week && /^\d{4}-\d{2}-\d{2}$/.test(week) ? mondayOf(week) : defaultMonday;
+  const monday = week && /^\d{4}-\d{2}-\d{2}$/.test(week) ? mondayOf(week) : defaultMonday;
   const sunday = addDays(monday, 6);
 
   const prevDisabled = monday <= planFirstMonday;
   const nextDisabled = !!planLastMonday && monday >= planLastMonday;
   const isCurrentWeek = monday === mondayOf(today);
 
-  const [pref] = await db
-    .select({ preferences: users.preferences })
-    .from(users)
-    .where(eq(users.id, userId))
-    .limit(1);
-  const units = (pref?.preferences?.units === "km" ? "km" : "mi") as "mi" | "km";
-
-  const [allWorkouts, weekActivities] = await Promise.all([
-    getWorkoutsForPlan(plan.id),
-    getActivitiesForDateRange(userId, monday, sunday),
-  ]);
-
   return (
     <div className={styles.page}>
-      <PlanDetailClient
-        plan={plan}
-        monday={monday}
-        prevHref={prevDisabled ? null : `/plans/${id}?week=${addDays(monday, -7)}`}
-        nextHref={nextDisabled ? null : `/plans/${id}?week=${addDays(monday, 7)}`}
-        todayHref={`/plans/${id}`}
-        isCurrentWeek={isCurrentWeek}
-        allWorkouts={allWorkouts}
-        weekActivities={weekActivities}
-        today={today}
-        units={units}
-      />
+      <Suspense fallback={<WeekAgendaSkeleton />}>
+        <PlanWeekSection
+          plan={plan}
+          userId={userId}
+          monday={monday}
+          sunday={sunday}
+          prevHref={prevDisabled ? null : `/plans/${id}?week=${addDays(monday, -7)}`}
+          nextHref={nextDisabled ? null : `/plans/${id}?week=${addDays(monday, 7)}`}
+          todayHref={`/plans/${id}`}
+          isCurrentWeek={isCurrentWeek}
+          today={today}
+          units={units}
+        />
+      </Suspense>
     </div>
   );
 }
