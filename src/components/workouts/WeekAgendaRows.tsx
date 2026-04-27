@@ -81,7 +81,7 @@ export function WeekAgendaRows({ monday, byDate, activitiesByDate, today, units,
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                <span className={styles.activityDot} />
+                <span className={styles.activityLabel}>Completed</span>
                 <span className={styles.activityName}>{act.name}</span>
                 <span className={styles.activityMeta}>
                   {fmtDist(act.distance_meters, units)}{" "}{units}

@@ -35,13 +35,36 @@
   margin-top: var(--space-1);
 }
 
+// ── Top bar (Coach link, right-aligned) ──
+.topBar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  padding-bottom: var(--space-2);
+}
+
+.topBarCoach {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-brown);
+  text-decoration: none;
+  opacity: 0.9;
+
+  &:hover { opacity: 1; }
+}
+
 // ── Main content ──
 .main {
   flex: 1;
-  padding: var(--space-6);
-  padding-bottom: calc(var(--shell-tabbar-height) + var(--space-6));
+  padding: var(--space-3);
+  padding-bottom: calc(var(--shell-tabbar-height) + var(--space-3));
 
   @media (min-width: 768px) {
+    padding: var(--space-6);
     padding-bottom: var(--space-6);
   }
 }

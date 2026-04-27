@@ -93,12 +93,14 @@
   }
 }
 
-.activityDot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--color-olive);
+.activityLabel {
+  font-size: 0.625rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--color-olive);
   flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .activityName {

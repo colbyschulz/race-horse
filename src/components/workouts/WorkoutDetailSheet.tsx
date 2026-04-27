@@ -44,12 +44,12 @@ function fmtPaceRange(
 
 interface Props {
   workout: WorkoutRow | null;
-  planId: string;
+  planId?: string;
   units: "mi" | "km";
   onClose: () => void;
 }
 
-export function WorkoutDetailSheet({ workout, planId, units, onClose }: Props) {
+export function WorkoutDetailSheet({ workout, planId = "", units, onClose }: Props) {
   useEffect(() => {
     if (!workout) return;
     function onKey(e: KeyboardEvent) {
@@ -61,8 +61,9 @@ export function WorkoutDetailSheet({ workout, planId, units, onClose }: Props) {
 
   if (!workout) return null;
 
-  const t = (workout.target_intensity ?? {}) as TargetIntensity;
-  const intervals = (workout.intervals ?? null) as IntervalSpec[] | null;
+  const hasNotes = !!workout.notes;
+  const t = hasNotes ? ({} as TargetIntensity) : ((workout.target_intensity ?? {}) as TargetIntensity);
+  const intervals = hasNotes ? null : ((workout.intervals ?? null) as IntervalSpec[] | null);
   const headline = TYPE_HEADLINE[workout.type] ?? workout.type;
   const coachHref = `/coach?from=${encodeURIComponent(`/plans/${planId}/${workout.date}`)}`;
   const paceText = t.pace ? fmtPaceRange(t.pace, units) : null;
@@ -140,10 +141,14 @@ export function WorkoutDetailSheet({ workout, planId, units, onClose }: Props) {
               {intervals.map((iv, i) => (
                 <li key={i} className={styles.intervalRow}>
                   {iv.reps} ×{" "}
-                  {iv.distance_m != null
-                    ? `${(iv.distance_m / (units === "mi" ? 1609.344 : 1000)).toFixed(2)} ${units}`
-                    : null}
-                  {iv.duration_s != null ? `${fmtDur(iv.duration_s)}` : null}
+                  {[
+                    iv.distance_m != null
+                      ? `${(iv.distance_m / (units === "mi" ? 1609.344 : 1000)).toFixed(2)} ${units}`
+                      : null,
+                    iv.duration_s != null ? fmtDur(iv.duration_s) : null,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
                   {iv.target_intensity?.pace
                     ? ` @ ${fmtPaceRange(iv.target_intensity.pace, units)}`
                     : null}
@@ -160,9 +165,11 @@ export function WorkoutDetailSheet({ workout, planId, units, onClose }: Props) {
         {workout.notes && <p className={styles.notes}>{workout.notes}</p>}
 
         <div className={styles.footer}>
-          <Link href={coachHref} className={styles.askCoach}>
-            Ask coach about this workout →
-          </Link>
+          {planId && (
+            <Link href={coachHref} className={styles.askCoach}>
+              Ask coach about this workout →
+            </Link>
+          )}
           <button type="button" className={styles.closeBtn} onClick={onClose}>
             Close
           </button>

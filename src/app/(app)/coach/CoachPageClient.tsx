@@ -12,9 +12,10 @@ import { ClearChatDialog } from "@/components/coach/ClearChatDialog";
 interface Props {
   initialMessages: StoredMessage[];
   fromRoute?: string;
+  planFileId?: string;
 }
 
-export function CoachPageClient({ initialMessages, fromRoute }: Props) {
+export function CoachPageClient({ initialMessages, fromRoute, planFileId }: Props) {
   const [messages, setMessages] = useState<StoredMessage[]>(initialMessages);
   const [streaming, setStreaming] = useState<{ text: string; tools: { name: string; summary?: string }[] } | null>(null);
   const [sending, setSending] = useState(false);
@@ -43,7 +44,7 @@ export function CoachPageClient({ initialMessages, fromRoute }: Props) {
       const res = await fetch("/api/coach/chat", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ message: text, from_route: fromRoute }),
+        body: JSON.stringify({ message: text, from_route: fromRoute, plan_file_id: planFileId ?? undefined }),
       });
       if (!res.ok || !res.body) throw new Error(`chat failed: ${res.status}`);
 

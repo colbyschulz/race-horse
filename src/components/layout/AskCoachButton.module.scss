@@ -5,8 +5,9 @@
   height: 44px;
   padding: 0 var(--space-6);
   border-radius: var(--radius-pill);
-  background: var(--color-brown);
+  background: color-mix(in srgb, var(--color-brown) 85%, transparent);
   color: #ffffff;
+  backdrop-filter: blur(4px);
   border: none;
   font-family: var(--font-body);
   font-weight: 500;
@@ -19,7 +20,7 @@
   transition: background 120ms ease;
 
   &:hover {
-    background: var(--color-brown-hover);
+    background: color-mix(in srgb, var(--color-brown-hover) 85%, transparent);
   }
 
   @media (min-width: 768px) {

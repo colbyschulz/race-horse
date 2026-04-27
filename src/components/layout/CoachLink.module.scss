@@ -1,0 +1,20 @@
+.link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-body);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: #fff;
+  text-decoration: none;
+  white-space: nowrap;
+  flex-shrink: 0;
+  align-self: flex-start;
+  background: var(--color-brown);
+  border-radius: var(--radius-pill);
+  padding: 4px 10px;
+
+  &:hover {
+    opacity: 0.85;
+  }
+}

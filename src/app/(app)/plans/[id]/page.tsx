@@ -4,21 +4,11 @@ import { db } from "@/db";
 import { eq } from "drizzle-orm";
 import { users } from "@/db/schema";
 import { getPlanById } from "@/plans/queries";
-import { getWorkoutsForDateRange, getWorkoutsForPlan } from "@/plans/dateQueries";
+import { getWorkoutsForPlan } from "@/plans/dateQueries";
 import { getActivitiesForDateRange } from "@/strava/dateQueries";
 import { addDays, mondayOf, todayIso } from "@/lib/dates";
 import { PlanDetailClient } from "./PlanDetailClient";
 import styles from "./PlanDetail.module.scss";
-
-function fmtShortDate(iso: string): string {
-  return new Date(iso + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" });
-}
-
-function weekIndexFromStart(planStart: string, monday: string): number {
-  const startMon = mondayOf(planStart);
-  const ms = new Date(monday + "T00:00:00").getTime() - new Date(startMon + "T00:00:00").getTime();
-  return Math.round(ms / (7 * 24 * 60 * 60 * 1000)) + 1;
-}
 
 export default async function PlanDetailPage({
   params,
@@ -41,7 +31,7 @@ export default async function PlanDetailPage({
   // Day-before trick: a plan ending on a Monday doesn't generate a spurious extra week
   const planLastMonday = plan.end_date ? mondayOf(addDays(plan.end_date, -1)) : null;
 
-  // Default to today's week if inside plan, else plan start
+  // Default to today's week if inside plan, else clamp to first/last week
   const defaultMonday =
     planLastMonday == null || mondayOf(today) <= planLastMonday
       ? mondayOf(today) >= planFirstMonday
@@ -55,14 +45,7 @@ export default async function PlanDetailPage({
 
   const prevDisabled = monday <= planFirstMonday;
   const nextDisabled = !!planLastMonday && monday >= planLastMonday;
-
-  const weekIndex = weekIndexFromStart(plan.start_date, monday);
-  const weekTitle = `Week ${weekIndex}`;
-  const weekRange = `${fmtShortDate(monday)} – ${fmtShortDate(sunday)}`;
-
   const isCurrentWeek = monday === mondayOf(today);
-  const insidePlan =
-    monday >= planFirstMonday && (planLastMonday == null || monday <= planLastMonday);
 
   const [pref] = await db
     .select({ preferences: users.preferences })
@@ -71,10 +54,8 @@ export default async function PlanDetailPage({
     .limit(1);
   const units = (pref?.preferences?.units === "km" ? "km" : "mi") as "mi" | "km";
 
-  // All workouts needed for chart/stats; weekly workouts for the agenda
-  const [allWorkouts, weekWorkouts, weekActivities] = await Promise.all([
+  const [allWorkouts, weekActivities] = await Promise.all([
     getWorkoutsForPlan(plan.id),
-    getWorkoutsForDateRange(userId, monday, sunday),
     getActivitiesForDateRange(userId, monday, sunday),
   ]);
 
@@ -83,14 +64,11 @@ export default async function PlanDetailPage({
       <PlanDetailClient
         plan={plan}
         monday={monday}
-        weekTitle={insidePlan ? weekTitle : fmtShortDate(monday)}
-        weekRange={weekRange}
         prevHref={prevDisabled ? null : `/plans/${id}?week=${addDays(monday, -7)}`}
         nextHref={nextDisabled ? null : `/plans/${id}?week=${addDays(monday, 7)}`}
         todayHref={`/plans/${id}`}
         isCurrentWeek={isCurrentWeek}
         allWorkouts={allWorkouts}
-        weekWorkouts={weekWorkouts}
         weekActivities={weekActivities}
         today={today}
         units={units}

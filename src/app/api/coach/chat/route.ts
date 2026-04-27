@@ -42,6 +42,7 @@ export async function POST(req: Request): Promise<Response> {
           userId: session.user.id!,
           message: body.message,
           fromRoute: body.from_route,
+          planFileId: body.plan_file_id,
           today: isoToday(),
         })) {
           controller.enqueue(enc.encode(sse(event)));

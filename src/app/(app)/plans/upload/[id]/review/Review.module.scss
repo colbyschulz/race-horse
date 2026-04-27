@@ -1,0 +1,108 @@
+// Review page — only review-specific styles. Layout chrome is owned by PlanView.
+
+.page {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: var(--space-4) var(--space-3);
+
+  @media (min-width: 768px) {
+    padding: var(--space-6) var(--space-4);
+  }
+}
+
+// Header used only in extracting/failed pre-extraction state
+.header { display: flex; flex-direction: column; gap: var(--space-1); }
+.title  { font-family: var(--font-display); font-size: clamp(1.5rem, 4vw, 2.25rem); font-weight: 700; letter-spacing: -0.02em; line-height: 1; color: var(--color-fg-primary); margin: 0; }
+.sub    { font-size: 0.875rem; color: var(--color-fg-tertiary); margin: 0; }
+
+// Save / Discard / Set active actions (rendered in PlanView's actionsBar)
+.toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 0.8125rem;
+  color: var(--color-fg-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.checkbox {
+  accent-color: var(--color-brown);
+  width: 1rem;
+  height: 1rem;
+  cursor: pointer;
+}
+
+.btnPrimary, .btnGhost {
+  font-size: 0.875rem;
+  font-weight: 600;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+
+  &:disabled { opacity: 0.5; cursor: not-allowed; }
+}
+
+.btnPrimary {
+  background: var(--color-brown);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.spinner, .spinnerDark {
+  width: 0.875rem;
+  height: 0.875rem;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+  flex-shrink: 0;
+}
+
+.spinner {
+  border: 2px solid rgba(255,255,255,0.35);
+  border-top-color: #fff;
+}
+
+.spinnerDark {
+  border: 2px solid var(--color-border-default);
+  border-top-color: var(--color-fg-secondary);
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.btnGhost {
+  background: transparent;
+  color: var(--color-fg-secondary);
+  border-color: var(--color-border-default);
+}
+
+.btnDanger {
+  background: transparent;
+  color: #B83232;
+  border-color: #B83232;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.confirmLabel {
+  font-size: 0.8125rem;
+  color: var(--color-fg-secondary);
+  white-space: nowrap;
+}
+
+.errorBanner {
+  color: #B83232;
+  font-size: 0.875rem;
+  padding: var(--space-3);
+  background: color-mix(in srgb, #B83232 8%, transparent);
+  border-radius: var(--radius-md);
+  margin: 0;
+}

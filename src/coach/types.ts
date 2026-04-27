@@ -24,7 +24,8 @@ export type ToolName =
   | "get_activity_laps"
   | "update_activity_match"
   | "get_athlete_summary"
-  | "update_coach_notes";
+  | "update_coach_notes"
+  | "read_uploaded_file";
 
 export type ToolHandler<I = unknown, O = unknown> = (
   input: I,
@@ -41,4 +42,5 @@ export type SSEEvent =
 export type ChatRequestBody = {
   message: string;
   from_route?: string; // e.g. "/today", "/training", "/plans"
+  plan_file_id?: string;
 };

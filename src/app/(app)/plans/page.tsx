@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { listPlansWithCounts } from "@/plans/queries";
+import { listInFlightPlanFiles } from "@/plans/files";
 import { PlansPageClient } from "./PlansPageClient";
 
 function isoToday(): string {
@@ -12,7 +13,10 @@ export default async function PlansPage() {
   if (!session?.user?.id) redirect("/");
 
   const today = isoToday();
-  const plans = await listPlansWithCounts(session.user.id, today);
+  const [plans, planFiles] = await Promise.all([
+    listPlansWithCounts(session.user.id, today),
+    listInFlightPlanFiles(session.user.id),
+  ]);
 
-  return <PlansPageClient plans={plans} today={today} />;
+  return <PlansPageClient plans={plans} today={today} planFiles={planFiles} />;
 }

@@ -46,11 +46,12 @@ export interface RunInput {
   userId: string;
   message: string;
   fromRoute?: string;
+  planFileId?: string;
   today: string; // YYYY-MM-DD
 }
 
 export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
-  const { userId, message, fromRoute, today } = input;
+  const { userId, message, fromRoute, planFileId, today } = input;
 
   try {
     // 1. Load user context (units + coach_notes + active plan summary)
@@ -118,6 +119,20 @@ export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
       };
     }
 
+    let planFileSummary: { id: string; original_filename: string; status: "extracting" | "extracted" | "failed"; extraction_error: string | null } | null = null;
+    if (planFileId) {
+      const { getPlanFileById } = await import("@/plans/files");
+      const f = await getPlanFileById(planFileId, userId);
+      if (f) {
+        planFileSummary = {
+          id: f.id,
+          original_filename: f.original_filename,
+          status: f.status,
+          extraction_error: f.extraction_error,
+        };
+      }
+    }
+
     // 2. Build context prefix
     const contextPrefix = renderContextPrefix({
       today,
@@ -125,6 +140,7 @@ export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
       activePlan: activePlanSummary,
       coachNotes,
       fromLabel: routeLabel(fromRoute),
+      planFile: planFileSummary,
     });
 
     // 3. Persist user message

@@ -34,6 +34,9 @@ import {
 // Notes
 import { update_coach_notes, update_coach_notes_handler } from "./notes";
 
+// Files
+import { readUploadedFileTool, read_uploaded_file_handler } from "./files";
+
 // ---------------------------------------------------------------------------
 // Tool definitions
 // ---------------------------------------------------------------------------
@@ -52,6 +55,7 @@ export const TOOLS: Anthropic.Messages.Tool[] = [
   get_athlete_summary,
   update_coach_notes,
   { type: "web_search_20260209", name: "web_search" } as unknown as Anthropic.Messages.Tool,
+  readUploadedFileTool,
 ];
 
 // ---------------------------------------------------------------------------
@@ -74,6 +78,7 @@ export const HANDLERS: Record<ToolName, ToolHandler> = {
   update_activity_match: update_activity_match_handler as AnyHandler,
   get_athlete_summary: get_athlete_summary_handler as AnyHandler,
   update_coach_notes: update_coach_notes_handler as AnyHandler,
+  read_uploaded_file: read_uploaded_file_handler as AnyHandler,
 };
 
 // ---------------------------------------------------------------------------
@@ -107,5 +112,7 @@ export function summarizeToolResult(name: ToolName, result: unknown): string {
       return "Read athlete summary";
     case "update_coach_notes":
       return "Updated coach notes";
+    case "read_uploaded_file":
+      return "Read uploaded file";
   }
 }

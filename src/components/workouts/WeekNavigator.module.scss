@@ -5,6 +5,8 @@
   gap: var(--space-3);
   padding: var(--space-3) 0;
   border-bottom: 1px solid var(--color-border-subtle);
+  background: var(--color-bg);
+  z-index: 5;
 }
 
 .left {
@@ -76,31 +78,33 @@
 }
 
 .todaySlot {
-  width: 36px;
-  height: 36px;
+  min-width: 36px;
   display: inline-flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   flex-shrink: 0;
 }
 
 .todayIcon {
   appearance: none;
-  width: 26px;
-  height: 26px;
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  border-radius: 50%;
+  gap: 4px;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: var(--radius-pill);
   border: 1px solid var(--color-brown);
   background: transparent;
   color: var(--color-brown);
   cursor: pointer;
   text-decoration: none;
+  font-family: var(--font-body);
   font-size: 0.625rem;
-  font-weight: 700;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
   line-height: 1;
-  letter-spacing: 0;
 
   &:hover { background: var(--color-brown-subtle); }
 }

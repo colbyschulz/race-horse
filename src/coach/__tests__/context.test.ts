@@ -55,3 +55,30 @@ describe("renderContextPrefix", () => {
     expect(out).not.toContain("opened coach from:");
   });
 });
+
+describe("renderContextPrefix planFile branch", () => {
+  it("includes file-help block when planFile is provided", () => {
+    const out = renderContextPrefix({
+      today: "2026-04-27",
+      units: "mi",
+      activePlan: null,
+      coachNotes: "",
+      fromLabel: "Plans / manage page",
+      planFile: {
+        id: "f1",
+        original_filename: "plan.pdf",
+        status: "failed",
+        extraction_error: "couldn't parse",
+      },
+    });
+    expect(out).toContain("plan.pdf");
+    expect(out).toContain("f1");
+    expect(out).toContain("read_uploaded_file");
+  });
+  it("omits the block when planFile is null", () => {
+    const out = renderContextPrefix({
+      today: "2026-04-27", units: "mi", activePlan: null, coachNotes: "", fromLabel: null,
+    });
+    expect(out).not.toContain("read_uploaded_file");
+  });
+});

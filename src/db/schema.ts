@@ -51,6 +51,12 @@ export const workoutTypeEnum = pgEnum("workout_type", [
 
 export const messageRoleEnum = pgEnum("message_role", ["user", "assistant"]);
 
+export const planFileStatusEnum = pgEnum("plan_file_status", [
+  "extracting",
+  "extracted",
+  "failed",
+]);
+
 export type Goal = {
   race_date?: string;
   race_distance?: string;
@@ -259,5 +265,32 @@ export const messages = pgTable(
   },
   (t) => [
     index("message_user_created_idx").on(t.user_id, t.created_at),
+  ],
+);
+
+export const planFiles = pgTable(
+  "plan_file",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    blob_url: text("blob_url").notNull(),
+    original_filename: text("original_filename").notNull(),
+    mime_type: text("mime_type").notNull(),
+    size_bytes: integer("size_bytes").notNull(),
+    status: planFileStatusEnum("status").notNull(),
+    extraction_error: text("extraction_error"),
+    extracted_payload: jsonb("extracted_payload"),
+    extracted_plan_id: uuid("extracted_plan_id").references(() => plans.id, { onDelete: "set null" }),
+    created_at: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updated_at: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index("plan_file_user_idx").on(t.userId, t.created_at),
   ],
 );

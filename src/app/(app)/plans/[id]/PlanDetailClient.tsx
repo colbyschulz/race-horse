@@ -2,13 +2,11 @@
 import { useMemo, useState } from "react";
 import type { WorkoutRow } from "@/plans/dateQueries";
 import type { ActivityRow } from "@/strava/dateQueries";
-import { PlanHeader } from "./PlanHeader";
-import { PlanStats } from "./PlanStats";
-import { MileageChart } from "./MileageChart";
-import { WeekNavigator } from "@/components/workouts/WeekNavigator";
-import { WeekAgendaRows } from "@/components/workouts/WeekAgendaRows";
+import type { Goal } from "@/db/schema";
+import { PlanView } from "@/components/plans/PlanView";
+import { PlanStatusActions } from "@/components/plans/PlanStatusActions";
 import { WorkoutDetailSheet } from "@/components/workouts/WorkoutDetailSheet";
-import styles from "./PlanDetail.module.scss";
+import { CoachLink } from "@/components/layout/CoachLink";
 
 interface PlanLike {
   id: string;
@@ -17,20 +15,18 @@ interface PlanLike {
   start_date: string;
   end_date: string | null;
   mode: string;
+  goal: Goal | null;
   is_active: boolean;
 }
 
 interface Props {
   plan: PlanLike;
   monday: string;
-  weekTitle: string;
-  weekRange: string;
   prevHref: string | null;
   nextHref: string | null;
   todayHref: string;
   isCurrentWeek: boolean;
   allWorkouts: WorkoutRow[];
-  weekWorkouts: WorkoutRow[];
   weekActivities: ActivityRow[];
   today: string;
   units: "mi" | "km";
@@ -39,19 +35,15 @@ interface Props {
 export function PlanDetailClient({
   plan,
   monday,
-  weekTitle,
-  weekRange,
   prevHref,
   nextHref,
   todayHref,
   isCurrentWeek,
   allWorkouts,
-  weekWorkouts,
   weekActivities,
   today,
   units,
 }: Props) {
-  const byDate = useMemo(() => new Map(weekWorkouts.map((w) => [w.date, w])), [weekWorkouts]);
   const activitiesByDate = useMemo(() => {
     const map = new Map<string, ActivityRow[]>();
     for (const act of weekActivities) {
@@ -62,35 +54,32 @@ export function PlanDetailClient({
     }
     return map;
   }, [weekActivities]);
+
   const [openDate, setOpenDate] = useState<string | null>(null);
-  const openWorkout = openDate ? (byDate.get(openDate) ?? null) : null;
+  const openWorkout = openDate
+    ? allWorkouts.find((w) => w.date === openDate) ?? null
+    : null;
 
   return (
     <>
-      <div className={styles.topSection}>
-        <PlanHeader plan={plan} today={today} />
-        <PlanStats workouts={allWorkouts} units={units} planStartDate={plan.start_date} planEndDate={plan.end_date} />
-        <MileageChart workouts={allWorkouts} units={units} />
-      </div>
-      <div className={styles.scrollSection}>
-        <WeekNavigator
-          weekTitle={weekTitle}
-          weekRange={weekRange}
-          prev={prevHref ? { href: prevHref } : { disabled: true }}
-          next={nextHref ? { href: nextHref } : { disabled: true }}
-          today={{ href: todayHref }}
-          showToday={!isCurrentWeek}
-        />
-        <WeekAgendaRows
-          monday={monday}
-          byDate={byDate}
-          activitiesByDate={activitiesByDate}
-          today={today}
-          units={units}
-          isActivePlan={plan.is_active}
-          onDayClick={setOpenDate}
-        />
-      </div>
+      <PlanView
+        plan={plan}
+        today={today}
+        units={units}
+        allWorkouts={allWorkouts}
+        headerActions={<PlanStatusActions plan={plan} today={today} />}
+        subheaderAction={<CoachLink />}
+        currentWeek={{
+          monday,
+          prev: prevHref ? { href: prevHref } : { disabled: true },
+          next: nextHref ? { href: nextHref } : { disabled: true },
+          todayNav: { href: todayHref },
+          showToday: !isCurrentWeek,
+          activitiesByDate,
+          isActivePlan: plan.is_active,
+          onWorkoutClick: setOpenDate,
+        }}
+      />
       <WorkoutDetailSheet
         workout={openWorkout}
         planId={plan.id}

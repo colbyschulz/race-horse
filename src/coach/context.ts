@@ -5,6 +5,13 @@ type ActivePlanSummary = {
   completed: number;
 };
 
+type PlanFileSummary = {
+  id: string;
+  original_filename: string;
+  status: "extracting" | "extracted" | "failed";
+  extraction_error: string | null;
+};
+
 const ROUTE_LABELS: Record<string, string> = {
   "/today": "Today view",
   "/training": "Training view (week agenda)",
@@ -36,6 +43,7 @@ export function renderContextPrefix(params: {
   activePlan: ActivePlanSummary | null;
   coachNotes: string;
   fromLabel: string | null;
+  planFile?: PlanFileSummary | null;
 }): string {
   const lines: string[] = [];
   lines.push(`<context>`);
@@ -56,6 +64,14 @@ export function renderContextPrefix(params: {
   if (params.fromLabel) {
     lines.push(``);
     lines.push(`User opened coach from: ${params.fromLabel}`);
+  }
+  if (params.planFile) {
+    lines.push(``);
+    lines.push(`The user wants help with an unprocessed plan file.`);
+    lines.push(`File id: ${params.planFile.id}`);
+    lines.push(`Filename: ${params.planFile.original_filename}`);
+    lines.push(`Status: ${params.planFile.status}${params.planFile.extraction_error ? ` (error: ${params.planFile.extraction_error.slice(0, 256)})` : ""}`);
+    lines.push(`Call \`read_uploaded_file({ plan_file_id })\` to read it and help build a plan.`);
   }
   lines.push(`</context>`);
   return lines.join("\n");

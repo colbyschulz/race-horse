@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { del } from "@vercel/blob";
 import { auth } from "@/auth";
 import {
   archivePlan,
@@ -6,6 +7,7 @@ import {
   getPlanById,
   setActivePlan,
 } from "@/plans/queries";
+import { deletePlanFilesByPlanId } from "@/plans/files";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -56,6 +58,11 @@ export async function DELETE(_req: Request, ctx: Ctx): Promise<NextResponse | Re
   const { id } = await ctx.params;
   const owned = await getPlanById(id, session.user.id);
   if (!owned) return notFound();
+
+  // Delete associated plan_files first (before the FK set-null fires)
+  const deletedFiles = await deletePlanFilesByPlanId(id, session.user.id);
+  await Promise.allSettled(deletedFiles.map((f) => del(f.blob_url)));
+
   await deletePlan(id, session.user.id);
   return new NextResponse(null, { status: 204 });
 }

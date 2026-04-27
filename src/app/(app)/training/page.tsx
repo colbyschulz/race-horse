@@ -61,13 +61,10 @@ export default async function CalendarPage({
 
   return (
     <div className={styles.page}>
-      <header className={styles.pageHeader}>
-        <h1 className={styles.pageTitle}>Training</h1>
-        {activePlan && <p className={styles.pageSubtitle}>{activePlan.title}</p>}
-      </header>
       {!activePlan && <NoActivePlan context="calendar" />}
       {activePlan && (
         <TrainingClient
+          planTitle={activePlan.title}
           monday={monday}
           weekTitle={weekTitle}
           weekRange={weekRange}

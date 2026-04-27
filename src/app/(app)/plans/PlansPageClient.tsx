@@ -1,47 +1,51 @@
 "use client";
 
 import styles from "./Plans.module.scss";
-import { ActivePlanCard } from "@/components/plans/ActivePlanCard";
-import { ArchivedPlanCard } from "@/components/plans/ArchivedPlanCard";
-import { PlanActionRow } from "@/components/plans/PlanActionRow";
+import { PlanCard } from "@/components/plans/PlanCard";
+import { UploadDropzone } from "@/components/plans/UploadDropzone";
 import { PlansEmptyState } from "@/components/plans/PlansEmptyState";
+import { InFlightUploadCard } from "@/components/plans/InFlightUploadCard";
 import type { PlanWithCounts } from "@/plans/types";
 
 interface Props {
   plans: PlanWithCounts[];
   today: string;
+  planFiles: {
+    id: string;
+    status: "extracting" | "extracted" | "failed";
+    original_filename: string;
+    extraction_error: string | null;
+  }[];
 }
 
-export function PlansPageClient({ plans, today }: Props) {
-  const active = plans.find((p) => p.is_active) ?? null;
-  const archived = plans.filter((p) => !p.is_active);
+export function PlansPageClient({ plans, today, planFiles }: Props) {
+  // Active plan first, then rest in existing order
+  const sorted = [
+    ...plans.filter((p) => p.is_active),
+    ...plans.filter((p) => !p.is_active),
+  ];
 
   return (
     <div className={styles.page}>
       <h1 className={styles.header}>Plans</h1>
-      <PlanActionRow />
+      <UploadDropzone />
 
-      {!active && archived.length === 0 && <PlansEmptyState />}
-
-      {active && (
-        <ActivePlanCard
-          plan={active}
-          today={today}
-        />
+      {planFiles.length > 0 && (
+        <section className={styles.inflight}>
+          {planFiles.map((f) => (
+            <InFlightUploadCard key={f.id} row={f} />
+          ))}
+        </section>
       )}
 
-      {archived.length > 0 && (
-        <>
-          <div className={styles.archivedLabel}>Archived</div>
-          <div className={styles.archivedList}>
-            {archived.map((p) => (
-              <ArchivedPlanCard
-                key={p.id}
-                plan={p}
-              />
-            ))}
-          </div>
-        </>
+      {plans.length === 0 && planFiles.length === 0 && <PlansEmptyState />}
+
+      {sorted.length > 0 && (
+        <div className={styles.planList}>
+          {sorted.map((p) => (
+            <PlanCard key={p.id} plan={p} today={today} />
+          ))}
+        </div>
       )}
     </div>
   );

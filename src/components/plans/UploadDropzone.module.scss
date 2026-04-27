@@ -1,0 +1,20 @@
+// src/components/plans/UploadDropzone.module.scss
+.zone {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: 0;
+  border-radius: var(--radius-md);
+  transition: background 120ms ease, border-color 120ms ease;
+}
+.zone.hover {
+  background: var(--color-bg-subtle);
+  outline: 1.5px dashed var(--color-brown);
+  outline-offset: 4px;
+}
+.hidden { display: none; }
+.error {
+  font-size: 0.8125rem;
+  color: #B83232;
+  margin: 0;
+}

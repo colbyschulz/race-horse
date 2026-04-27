@@ -56,3 +56,4 @@ export async function getWorkoutsForPlan(planId: string): Promise<WorkoutRow[]> 
     .where(eq(workouts.plan_id, planId))
     .orderBy(asc(workouts.date));
 }
+

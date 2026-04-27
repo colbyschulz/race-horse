@@ -10,6 +10,7 @@ import { HeroWorkout } from "./HeroWorkout";
 import { UpNext } from "./UpNext";
 import { ActivityRow } from "@/components/activities/ActivityRow";
 import { NoActivePlan } from "@/components/plans/NoActivePlan";
+import { CoachLink } from "@/components/layout/CoachLink";
 import styles from "./Today.module.scss";
 
 export default async function TodayPage() {
@@ -29,8 +30,11 @@ export default async function TodayPage() {
   return (
     <div className={styles.page}>
       <header className={styles.header}>
-        <h1 className={styles.date}>{formatLongDate(today)}</h1>
-        {activePlan && <p className={styles.planTitle}>{activePlan.title}</p>}
+        <div className={styles.headerTitles}>
+          <h1 className={styles.date}>{formatLongDate(today)}</h1>
+          {activePlan && <p className={styles.planTitle}>{activePlan.title}</p>}
+        </div>
+        <CoachLink />
       </header>
 
       {!activePlan && <NoActivePlan context="today" />}

@@ -25,7 +25,7 @@ export function PlanStats({ workouts, units, planStartDate, planEndDate }: Props
   const weeks = calendarWeeks(planStartDate, planEndDate);
   return (
     <section className={styles.statsCard}>
-      <Stat label="Total" value={s.totalDistance.toFixed(1)} unit={units} />
+      <Stat label="Weeks" value={String(weeks)} />
       <Stat
         label="Peak week"
         value={s.peakWeek ? s.peakWeek.distance.toFixed(1) : "—"}
@@ -38,7 +38,6 @@ export function PlanStats({ workouts, units, planStartDate, planEndDate }: Props
         unit={s.longestRun ? units : undefined}
         sub={s.longestRun ? fmtDate(s.longestRun.dateIso) : undefined}
       />
-      <Stat label="Weeks" value={String(weeks)} />
     </section>
   );
 }
