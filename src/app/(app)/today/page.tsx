@@ -46,11 +46,9 @@ export default async function TodayPage() {
         </Suspense>
       )}
 
-      {activePlan && (
-        <Suspense fallback={<ActivitiesSkeleton />}>
-          <ActivitiesSection userId={userId} units={units} />
-        </Suspense>
-      )}
+      <Suspense fallback={<ActivitiesSkeleton />}>
+        <ActivitiesSection userId={userId} units={units} />
+      </Suspense>
 
       {activePlan && (
         <Suspense fallback={<UpNextSkeleton />}>
