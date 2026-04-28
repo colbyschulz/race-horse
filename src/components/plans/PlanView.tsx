@@ -117,8 +117,9 @@ export function PlanView({
               units={units}
               planStartDate={plan.start_date}
               planEndDate={plan.end_date}
+              today={today}
             />
-            <MileageChart workouts={allWorkouts} units={units} />
+            <MileageChart workouts={allWorkouts} units={units} planStartDate={plan.start_date} />
           </>
         )}
         {currentWeek && weekData && (

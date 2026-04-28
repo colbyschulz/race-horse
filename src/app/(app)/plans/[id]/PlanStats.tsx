@@ -1,4 +1,5 @@
 import { computePlanStats } from "@/plans/planStats";
+import { computeWeeksLeft } from "@/plans/stats";
 import type { WorkoutRow } from "@/plans/dateQueries";
 import styles from "./PlanDetail.module.scss";
 
@@ -18,14 +19,17 @@ interface Props {
   units: "mi" | "km";
   planStartDate: string;
   planEndDate: string | null;
+  today: string;
 }
 
-export function PlanStats({ workouts, units, planStartDate, planEndDate }: Props) {
+export function PlanStats({ workouts, units, planStartDate, planEndDate, today }: Props) {
   const s = computePlanStats(workouts, units);
   const weeks = calendarWeeks(planStartDate, planEndDate);
+  const weeksLeft = computeWeeksLeft(planEndDate, today);
   return (
     <section className={styles.statsCard}>
       <Stat label="Weeks" value={String(weeks)} />
+      {weeksLeft != null && <Stat label="Left" value={String(weeksLeft)} />}
       <Stat
         label="Peak week"
         value={s.peakWeek ? s.peakWeek.distance.toFixed(1) : "—"}
