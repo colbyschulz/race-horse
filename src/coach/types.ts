@@ -21,6 +21,7 @@ export type ToolName =
   | "update_workouts"
   | "set_active_plan"
   | "archive_plan"
+  | "finalize_plan"
   | "get_recent_activities"
   | "get_activity_laps"
   | "update_activity_match"

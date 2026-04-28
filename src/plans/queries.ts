@@ -41,6 +41,7 @@ export async function createPlan(
       source: input.source,
       source_file_id: input.source_file_id ?? null,
       is_active: false,
+      ...(input.generation_status ? { generation_status: input.generation_status } : {}),
       updated_at: new Date(),
     })
     .returning();

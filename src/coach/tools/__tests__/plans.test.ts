@@ -24,6 +24,8 @@ vi.mock("@/db", () => ({
     select: mockSelect,
     insert: mockInsert,
     delete: mockDelete,
+    transaction: <T>(cb: (tx: unknown) => Promise<T>) =>
+      cb({ select: mockSelect, insert: mockInsert, delete: mockDelete }),
   },
 }));
 

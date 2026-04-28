@@ -106,14 +106,8 @@ export function WorkoutDetailSheet({ workout, planId = "", units, onClose }: Pro
           )}
         </div>
 
-        {(t.pace || t.hr || t.rpe != null || t.power) && (
+        {(t.hr || t.rpe != null || t.power) && (
           <div className={styles.intensityRow}>
-            {t.pace && (
-              <div className={styles.intensityCell}>
-                <span className={styles.lbl}>Pace</span>
-                <span className={styles.val}>{paceText ?? "—"}</span>
-              </div>
-            )}
             {t.hr && (
               <div className={styles.intensityCell}>
                 <span className={styles.lbl}>HR</span>

@@ -7,6 +7,7 @@ import type {
 export type Sport = "run" | "bike";
 export type PlanMode = "goal" | "indefinite";
 export type PlanSource = "uploaded" | "coach_generated";
+export type PlanGenerationStatus = "generating" | "complete";
 
 export type Plan = {
   id: string;
@@ -21,6 +22,7 @@ export type Plan = {
   source: PlanSource;
   source_file_id: string | null;
   coach_notes: string;
+  generation_status: PlanGenerationStatus;
   created_at: Date;
   updated_at: Date;
 };
@@ -39,6 +41,7 @@ export type CreatePlanInput = {
   end_date?: string | null;
   source: PlanSource;
   source_file_id?: string | null;
+  generation_status?: PlanGenerationStatus;
 };
 
 export type { Goal, TargetIntensity, IntervalSpec };

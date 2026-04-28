@@ -10,6 +10,7 @@ import {
   updateWorkoutsTool,
   setActivePlanTool,
   archivePlanTool,
+  finalizePlanTool,
   get_active_plan_handler,
   list_plans_handler,
   get_plan_handler,
@@ -17,6 +18,7 @@ import {
   update_workouts_handler,
   set_active_plan_handler,
   archive_plan_handler,
+  finalize_plan_handler,
 } from "./plans";
 
 // Activities
@@ -52,6 +54,7 @@ const BASE_TOOLS: Anthropic.Messages.Tool[] = [
   getPlanTool,
   createPlanTool,
   updateWorkoutsTool,
+  finalizePlanTool,
   setActivePlanTool,
   archivePlanTool,
   get_recent_activities,
@@ -95,6 +98,7 @@ export const HANDLERS: Record<ToolName, ToolHandler> = {
   update_workouts: update_workouts_handler as AnyHandler,
   set_active_plan: set_active_plan_handler as AnyHandler,
   archive_plan: archive_plan_handler as AnyHandler,
+  finalize_plan: finalize_plan_handler as AnyHandler,
   get_recent_activities: get_recent_activities_handler as AnyHandler,
   get_activity_laps: get_activity_laps_handler as AnyHandler,
   update_activity_match: update_activity_match_handler as AnyHandler,
@@ -125,6 +129,8 @@ export function summarizeToolResult(name: ToolName, result: unknown): string {
       return "Activated plan";
     case "archive_plan":
       return "Archived plan";
+    case "finalize_plan":
+      return "Plan ready";
     case "get_recent_activities":
       return "Read recent activities";
     case "get_activity_laps":

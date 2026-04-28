@@ -58,10 +58,27 @@ export const createPlanTool: Tool = {
   input_schema: {
     type: "object" as const,
     properties: {
-      title: { type: "string", description: "Plan title." },
+      title: { type: "string", description: "Plan title. Short — e.g. 'Sub-2:30 Chicago Marathon' or 'Spring base'." },
       sport: { type: "string", enum: ["run", "bike"], description: "Sport type." },
       mode: { type: "string", enum: ["goal", "indefinite"], description: "Plan mode." },
-      goal: { type: "string", description: "Optional goal description (JSON string or plain text)." },
+      goal: {
+        type: "object",
+        description: "Structured goal. Required when mode='goal'. Each field is short and label-like, NOT a description.",
+        properties: {
+          race_distance: {
+            type: "string",
+            description: "Short event label only: '5K', '10K', 'Half Marathon', 'Marathon', '70.3', '100mi', etc. NEVER a sentence or paragraph.",
+          },
+          race_date: {
+            type: "string",
+            description: "Race date in YYYY-MM-DD format.",
+          },
+          target_time: {
+            type: "string",
+            description: "Short target time like '2:30:00' or 'sub-20'. NEVER prose.",
+          },
+        },
+      },
       start_date: { type: "string", description: "Start date in YYYY-MM-DD format." },
       end_date: { type: "string", description: "Optional end date in YYYY-MM-DD format." },
       set_active: { type: "boolean", description: "If true, immediately activate this plan." },
@@ -140,6 +157,19 @@ export const archivePlanTool: Tool = {
   },
 };
 
+export const finalizePlanTool: Tool = {
+  name: "finalize_plan",
+  description:
+    "Marks a plan as fully generated. MUST be the last tool call after `create_plan` + all `update_workouts` for a cold-start plan build. Until called, the plan shows as 'GENERATING' in the UI.",
+  input_schema: {
+    type: "object" as const,
+    properties: {
+      plan_id: { type: "string", description: "The UUID of the plan to mark complete." },
+    },
+    required: ["plan_id"],
+  },
+};
+
 // ---------------------------------------------------------------------------
 // Handlers
 // ---------------------------------------------------------------------------
@@ -197,7 +227,7 @@ export const create_plan_handler: ToolHandler<
     title: string;
     sport: "run" | "bike";
     mode: "goal" | "indefinite";
-    goal?: string;
+    goal?: { race_distance?: string; race_date?: string; target_time?: string };
     start_date: string;
     end_date?: string;
     set_active?: boolean;
@@ -208,10 +238,11 @@ export const create_plan_handler: ToolHandler<
     title,
     sport,
     mode,
-    goal: goal ? { race_distance: goal } : undefined,
+    goal,
     start_date,
     end_date: end_date ?? null,
     source: "coach_generated",
+    generation_status: "generating",
   });
 
   if (set_active) {
@@ -248,39 +279,41 @@ export const update_workouts_handler: ToolHandler<
     throw new Error("plan not found or not owned");
   }
 
-  let upserted = 0;
-  let deleted = 0;
+  return await db.transaction(async (tx) => {
+    let upserted = 0;
+    let deleted = 0;
 
-  for (const op of operations) {
-    if (op.op === "delete") {
-      await db
-        .delete(workouts)
-        .where(and(eq(workouts.plan_id, plan_id), eq(workouts.date, op.date)));
-      deleted++;
-    } else if (op.op === "upsert") {
-      // No unique constraint on (plan_id, date) — use delete + insert
-      await db
-        .delete(workouts)
-        .where(and(eq(workouts.plan_id, plan_id), eq(workouts.date, op.date)));
+    for (const op of operations) {
+      if (op.op === "delete") {
+        await tx
+          .delete(workouts)
+          .where(and(eq(workouts.plan_id, plan_id), eq(workouts.date, op.date)));
+        deleted++;
+      } else if (op.op === "upsert") {
+        // No unique constraint on (plan_id, date) — use delete + insert
+        await tx
+          .delete(workouts)
+          .where(and(eq(workouts.plan_id, plan_id), eq(workouts.date, op.date)));
 
-      await db.insert(workouts).values({
-        plan_id,
-        date: op.date,
-        sport: plan.sport,
-        type: op.workout.type as typeof workouts.$inferInsert["type"],
-        distance_meters: op.workout.distance_km != null
-          ? String(op.workout.distance_km * 1000)
-          : null,
-        duration_seconds: op.workout.duration_minutes != null
-          ? op.workout.duration_minutes * 60
-          : null,
-        notes: op.workout.notes ?? "",
-      });
-      upserted++;
+        await tx.insert(workouts).values({
+          plan_id,
+          date: op.date,
+          sport: plan.sport,
+          type: op.workout.type as typeof workouts.$inferInsert["type"],
+          distance_meters: op.workout.distance_km != null
+            ? String(op.workout.distance_km * 1000)
+            : null,
+          duration_seconds: op.workout.duration_minutes != null
+            ? op.workout.duration_minutes * 60
+            : null,
+          notes: op.workout.notes ?? "",
+        });
+        upserted++;
+      }
     }
-  }
 
-  return { upserted, deleted };
+    return { upserted, deleted };
+  });
 };
 
 export const set_active_plan_handler: ToolHandler<
@@ -304,5 +337,20 @@ export const archive_plan_handler: ToolHandler<
     throw new Error("plan not found or not owned");
   }
   await archivePlan(plan_id, userId);
+  return { ok: true };
+};
+
+export const finalize_plan_handler: ToolHandler<
+  { plan_id: string },
+  { ok: true }
+> = async ({ plan_id }, { userId }) => {
+  const plan = await getPlanById(plan_id, userId);
+  if (!plan || plan.userId !== userId) {
+    throw new Error("plan not found or not owned");
+  }
+  await db
+    .update(plans)
+    .set({ generation_status: "complete", updated_at: new Date() })
+    .where(and(eq(plans.id, plan_id), eq(plans.userId, userId)));
   return { ok: true };
 };

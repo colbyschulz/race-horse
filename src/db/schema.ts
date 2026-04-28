@@ -37,6 +37,10 @@ export const planSourceEnum = pgEnum("plan_source", [
   "uploaded",
   "coach_generated",
 ]);
+export const planGenerationStatusEnum = pgEnum("plan_generation_status", [
+  "generating",
+  "complete",
+]);
 export const workoutTypeEnum = pgEnum("workout_type", [
   "easy",
   "long",
@@ -213,6 +217,9 @@ export const plans = pgTable(
     is_active: boolean("is_active").notNull().default(false),
     source: planSourceEnum("source").notNull(),
     source_file_id: uuid("source_file_id"),
+    generation_status: planGenerationStatusEnum("generation_status")
+      .notNull()
+      .default("complete"),
     coach_notes: text("coach_notes").notNull().default(""),
     created_at: timestamp("created_at", { withTimezone: true })
       .notNull()

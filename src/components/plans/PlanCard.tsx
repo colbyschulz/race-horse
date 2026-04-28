@@ -4,9 +4,13 @@ import styles from "./PlanCard.module.scss";
 import { computeWeeksLeft } from "@/plans/stats";
 import type { PlanWithCounts } from "@/plans/types";
 
-type Status = "active" | "upcoming" | "archived";
+type Status = "active" | "generating" | "upcoming" | "archived";
 
-function statusOf(plan: { is_active: boolean; start_date: string }, today: string): Status {
+function statusOf(
+  plan: { is_active: boolean; start_date: string; generation_status: "generating" | "complete" },
+  today: string,
+): Status {
+  if (plan.generation_status === "generating") return "generating";
   if (plan.is_active) return "active";
   if (plan.start_date > today) return "upcoming";
   return "archived";
@@ -35,6 +39,7 @@ function fmtDist(meters: number, units: "mi" | "km"): string {
 
 const STATUS_LABEL: Record<Status, string> = {
   active: "Active",
+  generating: "Generating…",
   upcoming: "Upcoming",
   archived: "Archived",
 };

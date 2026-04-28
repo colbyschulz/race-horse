@@ -19,6 +19,7 @@
 
 .card_active  { border: 2px solid var(--color-brown); }
 .card_upcoming { border-color: var(--color-terra); }
+.card_generating { border-color: var(--color-fg-tertiary); border-style: dashed; }
 
 .headRow {
   display: flex;
@@ -51,6 +52,7 @@
 .badge_active   { background: var(--color-brown); color: #fff; }
 .badge_upcoming { background: var(--color-terra-subtle); color: var(--color-terra); }
 .badge_archived { background: var(--color-bg-subtle); color: var(--color-fg-tertiary); }
+.badge_generating { background: var(--color-bg-subtle); color: var(--color-fg-secondary); }
 
 .meta {
   font-size: 0.8125rem;
