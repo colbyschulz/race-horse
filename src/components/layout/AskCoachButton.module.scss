@@ -1,7 +1,7 @@
 .fab {
   position: fixed;
   right: var(--space-4);
-  bottom: calc(var(--shell-tabbar-height) + var(--space-4));
+  bottom: calc(var(--shell-tabbar-height) + var(--space-4) + env(safe-area-inset-bottom));
   height: 44px;
   padding: 0 var(--space-6);
   border-radius: var(--radius-pill);

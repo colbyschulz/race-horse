@@ -1,5 +1,5 @@
 .shell {
-  min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   background: var(--color-bg-base);
 }
@@ -61,7 +61,7 @@
 .main {
   flex: 1;
   padding: var(--space-3);
-  padding-bottom: calc(var(--shell-tabbar-height) + var(--space-3));
+  padding-bottom: calc(var(--shell-tabbar-height) + var(--space-3) + env(safe-area-inset-bottom));
 
   @media (min-width: 768px) {
     padding: var(--space-6);
@@ -75,12 +75,13 @@
   left: 0;
   right: 0;
   bottom: 0;
-  height: var(--shell-tabbar-height);
+  min-height: var(--shell-tabbar-height);
   background: var(--color-bg-surface);
   border-top: 1px solid var(--color-border-subtle);
   display: flex;
   align-items: flex-start;
   padding-top: 10px;
+  padding-bottom: env(safe-area-inset-bottom);
   z-index: 40;
 
   @media (min-width: 768px) {

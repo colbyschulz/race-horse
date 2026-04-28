@@ -33,6 +33,7 @@
   gap: var(--space-4);
   max-height: 88dvh;
   overflow-y: auto;
+  overscroll-behavior: contain;
   box-shadow: var(--shadow-lg);
   animation: sheet-slide-up 280ms cubic-bezier(0.32, 0.72, 0, 1);
   @media (min-width: 768px) {

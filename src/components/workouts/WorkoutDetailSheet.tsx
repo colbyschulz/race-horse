@@ -56,7 +56,12 @@ export function WorkoutDetailSheet({ workout, planId = "", units, onClose }: Pro
       if (e.key === "Escape") onClose();
     }
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prevOverflow;
+    };
   }, [workout, onClose]);
 
   if (!workout) return null;
