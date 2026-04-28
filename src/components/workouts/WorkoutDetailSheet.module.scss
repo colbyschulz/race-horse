@@ -1,8 +1,22 @@
+@keyframes sheet-backdrop-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes sheet-slide-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+@keyframes sheet-pop-in {
+  from { opacity: 0; transform: translate(-50%, 56%) scale(0.98); }
+  to { opacity: 1; transform: translate(-50%, 50%) scale(1); }
+}
+
 .backdrop {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.4);
   z-index: 100;
+  animation: sheet-backdrop-in 180ms ease-out;
 }
 .sheet {
   position: fixed;
@@ -20,6 +34,7 @@
   max-height: 88dvh;
   overflow-y: auto;
   box-shadow: var(--shadow-lg);
+  animation: sheet-slide-up 280ms cubic-bezier(0.32, 0.72, 0, 1);
   @media (min-width: 768px) {
     left: 50%;
     right: auto;
@@ -28,6 +43,10 @@
     border-radius: var(--radius-lg);
     width: min(560px, calc(100vw - var(--space-8) * 2));
     max-height: min(720px, 88dvh);
+    animation: sheet-pop-in 200ms cubic-bezier(0.32, 0.72, 0, 1);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
   }
 }
 .header { display: flex; flex-direction: column; gap: var(--space-2); }
