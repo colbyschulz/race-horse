@@ -171,8 +171,7 @@ export const list_plans_handler: ToolHandler<
   Record<string, never>,
   { plans: Awaited<ReturnType<typeof listPlansWithCounts>> }
 > = async (_input, { userId }) => {
-  const today = new Date().toISOString().slice(0, 10);
-  const result = await listPlansWithCounts(userId, today);
+  const result = await listPlansWithCounts(userId);
   return { plans: result };
 };
 

@@ -10,6 +10,7 @@ import type { PlanWithCounts } from "@/plans/types";
 interface Props {
   plans: PlanWithCounts[];
   today: string;
+  units: "mi" | "km";
   planFiles: {
     id: string;
     status: "extracting" | "extracted" | "failed";
@@ -18,7 +19,7 @@ interface Props {
   }[];
 }
 
-export function PlansPageClient({ plans, today, planFiles }: Props) {
+export function PlansPageClient({ plans, today, planFiles, units }: Props) {
   // Active plan first, then rest in existing order
   const sorted = [
     ...plans.filter((p) => p.is_active),
@@ -43,7 +44,7 @@ export function PlansPageClient({ plans, today, planFiles }: Props) {
       {sorted.length > 0 && (
         <div className={styles.planList}>
           {sorted.map((p) => (
-            <PlanCard key={p.id} plan={p} today={today} />
+            <PlanCard key={p.id} plan={p} today={today} units={units} />
           ))}
         </div>
       )}

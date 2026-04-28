@@ -165,20 +165,34 @@ describe("listPlansWithCounts", () => {
     fromChain.orderBy.mockClear().mockReturnThis();
   });
 
-  it("annotates each plan with workout_count + completed_count", async () => {
+  it("computes max_weekly_meters and longest_run_meters from workout rows", async () => {
+    // Plans query: where() chains into orderBy() which resolves
+    fromChain.where.mockReturnValueOnce(fromChain);
     fromChain.orderBy.mockResolvedValueOnce([
-      {
-        id: "p1", userId: "u1", title: "Boston", is_active: true,
-        start_date: "2026-01-01", end_date: "2026-04-20",
-        workout_count: 84, completed_count: 46,
-      },
+      { id: "p1", userId: "u1", title: "Boston", is_active: true, start_date: "2026-01-01", end_date: "2026-04-20" },
     ]);
-    const out = await listPlansWithCounts("u1", "2026-03-01");
+    // Workouts query: where() is terminal
+    fromChain.where.mockResolvedValueOnce([
+      { plan_id: "p1", date: "2026-01-06", distance_meters: "32000" },
+      { plan_id: "p1", date: "2026-01-08", distance_meters: "16000" }, // same week as 01-06
+      { plan_id: "p1", date: "2026-01-13", distance_meters: "40000" }, // next week — peak
+    ]);
+    const out = await listPlansWithCounts("u1");
     expect(out).toHaveLength(1);
-    expect(out[0]).toEqual(expect.objectContaining({
-      id: "p1",
-      workout_count: 84,
-      completed_count: 46,
-    }));
+    expect(out[0].max_weekly_meters).toBe(48000); // week of Jan 5: 32000+16000
+    expect(out[0].longest_run_meters).toBe(40000);
+  });
+
+  it("returns 0 for both metrics when plan has no workouts with distance", async () => {
+    fromChain.where.mockReturnValueOnce(fromChain);
+    fromChain.orderBy.mockResolvedValueOnce([
+      { id: "p1", userId: "u1", title: "Boston", is_active: true, start_date: "2026-01-01", end_date: null },
+    ]);
+    fromChain.where.mockResolvedValueOnce([
+      { plan_id: "p1", date: "2026-01-06", distance_meters: null },
+    ]);
+    const out = await listPlansWithCounts("u1");
+    expect(out[0].max_weekly_meters).toBe(0);
+    expect(out[0].longest_run_meters).toBe(0);
   });
 });

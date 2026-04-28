@@ -8,10 +8,6 @@ const VALID_MODES: PlanMode[] = ["goal", "indefinite"];
 const VALID_SOURCES: PlanSource[] = ["uploaded", "coach_generated"];
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
-function isoToday(): string {
-  return new Date().toISOString().slice(0, 10);
-}
-
 function unauthorized(): NextResponse {
   return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 }
@@ -19,7 +15,7 @@ function unauthorized(): NextResponse {
 export async function GET(): Promise<NextResponse> {
   const session = await auth();
   if (!session?.user?.id) return unauthorized();
-  const plans = await listPlansWithCounts(session.user.id, isoToday());
+  const plans = await listPlansWithCounts(session.user.id);
   return NextResponse.json({ plans });
 }
 

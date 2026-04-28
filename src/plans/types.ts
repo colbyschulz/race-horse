@@ -26,8 +26,8 @@ export type Plan = {
 };
 
 export type PlanWithCounts = Plan & {
-  workout_count: number;
-  completed_count: number;
+  max_weekly_meters: number;
+  longest_run_meters: number;
 };
 
 export type CreatePlanInput = {

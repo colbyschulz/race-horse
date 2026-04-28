@@ -39,7 +39,7 @@ describe("GET /api/plans", () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.plans).toEqual([{ id: "p1", title: "Boston" }]);
-    expect(listPlansWithCounts).toHaveBeenCalledWith("u1", expect.any(String));
+    expect(listPlansWithCounts).toHaveBeenCalledWith("u1");
   });
 });
 

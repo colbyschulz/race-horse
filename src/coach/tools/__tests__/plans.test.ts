@@ -163,16 +163,13 @@ describe("list_plans_handler", () => {
     vi.clearAllMocks();
   });
 
-  it("calls listPlansWithCounts with userId and today", async () => {
+  it("calls listPlansWithCounts with userId", async () => {
     const mockPlans = [makePlan()];
     vi.mocked(listPlansWithCounts).mockResolvedValue(mockPlans as never);
 
     const result = await list_plans_handler({} as never, ctx);
 
-    expect(listPlansWithCounts).toHaveBeenCalledWith(
-      USER_ID,
-      expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
-    );
+    expect(listPlansWithCounts).toHaveBeenCalledWith(USER_ID);
     expect(result).toEqual({ plans: mockPlans });
   });
 });

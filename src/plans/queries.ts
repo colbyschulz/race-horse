@@ -1,6 +1,7 @@
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { plans, workouts } from "@/db/schema";
+import { mondayOf } from "@/lib/dates";
 import type { CreatePlanInput, Plan, PlanWithCounts } from "./types";
 
 export async function listPlans(userId: string): Promise<Plan[]> {
@@ -91,39 +92,40 @@ export async function deletePlan(
 
 export async function listPlansWithCounts(
   userId: string,
-  today: string,
 ): Promise<PlanWithCounts[]> {
-  const totalCount = sql<number>`(
-    SELECT COUNT(*)::int FROM ${workouts}
-    WHERE ${workouts.plan_id} = ${plans.id}
-  )`.as("workout_count");
-
-  const completedCount = sql<number>`(
-    SELECT COUNT(*)::int FROM ${workouts}
-    WHERE ${workouts.plan_id} = ${plans.id}
-      AND ${workouts.date} <= ${today}::date
-  )`.as("completed_count");
-
-  return db
-    .select({
-      id: plans.id,
-      userId: plans.userId,
-      title: plans.title,
-      sport: plans.sport,
-      mode: plans.mode,
-      goal: plans.goal,
-      start_date: plans.start_date,
-      end_date: plans.end_date,
-      is_active: plans.is_active,
-      source: plans.source,
-      source_file_id: plans.source_file_id,
-      coach_notes: plans.coach_notes,
-      created_at: plans.created_at,
-      updated_at: plans.updated_at,
-      workout_count: totalCount,
-      completed_count: completedCount,
-    })
+  const planRows = await db
+    .select()
     .from(plans)
     .where(eq(plans.userId, userId))
-    .orderBy(desc(plans.is_active), desc(plans.start_date)) as Promise<PlanWithCounts[]>;
+    .orderBy(desc(plans.is_active), desc(plans.start_date)) as Plan[];
+
+  if (planRows.length === 0) return [];
+
+  const planIds = planRows.map((p) => p.id);
+  const workoutRows = await db
+    .select({ plan_id: workouts.plan_id, date: workouts.date, distance_meters: workouts.distance_meters })
+    .from(workouts)
+    .where(inArray(workouts.plan_id, planIds));
+
+  const byPlan = new Map<string, { date: string; distance_meters: string | null }[]>();
+  for (const w of workoutRows) {
+    const arr = byPlan.get(w.plan_id) ?? [];
+    arr.push({ date: w.date, distance_meters: w.distance_meters });
+    byPlan.set(w.plan_id, arr);
+  }
+
+  return planRows.map((plan) => {
+    const ws = byPlan.get(plan.id) ?? [];
+    const weekBuckets = new Map<string, number>();
+    let longest_run_meters = 0;
+    for (const w of ws) {
+      if (!w.distance_meters) continue;
+      const m = Number(w.distance_meters);
+      const monday = mondayOf(w.date);
+      weekBuckets.set(monday, (weekBuckets.get(monday) ?? 0) + m);
+      if (m > longest_run_meters) longest_run_meters = m;
+    }
+    const max_weekly_meters = weekBuckets.size > 0 ? Math.max(...weekBuckets.values()) : 0;
+    return { ...plan, max_weekly_meters, longest_run_meters };
+  });
 }
