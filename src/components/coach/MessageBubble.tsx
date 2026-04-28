@@ -10,7 +10,7 @@ function stripContext(text: string): string {
   return text.replace(/^<context>[\s\S]*?<\/context>\s*/, "");
 }
 
-export function MessageBubble({ message }: { message: StoredMessage }) {
+export function MessageBubble({ message, streaming }: { message: StoredMessage; streaming?: boolean }) {
   const text = message.content
     .filter((b) => b.type === "text")
     .map((b) => (b as { type: "text"; text: string }).text)
@@ -35,7 +35,9 @@ export function MessageBubble({ message }: { message: StoredMessage }) {
     <div className={message.role === "user" ? styles.user : styles.assistant}>
       <div className={styles.bubble}>
         {message.role === "assistant"
-          ? <ReactMarkdown remarkPlugins={[remarkGfm]}>{displayText}</ReactMarkdown>
+          ? streaming
+            ? <p className={styles.streamingText}>{displayText}</p>
+            : <ReactMarkdown remarkPlugins={[remarkGfm]}>{displayText}</ReactMarkdown>
           : <p className={styles.userText}>{displayText}</p>
         }
       </div>

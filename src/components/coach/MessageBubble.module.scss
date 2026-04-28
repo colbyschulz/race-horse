@@ -36,6 +36,11 @@
   margin: 0;
 }
 
+.streamingText {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
 // Markdown content inside assistant bubble
 .assistant .bubble {
   p { margin: 0 0 var(--space-2) 0; &:last-child { margin-bottom: 0; } }

@@ -13,5 +13,5 @@ export function getAnthropic(): Anthropic {
 }
 
 export const COACH_MODEL = "claude-sonnet-4-6";
-export const COACH_BUILD_MODEL = "claude-opus-4-6";
+export const COACH_BUILD_MODEL = "claude-sonnet-4-6";
 export const EXTRACTION_MODEL = "claude-sonnet-4-6";

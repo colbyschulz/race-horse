@@ -1,7 +1,8 @@
 .shell {
-  min-height: 100dvh;
+  height: 100dvh;
   display: flex;
   background: var(--color-bg-base);
+  overflow: hidden;
 }
 
 // ── Sidebar (desktop only) ──
@@ -60,6 +61,9 @@
 // ── Main content ──
 .main {
   flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
   padding: var(--space-3);
   padding-bottom: calc(var(--shell-tabbar-height) + var(--space-3) + env(safe-area-inset-bottom));
 
