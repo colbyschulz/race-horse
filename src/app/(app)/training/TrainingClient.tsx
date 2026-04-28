@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import type { WorkoutRow } from "@/plans/dateQueries";
 import type { ActivityRow } from "@/strava/dateQueries";
 import { WeekNavigator } from "@/components/workouts/WeekNavigator";
@@ -39,39 +39,23 @@ export function TrainingClient({ planTitle, monday, weekTitle, weekRange, prevHr
   const [openDate, setOpenDate] = useState<string | null>(null);
   const openWorkout = openDate ? (byDate.get(openDate) ?? null) : null;
 
-  const headerRef = useRef<HTMLElement>(null);
-  const [navStickyTop, setNavStickyTop] = useState(0);
-  useEffect(() => {
-    const el = headerRef.current;
-    if (!el) return;
-    const update = () => {
-      const stickyOffset = parseFloat(window.getComputedStyle(el).top) || 0;
-      setNavStickyTop(el.offsetHeight + stickyOffset);
-    };
-    update();
-    const obs = new ResizeObserver(update);
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, []);
-
   return (
     <>
-      <header ref={headerRef} className={styles.pageHeader}>
+      <header className={styles.pageHeader}>
         <div className={styles.pageTitles}>
           <h1 className={styles.pageTitle}>Training</h1>
           <p className={styles.pageSubtitle}>{planTitle}</p>
         </div>
         <CoachLink planId={activePlanId} />
+        <WeekNavigator
+          weekTitle={weekTitle}
+          weekRange={weekRange}
+          prev={prevHref ? { href: prevHref } : { disabled: true }}
+          next={nextHref ? { href: nextHref } : { disabled: true }}
+          today={{ href: todayHref }}
+          showToday={!isCurrentWeek}
+        />
       </header>
-      <WeekNavigator
-        weekTitle={weekTitle}
-        weekRange={weekRange}
-        prev={prevHref ? { href: prevHref } : { disabled: true }}
-        next={nextHref ? { href: nextHref } : { disabled: true }}
-        today={{ href: todayHref }}
-        showToday={!isCurrentWeek}
-        stickyTop={navStickyTop}
-      />
       <WeekAgendaRows
         monday={monday}
         byDate={byDate}
