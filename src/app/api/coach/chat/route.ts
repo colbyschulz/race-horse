@@ -4,11 +4,8 @@ import { eq } from "drizzle-orm";
 import { users } from "@/db/schema";
 import { runCoach } from "@/coach/runner";
 import { todayIso } from "@/lib/dates";
-import type { ChatRequestBody, SSEEvent } from "@/coach/types";
-
-function sse(event: SSEEvent): string {
-  return `event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`;
-}
+import { sseResponse } from "@/lib/sse";
+import type { ChatRequestBody } from "@/coach/types";
 
 export async function POST(req: Request): Promise<Response> {
   const session = await auth();
@@ -38,35 +35,12 @@ export async function POST(req: Request): Promise<Response> {
   const tz = (userRow?.preferences as { timezone?: string } | null)?.timezone;
   const today = todayIso(tz);
 
-  const stream = new ReadableStream<Uint8Array>({
-    async start(controller) {
-      const enc = new TextEncoder();
-      try {
-        for await (const event of runCoach({
-          userId: session.user.id!,
-          message: body.message,
-          planId: body.plan_id ?? null,
-          fromRoute: body.from_route,
-          planFileId: body.plan_file_id,
-          today,
-        })) {
-          controller.enqueue(enc.encode(sse(event)));
-        }
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : "unknown error";
-        controller.enqueue(enc.encode(sse({ type: "error", error: msg })));
-      } finally {
-        controller.close();
-      }
-    },
-  });
-
-  return new Response(stream, {
-    headers: {
-      "content-type": "text/event-stream",
-      "cache-control": "no-cache, no-transform",
-      "connection": "keep-alive",
-      "x-accel-buffering": "no",
-    },
-  });
+  return sseResponse(runCoach({
+    userId: session.user.id!,
+    message: body.message,
+    planId: body.plan_id ?? null,
+    fromRoute: body.from_route,
+    planFileId: body.plan_file_id,
+    today,
+  }));
 }

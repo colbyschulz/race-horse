@@ -45,35 +45,3 @@
   margin-top: var(--space-2);
 }
 
-.cancel {
-  font-family: var(--font-body);
-  font-size: 0.9375rem;
-  font-weight: 500;
-  background: transparent;
-  color: var(--color-fg-secondary);
-  border: 1px solid var(--color-border-default);
-  border-radius: var(--radius-md);
-  padding: var(--space-2) var(--space-4);
-  cursor: pointer;
-
-  &:hover {
-    border-color: var(--color-fg-secondary);
-    color: var(--color-fg-default);
-  }
-}
-
-.confirm {
-  font-family: var(--font-body);
-  font-size: 0.9375rem;
-  font-weight: 600;
-  background: var(--color-red, #c0392b);
-  color: #fff;
-  border: none;
-  border-radius: var(--radius-md);
-  padding: var(--space-2) var(--space-4);
-  cursor: pointer;
-
-  &:hover {
-    opacity: 0.9;
-  }
-}

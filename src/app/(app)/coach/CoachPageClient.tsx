@@ -3,8 +3,10 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import styles from "./Coach.module.scss";
 import type { StoredMessage, SSEEvent } from "@/coach/types";
+import { consumeStream } from "@/lib/sse";
 import type { BuildFormInput } from "@/coach/buildForm";
 
+import { Button } from "@/components/Button";
 import { ContextPill } from "@/components/coach/ContextPill";
 import { MessageBubble } from "@/components/coach/MessageBubble";
 import { ToolIndicator } from "@/components/coach/ToolIndicator";
@@ -23,29 +25,6 @@ interface Props {
 }
 
 type StreamingState = { text: string; tools: { name: string; summary?: string }[] };
-
-async function consumeStream(
-  res: Response,
-  onEvent: (ev: SSEEvent) => void,
-): Promise<void> {
-  if (!res.ok || !res.body) throw new Error(`stream failed: ${res.status}`);
-  const reader = res.body.getReader();
-  const dec = new TextDecoder();
-  let buf = "";
-  for (;;) {
-    const { value, done } = await reader.read();
-    if (done) break;
-    buf += dec.decode(value, { stream: true });
-    let idx;
-    while ((idx = buf.indexOf("\n\n")) !== -1) {
-      const block = buf.slice(0, idx);
-      buf = buf.slice(idx + 2);
-      const dataLine = block.split("\n").find((l) => l.startsWith("data: "));
-      if (!dataLine) continue;
-      onEvent(JSON.parse(dataLine.slice(6)) as SSEEvent);
-    }
-  }
-}
 
 export function CoachPageClient({ initialMessages, fromRoute, fromLabel, planId, planFileId, intent }: Props) {
   const router = useRouter();
@@ -166,7 +145,7 @@ export function CoachPageClient({ initialMessages, fromRoute, fromLabel, planId,
       <ContextPill fromRoute={fromRoute} fromLabel={fromLabel} />
       <header className={styles.header}>
         <h1 className={styles.title}>Coach</h1>
-        <button className={styles.clearBtn} onClick={() => setClearOpen(true)}>Clear chat</button>
+        <Button variant="ghost" size="sm" onClick={() => setClearOpen(true)}>Clear chat</Button>
       </header>
       <div className={styles.stream} ref={streamRef}>
         {messages.map((m) => <MessageBubble key={m.id} message={m} />)}

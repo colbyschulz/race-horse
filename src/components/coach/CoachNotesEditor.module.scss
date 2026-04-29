@@ -23,24 +23,6 @@
   margin: 0;
 }
 
-.textarea {
-  font-family: var(--font-body);
-  color: var(--color-fg-default);
-  background: var(--color-bg-surface);
-  border: 1px solid var(--color-border-default);
-  border-radius: var(--radius-md);
-  padding: var(--space-3);
-  resize: vertical;
-  width: 100%;
-  box-sizing: border-box;
-  line-height: 1.5;
-
-  &:focus {
-    outline: none;
-    border-color: var(--color-brown);
-  }
-}
-
 .row {
   display: flex;
   align-items: center;
@@ -63,23 +45,3 @@
   color: var(--color-fg-secondary);
 }
 
-.save {
-  font-family: var(--font-body);
-  font-size: 0.875rem;
-  font-weight: 600;
-  background: var(--color-brown);
-  color: #fff;
-  border: none;
-  border-radius: var(--radius-md);
-  padding: var(--space-2) var(--space-4);
-  cursor: pointer;
-
-  &:hover:not(:disabled) {
-    background: var(--color-brown-hover);
-  }
-
-  &:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-}

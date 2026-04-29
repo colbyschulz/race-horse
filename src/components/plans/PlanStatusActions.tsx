@@ -1,6 +1,8 @@
 "use client";
 import { useRouter } from "next/navigation";
 import { useState, useTransition, useEffect, useRef } from "react";
+import { Button } from "@/components/Button";
+import { Badge } from "@/components/Badge";
 import styles from "./PlanStatusActions.module.scss";
 
 type Status = "active" | "upcoming" | "archived";
@@ -77,19 +79,17 @@ export function PlanStatusActions({ plan, today }: Props) {
 
   return (
     <>
-      <span className={`${styles.badge} ${styles[`badge_${status}`]}`}>
-        {status === "active" ? "Active" : status === "upcoming" ? "Upcoming" : "Archived"}
-      </span>
+      <Badge variant={status} label={status === "active" ? "Active" : status === "upcoming" ? "Upcoming" : "Archived"} />
       <div className={styles.menu} ref={menuRef}>
-        <button
-          type="button"
-          className={styles.menuBtn}
+        <Button
+          variant="ghost"
+          size="sm"
           disabled={disabled}
           aria-label="Plan actions"
           onClick={() => setMenuOpen((o) => !o)}
         >
           •••
-        </button>
+        </Button>
         {menuOpen && (
           <div className={styles.dropdown}>
             {status !== "active" && (
@@ -105,12 +105,12 @@ export function PlanStatusActions({ plan, today }: Props) {
             {confirmDelete ? (
               <div className={styles.confirmRow}>
                 <span className={styles.confirmLabel}>Delete?</span>
-                <button type="button" className={`${styles.confirmBtn} ${styles.confirmBtnDanger}`} onClick={destroy}>
+                <Button variant="danger" size="sm" onClick={destroy}>
                   Yes
-                </button>
-                <button type="button" className={styles.confirmBtn} onClick={() => setConfirmDelete(false)}>
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => setConfirmDelete(false)}>
                   No
-                </button>
+                </Button>
               </div>
             ) : (
               <button type="button" className={`${styles.item} ${styles.itemDanger}`} onClick={() => setConfirmDelete(true)}>

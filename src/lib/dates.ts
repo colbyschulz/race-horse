@@ -58,3 +58,29 @@ export function formatLongDate(iso: string): string {
   const d = toUtcDate(iso);
   return `${LONG_WEEKDAY[d.getUTCDay()]}, ${LONG_MONTH[d.getUTCMonth()]} ${d.getUTCDate()}`;
 }
+
+// "Apr 27"
+export function formatDateShort(iso: string): string {
+  const d = toUtcDate(iso);
+  return `${SHORT_MONTH[d.getUTCMonth()]} ${d.getUTCDate()}`;
+}
+
+// "Apr 27, 2026"
+export function formatDateMedium(iso: string): string {
+  const d = toUtcDate(iso);
+  return `${SHORT_MONTH[d.getUTCMonth()]} ${d.getUTCDate()}, ${d.getUTCFullYear()}`;
+}
+
+// "Apr 27, 2026 – May 30, 2026" or "Apr 27, 2026 · ongoing" when end is null.
+export function formatDateRange(start: string, end: string | null): string {
+  return end
+    ? `${formatDateMedium(start)} – ${formatDateMedium(end)}`
+    : `${formatDateMedium(start)} · ongoing`;
+}
+
+// 1-indexed week number relative to the plan's first Monday.
+export function weekIndexFromStart(planStart: string, monday: string): number {
+  const startMon = mondayOf(planStart);
+  const ms = toUtcDate(monday).getTime() - toUtcDate(startMon).getTime();
+  return Math.round(ms / (7 * 24 * 60 * 60 * 1000)) + 1;
+}

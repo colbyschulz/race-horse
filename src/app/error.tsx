@@ -1,5 +1,7 @@
 "use client";
 
+import { Button } from "@/components/Button";
+
 export default function Error({
   error,
   reset,
@@ -27,21 +29,9 @@ export default function Error({
       <p style={{ color: "var(--color-fg-secondary)", marginBottom: "var(--space-6)" }}>
         {error.message}
       </p>
-      <button
-        onClick={reset}
-        style={{
-          padding: "var(--space-2) var(--space-4)",
-          borderRadius: "var(--radius-md)",
-          border: "none",
-          background: "var(--color-brown)",
-          color: "#ffffff",
-          fontFamily: "var(--font-body)",
-          fontWeight: 500,
-          cursor: "pointer",
-        }}
-      >
+      <Button variant="primary" onClick={reset}>
         Try again
-      </button>
+      </Button>
     </main>
   );
 }

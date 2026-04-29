@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Spinner } from "./Spinner";
 import styles from "./SyncStatusBanner.module.scss";
 
 interface Props {
@@ -31,7 +32,7 @@ export function SyncStatusBanner({ initialSynced }: Props) {
   if (synced) return null;
   return (
     <div className={styles.banner} role="status" aria-live="polite">
-      <span className={styles.spinner} aria-hidden />
+      <Spinner size="sm" />
       <span>Syncing your last 90 days from Strava…</span>
     </div>
   );

@@ -5,21 +5,12 @@ import { db } from "@/db";
 import { eq } from "drizzle-orm";
 import { users } from "@/db/schema";
 import { getActivePlan } from "@/plans/dateQueries";
-import { addDays, mondayOf, todayIso } from "@/lib/dates";
+import { addDays, mondayOf, todayIso, formatDateShort, weekIndexFromStart } from "@/lib/dates";
+import { planNavBounds } from "@/lib/planNav";
 import { WeekAgendaSection } from "./WeekAgendaSection";
 import { WeekAgendaSkeleton } from "./WeekAgendaSkeleton";
-import { NoActivePlan } from "@/components/plans/NoActivePlan";
+import { EmptyState } from "@/components/EmptyState";
 import styles from "./Calendar.module.scss";
-
-function fmtShortDate(iso: string): string {
-  return new Date(iso + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" });
-}
-
-function weekIndexFromStart(planStart: string, monday: string): number {
-  const startMon = mondayOf(planStart);
-  const ms = new Date(monday + "T00:00:00").getTime() - new Date(startMon + "T00:00:00").getTime();
-  return Math.round(ms / (7 * 24 * 60 * 60 * 1000)) + 1;
-}
 
 export default async function CalendarPage({
   searchParams,
@@ -45,23 +36,25 @@ export default async function CalendarPage({
   if (!activePlan) {
     return (
       <div className={styles.page}>
-        <NoActivePlan context="calendar" />
+        <EmptyState
+          title="No active plan"
+          body="Your weekly schedule will show up here once you activate a plan."
+          variant="tinted"
+          size="sm"
+          action={{ label: "Go to Plans →", href: "/plans" }}
+        />
       </div>
     );
   }
 
   const isCurrentWeek = monday === mondayOf(today);
-  const planFirstMonday = mondayOf(activePlan.start_date);
-  const planLastMonday = activePlan.end_date ? mondayOf(addDays(activePlan.end_date, -1)) : null;
-  const insidePlan =
-    monday >= planFirstMonday && (planLastMonday == null || monday <= planLastMonday);
-  const prevDisabled = monday <= planFirstMonday;
+  const { prevDisabled, insidePlan } = planNavBounds(activePlan.start_date, activePlan.end_date, monday);
 
   const weekTitle =
     insidePlan
       ? `Week ${weekIndexFromStart(activePlan.start_date, monday)}`
-      : fmtShortDate(monday);
-  const weekRange = `${fmtShortDate(monday)} – ${fmtShortDate(sunday)}`;
+      : formatDateShort(monday);
+  const weekRange = `${formatDateShort(monday)} – ${formatDateShort(sunday)}`;
 
   return (
     <div className={styles.page}>

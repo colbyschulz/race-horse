@@ -1,25 +1,6 @@
 import styles from "./ActivityRow.module.scss";
 import type { ActivityRow as Activity } from "@/strava/dateQueries";
-
-function fmtDistance(meters: number, units: "mi" | "km"): string {
-  if (units === "mi") return (meters / 1609.344).toFixed(2);
-  return (meters / 1000).toFixed(2);
-}
-
-function fmtDuration(s: number): string {
-  const h = Math.floor(s / 3600);
-  const m = Math.floor((s % 3600) / 60);
-  const sec = s % 60;
-  if (h > 0) return `${h}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
-  return `${m}:${String(sec).padStart(2, "0")}`;
-}
-
-function fmtPace(secPerKm: number, units: "mi" | "km"): string {
-  const sec = units === "mi" ? Math.round(secPerKm * 1.609344) : Math.round(secPerKm);
-  const m = Math.floor(sec / 60);
-  const s = sec % 60;
-  return `${m}:${String(s).padStart(2, "0")}`;
-}
+import { formatDistance, formatDuration, formatPace } from "@/lib/format";
 
 export function ActivityRow({ activity, units }: { activity: Activity; units: "mi" | "km" }) {
   const meters = Number(activity.distance_meters ?? 0);
@@ -36,9 +17,9 @@ export function ActivityRow({ activity, units }: { activity: Activity; units: "m
         <span className={styles.kind}>{activity.type}</span>
       </div>
       <div className={styles.stats}>
-        <span><strong>{fmtDistance(meters, units)}</strong> {units}</span>
-        <span><strong>{fmtDuration(time)}</strong></span>
-        {pace != null && <span><strong>{fmtPace(pace, units)}</strong> /{units}</span>}
+        <span><strong>{formatDistance(meters, units, { decimals: 2 })}</strong> {units}</span>
+        <span><strong>{formatDuration(time, { format: "clock" })}</strong></span>
+        {pace != null && <span><strong>{formatPace(pace, units)}</strong> /{units}</span>}
         {power != null && <span><strong>{Math.round(power)}</strong> W</span>}
         {hr != null && <span><strong>{Math.round(hr)}</strong> bpm</span>}
       </div>

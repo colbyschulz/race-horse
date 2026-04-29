@@ -1,46 +1,5 @@
-.badge {
-  display: inline-flex;
-  align-items: center;
-  font-size: 0.6875rem;
-  font-weight: 600;
-  line-height: 1;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  padding: 4px 10px;
-  border-radius: var(--radius-pill);
-}
-
-.badge_active   { background: var(--color-brown); color: #fff; }
-.badge_upcoming { background: color-mix(in srgb, var(--color-terra) 18%, transparent); color: var(--color-terra); }
-.badge_archived { background: var(--color-bg-subtle); color: var(--color-fg-tertiary); }
-
 .menu {
   position: relative;
-}
-
-.menuBtn {
-  appearance: none;
-  display: inline-flex;
-  align-items: center;
-  background: transparent;
-  border: 1px solid var(--color-border-default);
-  border-radius: var(--radius-md);
-  padding: 4px 10px;
-  font-size: 0.875rem;
-  letter-spacing: 0.1em;
-  color: var(--color-fg-secondary);
-  cursor: pointer;
-  line-height: 1;
-
-  &:hover:not(:disabled) {
-    border-color: var(--color-brown);
-    color: var(--color-brown);
-  }
-
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
 }
 
 .dropdown {
@@ -74,10 +33,10 @@
 }
 
 .itemDanger {
-  color: #B83232;
+  color: var(--color-workout-race);
 
   &:hover {
-    background: color-mix(in srgb, #B83232 8%, transparent);
+    background: color-mix(in srgb, var(--color-workout-race) 8%, transparent);
   }
 }
 
@@ -93,25 +52,6 @@
   flex: 1;
   font-size: 0.875rem;
   font-weight: 500;
-  color: #B83232;
+  color: var(--color-workout-race);
 }
 
-.confirmBtn {
-  font-size: 0.8125rem;
-  font-weight: 600;
-  padding: 3px var(--space-3);
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--color-border-default);
-  background: transparent;
-  color: var(--color-fg-secondary);
-  cursor: pointer;
-
-  &:hover { background: var(--color-bg-subtle); }
-}
-
-.confirmBtnDanger {
-  border-color: #B83232;
-  color: #B83232;
-
-  &:hover { background: color-mix(in srgb, #B83232 8%, transparent); }
-}

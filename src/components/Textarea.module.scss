@@ -1,0 +1,8 @@
+.textarea {
+  composes: input from "./Input.module.scss";
+  width: 100%;
+  box-sizing: border-box;
+  line-height: 1.5;
+  resize: vertical;
+  font-family: var(--font-body);
+}

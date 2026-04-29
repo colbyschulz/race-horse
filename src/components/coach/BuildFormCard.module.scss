@@ -1,8 +1,4 @@
-.card {
-  border: 1px solid var(--color-border-subtle);
-  border-radius: var(--radius-md);
-  background: var(--color-bg-surface);
-  padding: var(--space-4);
+.wrap {
   margin-bottom: var(--space-3);
   max-width: 720px;
 }
@@ -42,13 +38,6 @@
     flex-direction: column;
     gap: var(--space-1);
     font-weight: 600;
-
-    input {
-      font-weight: 400;
-      padding: var(--space-2);
-      border: 1px solid var(--color-border-subtle);
-      border-radius: var(--radius-sm);
-    }
   }
 }
 
@@ -58,39 +47,12 @@
   gap: var(--space-1);
   font-weight: 600;
   margin-bottom: var(--space-3);
-
-  textarea {
-    font-weight: 400;
-    padding: var(--space-2);
-    border: 1px solid var(--color-border-subtle);
-    border-radius: var(--radius-sm);
-    font-family: inherit;
-    resize: vertical;
-  }
 }
 
 .actions {
   display: flex;
   gap: var(--space-3);
   align-items: center;
-}
-
-.btnPrimary {
-  background: var(--color-brown);
-  color: #fff;
-  border: none;
-  border-radius: var(--radius-sm);
-  padding: var(--space-2) var(--space-4);
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.btnText {
-  background: none;
-  border: none;
-  color: var(--color-fg-default);
-  text-decoration: underline;
-  cursor: pointer;
 }
 
 .summary {
@@ -107,21 +69,6 @@
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  color: var(--color-fg-muted);
+  color: var(--color-fg-tertiary);
   font-size: 0.9rem;
-}
-
-.spinner {
-  width: 14px;
-  height: 14px;
-  border: 2px solid var(--color-border-subtle);
-  border-top-color: var(--color-brown);
-  border-radius: 50%;
-  animation: spin 0.9s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
 }

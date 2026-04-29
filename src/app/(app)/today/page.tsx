@@ -12,7 +12,7 @@ import { ActivitiesSection } from "./ActivitiesSection";
 import { ActivitiesSkeleton } from "./ActivitiesSkeleton";
 import { UpNextSection } from "./UpNextSection";
 import { UpNextSkeleton } from "./UpNextSkeleton";
-import { NoActivePlan } from "@/components/plans/NoActivePlan";
+import { EmptyState } from "@/components/EmptyState";
 import { CoachLink } from "@/components/layout/CoachLink";
 import styles from "./Today.module.scss";
 
@@ -39,7 +39,15 @@ export default async function TodayPage() {
         <CoachLink planId={activePlan?.id} />
       </header>
 
-      {!activePlan && <NoActivePlan context="today" />}
+      {!activePlan && (
+        <EmptyState
+          title="No active plan"
+          body="Your training will show up here once you activate a plan."
+          variant="tinted"
+          size="sm"
+          action={{ label: "Go to Plans →", href: "/plans" }}
+        />
+      )}
 
       {activePlan && (
         <Suspense fallback={<HeroSkeleton />}>

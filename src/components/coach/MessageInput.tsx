@@ -1,5 +1,6 @@
 "use client";
 import { useState, type KeyboardEvent } from "react";
+import { Button } from "@/components/Button";
 import styles from "./MessageInput.module.scss";
 
 export function MessageInput({ disabled, onSend }: { disabled?: boolean; onSend: (text: string) => void }) {
@@ -27,9 +28,9 @@ export function MessageInput({ disabled, onSend }: { disabled?: boolean; onSend:
         rows={2}
         disabled={disabled}
       />
-      <button className={styles.send} disabled={disabled || !value.trim()} onClick={send}>
+      <Button variant="primary" disabled={disabled || !value.trim()} onClick={send} className={styles.send}>
         Send
-      </button>
+      </Button>
     </div>
   );
 }

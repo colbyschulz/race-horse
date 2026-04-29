@@ -33,65 +33,6 @@
   cursor: pointer;
 }
 
-.btnPrimary, .btnGhost {
-  font-size: 0.875rem;
-  font-weight: 600;
-  padding: var(--space-2) var(--space-4);
-  border-radius: var(--radius-md);
-  border: 1px solid transparent;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-
-  &:disabled { opacity: 0.5; cursor: not-allowed; }
-}
-
-.btnPrimary {
-  background: var(--color-brown);
-  color: #fff;
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.spinner, .spinnerDark {
-  width: 0.875rem;
-  height: 0.875rem;
-  border-radius: 50%;
-  animation: spin 0.6s linear infinite;
-  flex-shrink: 0;
-}
-
-.spinner {
-  border: 2px solid rgba(255,255,255,0.35);
-  border-top-color: #fff;
-}
-
-.spinnerDark {
-  border: 2px solid var(--color-border-default);
-  border-top-color: var(--color-fg-secondary);
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-.btnGhost {
-  background: transparent;
-  color: var(--color-fg-secondary);
-  border-color: var(--color-border-default);
-}
-
-.btnDanger {
-  background: transparent;
-  color: #B83232;
-  border-color: #B83232;
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
 .confirmLabel {
   font-size: 0.8125rem;
   color: var(--color-fg-secondary);
@@ -99,10 +40,10 @@
 }
 
 .errorBanner {
-  color: #B83232;
+  color: var(--color-workout-race);
   font-size: 0.875rem;
   padding: var(--space-3);
-  background: color-mix(in srgb, #B83232 8%, transparent);
+  background: color-mix(in srgb, var(--color-workout-race) 8%, transparent);
   border-radius: var(--radius-md);
   margin: 0;
 }

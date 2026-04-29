@@ -11,38 +11,13 @@
   color: inherit;
 }
 .cardLink:hover { border-color: var(--color-brown); }
-.cardFailed { border-color: color-mix(in srgb, #B83232 50%, var(--color-border-default)); }
+.cardFailed { border-color: color-mix(in srgb, var(--color-workout-race) 50%, var(--color-border-default)); }
 .body { flex: 1; display: flex; flex-direction: column; gap: 2px; }
 .title { font-size: 0.9375rem; font-weight: 600; color: var(--color-fg-primary); margin: 0; }
 .sub { font-size: 0.8125rem; color: var(--color-fg-tertiary); margin: 0; }
-.error { font-size: 0.8125rem; color: #B83232; margin: 4px 0 0 0; }
-.spinner {
-  width: 18px; height: 18px;
-  border: 2px solid var(--color-border-default);
-  border-top-color: var(--color-brown);
-  border-radius: 50%;
-  animation: spin 800ms linear infinite;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
+.error { font-size: 0.8125rem; color: var(--color-workout-race); margin: 4px 0 0 0; }
 .chev { font-size: 1.25rem; color: var(--color-fg-tertiary); }
 .actions { display: flex; gap: var(--space-2); flex-wrap: wrap; }
-.btnPrimary, .btnSecondary, .btnDanger, .btnGhost {
-  font-size: 0.8125rem;
-  font-weight: 600;
-  padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius-md);
-  border: 1px solid var(--color-border-default);
-  background: transparent;
-  color: var(--color-fg-primary);
-  text-decoration: none;
-  display: inline-flex;
-  align-items: center;
-  cursor: pointer;
-  &:disabled { opacity: 0.5; cursor: not-allowed; }
-}
-.btnPrimary { background: var(--color-brown); color: #fff; border-color: var(--color-brown); }
-.btnDanger:hover:not(:disabled) { border-color: #B83232; color: #B83232; }
-.btnGhost { font-weight: 500; color: var(--color-fg-secondary); }
 
 .confirmRow {
   display: flex;
@@ -55,23 +30,4 @@
   font-size: 0.8125rem;
   color: var(--color-fg-secondary);
   white-space: nowrap;
-}
-
-.btnSmall {
-  font-size: 0.8125rem;
-  font-weight: 600;
-  padding: 3px var(--space-3);
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--color-border-default);
-  background: transparent;
-  color: var(--color-fg-secondary);
-  cursor: pointer;
-  &:disabled { opacity: 0.5; cursor: not-allowed; }
-  &:hover:not(:disabled) { background: var(--color-bg-subtle); }
-}
-
-.btnSmallDanger {
-  border-color: #B83232;
-  color: #B83232;
-  &:hover:not(:disabled) { background: color-mix(in srgb, #B83232 8%, transparent); }
 }

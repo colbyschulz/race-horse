@@ -1,5 +1,6 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
+import { Button } from "@/components/Button";
 import { signInWithStrava } from "./_actions/sign-in";
 import styles from "./page.module.scss";
 
@@ -26,9 +27,9 @@ export default async function HomePage() {
         </li>
       </ul>
       <form action={signInWithStrava}>
-        <button type="submit" className={styles.button}>
+        <Button type="submit" variant="primary" className={styles.signIn}>
           Sign in with Strava
-        </button>
+        </Button>
       </form>
       <p className={styles.domain}>race.horse</p>
     </main>

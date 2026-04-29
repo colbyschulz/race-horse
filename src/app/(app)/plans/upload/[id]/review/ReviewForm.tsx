@@ -3,7 +3,9 @@
 import { useState, useMemo } from "react";
 import type { ExtractedPlan } from "@/extraction/schema";
 import type { WorkoutRow } from "@/plans/dateQueries";
-import { addDays, mondayOf } from "@/lib/dates";
+import { addDays } from "@/lib/dates";
+import { usePlanWeekNav } from "@/lib/usePlanWeekNav";
+import { Button } from "@/components/Button";
 import { PlanView } from "@/components/plans/PlanView";
 import { WorkoutDetailSheet } from "@/components/workouts/WorkoutDetailSheet";
 import styles from "./Review.module.scss";
@@ -66,15 +68,9 @@ export function ReviewForm({
     return allWorkoutRows.reduce((max, w) => (w.date > max ? w.date : max), allWorkoutRows[0].date);
   }, [allWorkoutRows]);
 
-  // Client-side week navigation — defaults to week 1 (the plan's first Monday)
-  const [currentMonday, setCurrentMonday] = useState(() => mondayOf(startDate));
+  const weekNav = usePlanWeekNav(startDate, planEndDate);
   const [openDate, setOpenDate] = useState<string | null>(null);
   const openWorkout = openDate ? allWorkoutRows.find((w) => w.date === openDate) ?? null : null;
-
-  const planFirstMonday = mondayOf(startDate);
-  const planLastMonday = planEndDate ? mondayOf(addDays(planEndDate, -1)) : null;
-  const prevDisabled = currentMonday <= planFirstMonday;
-  const nextDisabled = !!planLastMonday && currentMonday >= planLastMonday;
 
   async function handleSave() {
     setSaving(true);
@@ -150,34 +146,28 @@ export function ReviewForm({
           {confirmDiscard ? (
             <>
               <span className={styles.confirmLabel}>Discard?</span>
-              <button type="button" className={styles.btnDanger} disabled={busy} onClick={handleDiscard}>
-                {discarding && <span className={styles.spinnerDark} />}
+              <Button variant="danger" disabled={busy} loading={discarding} onClick={handleDiscard}>
                 {discarding ? "Discarding…" : "Yes"}
-              </button>
-              <button type="button" className={styles.btnGhost} disabled={busy} onClick={() => setConfirmDiscard(false)}>
+              </Button>
+              <Button variant="ghost" disabled={busy} onClick={() => setConfirmDiscard(false)}>
                 No
-              </button>
+              </Button>
             </>
           ) : (
-            <button type="button" className={styles.btnGhost} disabled={busy} onClick={() => setConfirmDiscard(true)}>
+            <Button variant="ghost" disabled={busy} onClick={() => setConfirmDiscard(true)}>
               Discard
-            </button>
+            </Button>
           )}
-          <button type="button" className={styles.btnPrimary} disabled={busy} onClick={handleSave}>
-            {saving && <span className={styles.spinner} />}
+          <Button variant="primary" disabled={busy} loading={saving} onClick={handleSave}>
             {saving ? "Saving…" : "Save"}
-          </button>
+          </Button>
         </>
       }
       banner={error ? <p className={styles.errorBanner}>{error}</p> : undefined}
       currentWeek={{
-        monday: currentMonday,
-        prev: prevDisabled
-          ? { disabled: true }
-          : { onClick: () => setCurrentMonday(addDays(currentMonday, -7)) },
-        next: nextDisabled
-          ? { disabled: true }
-          : { onClick: () => setCurrentMonday(addDays(currentMonday, 7)) },
+        monday: weekNav.monday,
+        prev: weekNav.prevDisabled ? { disabled: true } : { onClick: weekNav.goToPrev },
+        next: weekNav.nextDisabled ? { disabled: true } : { onClick: weekNav.goToNext },
         showToday: false,
         isActivePlan: false,
         onWorkoutClick: setOpenDate,

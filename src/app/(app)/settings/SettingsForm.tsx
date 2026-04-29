@@ -2,6 +2,9 @@
 
 import { useState } from "react";
 import type { UserPreferences } from "@/db/schema";
+import { Button } from "@/components/Button";
+import { FormField } from "@/components/FormField";
+import { Select } from "@/components/Select";
 import styles from "./SettingsForm.module.scss";
 
 export function SettingsForm({ initial }: { initial: UserPreferences }) {
@@ -31,24 +34,20 @@ export function SettingsForm({ initial }: { initial: UserPreferences }) {
 
   return (
     <form className={styles.form} onSubmit={onSubmit}>
-      <div className={styles.field}>
-        <label className={styles.label} htmlFor="units">Units</label>
-        <select
+      <FormField label="Units" htmlFor="units">
+        <Select
           id="units"
-          className={styles.select}
           value={units}
           onChange={(e) => setUnits(e.target.value as UserPreferences["units"])}
         >
           <option value="mi">Miles (mi)</option>
           <option value="km">Kilometers (km)</option>
-        </select>
-      </div>
+        </Select>
+      </FormField>
 
-      <div className={styles.field}>
-        <label className={styles.label} htmlFor="pace">Pace format</label>
-        <select
+      <FormField label="Pace format" htmlFor="pace">
+        <Select
           id="pace"
-          className={styles.select}
           value={paceFormat}
           onChange={(e) =>
             setPaceFormat(e.target.value as UserPreferences["pace_format"])
@@ -56,10 +55,12 @@ export function SettingsForm({ initial }: { initial: UserPreferences }) {
         >
           <option value="min_per_mi">Min/mile</option>
           <option value="min_per_km">Min/km</option>
-        </select>
-      </div>
+        </Select>
+      </FormField>
 
-      <button className={styles.button} type="submit">Save</button>
+      <Button type="submit" variant="primary" loading={status === "saving"} className={styles.submit}>
+        Save
+      </Button>
       {status === "saving" && <span className={styles.status}>Saving…</span>}
       {status === "saved" && <span className={styles.status}>Saved.</span>}
       {status === "error" && (

@@ -1,0 +1,17 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  line-height: 1;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  flex-shrink: 0;
+}
+
+.badge_active     { background: var(--color-brown);        color: #fff; }
+.badge_upcoming   { background: var(--color-terra-subtle); color: var(--color-terra); }
+.badge_archived   { background: var(--color-bg-subtle);    color: var(--color-fg-tertiary); }
+.badge_generating { background: var(--color-bg-subtle);    color: var(--color-fg-secondary); }

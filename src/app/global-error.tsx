@@ -1,5 +1,7 @@
 "use client";
 
+import { Button } from "@/components/Button";
+
 export default function GlobalError({
   error,
   reset,
@@ -36,21 +38,9 @@ export default function GlobalError({
           <p style={{ color: "var(--color-fg-secondary)", marginBottom: "var(--space-6)" }}>
             {error.message}
           </p>
-          <button
-            onClick={reset}
-            style={{
-              padding: "var(--space-3) var(--space-6)",
-              borderRadius: "var(--radius-md)",
-              border: "1px solid var(--color-border-default)",
-              background: "var(--color-brown)",
-              color: "#ffffff",
-              fontFamily: "var(--font-body)",
-              fontWeight: 500,
-              cursor: "pointer",
-            }}
-          >
+          <Button variant="primary" onClick={reset}>
             Try again
-          </button>
+          </Button>
         </main>
       </body>
     </html>

@@ -1,0 +1,107 @@
+// Shared Button component — single source of truth for button styling.
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  font-family: var(--font-body);
+  font-weight: 600;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
+
+  &:disabled,
+  &[aria-disabled="true"] {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+}
+
+// ── Sizes ──
+.size_md {
+  font-size: 0.875rem;
+  padding: var(--space-2) var(--space-4);
+  min-height: 36px;
+}
+
+.size_sm {
+  font-size: 0.8125rem;
+  padding: 3px var(--space-3);
+  border-radius: var(--radius-sm);
+  min-height: 0;
+}
+
+// ── Variants ──
+.primary {
+  background: var(--color-brown);
+  color: #fff;
+  border-color: var(--color-brown);
+
+  &:hover:not(:disabled):not([aria-disabled="true"]) {
+    background: var(--color-brown-hover);
+    border-color: var(--color-brown-hover);
+  }
+}
+
+.secondary {
+  background: transparent;
+  color: var(--color-brown);
+  border-color: var(--color-brown);
+
+  &:hover:not(:disabled):not([aria-disabled="true"]) {
+    background: var(--color-brown-subtle);
+  }
+}
+
+.ghost {
+  background: transparent;
+  color: var(--color-fg-secondary);
+  border-color: var(--color-border-default);
+  font-weight: 500;
+
+  &:hover:not(:disabled):not([aria-disabled="true"]) {
+    background: var(--color-bg-subtle);
+    color: var(--color-fg-primary);
+  }
+}
+
+.danger {
+  background: transparent;
+  color: var(--color-workout-race);
+  border-color: var(--color-workout-race);
+
+  &:hover:not(:disabled):not([aria-disabled="true"]) {
+    background: color-mix(in srgb, var(--color-workout-race) 8%, transparent);
+  }
+}
+
+.dangerSolid {
+  background: var(--color-workout-race);
+  color: #fff;
+  border-color: var(--color-workout-race);
+
+  &:hover:not(:disabled):not([aria-disabled="true"]) {
+    background: color-mix(in srgb, var(--color-workout-race) 88%, #000);
+    border-color: color-mix(in srgb, var(--color-workout-race) 88%, #000);
+  }
+}
+
+.text {
+  background: none;
+  border: none;
+  color: var(--color-fg-secondary);
+  text-decoration: underline;
+  padding: 0;
+  font-weight: 500;
+  min-height: 0;
+
+  &:hover:not(:disabled):not([aria-disabled="true"]) {
+    color: var(--color-fg-primary);
+  }
+}
+

@@ -1,5 +1,6 @@
 "use client";
 import * as Dialog from "@radix-ui/react-dialog";
+import { Button } from "@/components/Button";
 import styles from "./ClearChatDialog.module.scss";
 
 interface Props {
@@ -24,9 +25,9 @@ export function ClearChatDialog({ open, onClose, onConfirm }: Props) {
           </Dialog.Description>
           <div className={styles.actions}>
             <Dialog.Close asChild>
-              <button className={styles.cancel}>Cancel</button>
+              <Button variant="ghost">Cancel</Button>
             </Dialog.Close>
-            <button className={styles.confirm} onClick={handleConfirm}>Clear chat</button>
+            <Button variant="dangerSolid" onClick={handleConfirm}>Clear chat</Button>
           </div>
         </Dialog.Content>
       </Dialog.Portal>

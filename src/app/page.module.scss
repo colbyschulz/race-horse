@@ -55,20 +55,9 @@
   flex-shrink: 0;
 }
 
-.button {
-  background: var(--color-brown);
-  color: #ffffff;
-  border: none;
-  border-radius: var(--radius-md);
+.signIn {
   padding: var(--space-3) var(--space-6);
-  font-family: var(--font-body);
-  font-weight: 500;
   font-size: 1rem;
-  transition: background 120ms ease;
-
-  &:hover {
-    background: var(--color-brown-hover);
-  }
 }
 
 .domain {

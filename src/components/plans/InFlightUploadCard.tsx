@@ -1,8 +1,9 @@
 // src/components/plans/InFlightUploadCard.tsx
 "use client";
-import Link from "next/link";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { Button } from "@/components/Button";
+import { Spinner } from "@/components/Spinner";
 import styles from "./InFlightUploadCard.module.scss";
 
 interface Row {
@@ -38,14 +39,14 @@ export function InFlightUploadCard({ row }: { row: Row }) {
   if (row.status === "extracting") {
     return (
       <div className={styles.card}>
-        <div className={styles.spinner} aria-hidden="true" />
+        <Spinner size="md" style={{ color: "var(--color-brown)" }} />
         <div className={styles.body}>
           <p className={styles.title}>Extracting your plan…</p>
           <p className={styles.sub}>{row.original_filename}</p>
         </div>
-        <button type="button" className={styles.btnGhost} disabled={disabled} onClick={discard}>
+        <Button variant="ghost" disabled={disabled} onClick={discard}>
           Cancel
-        </button>
+        </Button>
       </div>
     );
   }
@@ -60,21 +61,21 @@ export function InFlightUploadCard({ row }: { row: Row }) {
         {confirmDiscard ? (
           <div className={styles.confirmRow}>
             <span className={styles.confirmLabel}>Discard?</span>
-            <button type="button" className={`${styles.btnSmall} ${styles.btnSmallDanger}`} disabled={disabled} onClick={discard}>
+            <Button variant="danger" size="sm" disabled={disabled} onClick={discard}>
               Yes
-            </button>
-            <button type="button" className={styles.btnSmall} disabled={disabled} onClick={() => setConfirmDiscard(false)}>
+            </Button>
+            <Button variant="ghost" size="sm" disabled={disabled} onClick={() => setConfirmDiscard(false)}>
               No
-            </button>
+            </Button>
           </div>
         ) : (
           <div className={styles.actions}>
-            <button type="button" className={styles.btnGhost} disabled={disabled} onClick={() => setConfirmDiscard(true)}>
+            <Button variant="ghost" disabled={disabled} onClick={() => setConfirmDiscard(true)}>
               Discard
-            </button>
-            <Link href={`/plans/upload/${row.id}/review`} className={styles.btnPrimary}>
+            </Button>
+            <Button variant="primary" href={`/plans/upload/${row.id}/review`}>
               Review →
-            </Link>
+            </Button>
           </div>
         )}
       </div>
@@ -90,25 +91,25 @@ export function InFlightUploadCard({ row }: { row: Row }) {
         {row.extraction_error && <p className={styles.error}>{row.extraction_error}</p>}
       </div>
       <div className={styles.actions}>
-        <button type="button" className={styles.btnPrimary} disabled={disabled} onClick={retry}>
+        <Button variant="primary" disabled={disabled} onClick={retry}>
           Retry
-        </button>
-        <Link href={`/coach?from=/plans&plan_file_id=${row.id}`} className={styles.btnSecondary}>
+        </Button>
+        <Button variant="secondary" href={`/coach?from=/plans&plan_file_id=${row.id}`}>
           Talk to coach
-        </Link>
-        <button type="button" className={styles.btnDanger} disabled={disabled} onClick={() => setConfirmDiscard(true)}>
+        </Button>
+        <Button variant="danger" disabled={disabled} onClick={() => setConfirmDiscard(true)}>
           Discard
-        </button>
+        </Button>
       </div>
       {confirmDiscard && (
         <div className={styles.confirmRow}>
           <span className={styles.confirmLabel}>Discard this upload?</span>
-          <button type="button" className={`${styles.btnSmall} ${styles.btnSmallDanger}`} disabled={disabled} onClick={discard}>
+          <Button variant="danger" size="sm" disabled={disabled} onClick={discard}>
             Yes
-          </button>
-          <button type="button" className={styles.btnSmall} disabled={disabled} onClick={() => setConfirmDiscard(false)}>
+          </Button>
+          <Button variant="ghost" size="sm" disabled={disabled} onClick={() => setConfirmDiscard(false)}>
             No
-          </button>
+          </Button>
         </div>
       )}
     </div>

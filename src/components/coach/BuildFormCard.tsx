@@ -1,5 +1,10 @@
 "use client";
 import { useState, type FormEvent } from "react";
+import { Button } from "@/components/Button";
+import { Card } from "@/components/Card";
+import { Input } from "@/components/Input";
+import { Textarea } from "@/components/Textarea";
+import { Spinner } from "@/components/Spinner";
 import styles from "./BuildFormCard.module.scss";
 import type { BuildFormInput } from "@/coach/buildForm";
 
@@ -54,7 +59,7 @@ function EditableForm({
   }
 
   return (
-    <form className={styles.card} onSubmit={handleSubmit} aria-label="Build a plan">
+    <Card as="form" onSubmit={handleSubmit} aria-label="Build a plan" className={styles.wrap}>
       <h2 className={styles.heading}>Build a plan</h2>
 
       <fieldset className={styles.fieldset}>
@@ -105,7 +110,7 @@ function EditableForm({
         <div className={styles.raceRow}>
           <label>
             Race date
-            <input
+            <Input
               type="date"
               value={raceDate}
               onChange={(e) => setRaceDate(e.target.value)}
@@ -114,7 +119,7 @@ function EditableForm({
           </label>
           <label>
             Race distance / event
-            <input
+            <Input
               type="text"
               value={raceEvent}
               onChange={(e) => setRaceEvent(e.target.value)}
@@ -124,7 +129,7 @@ function EditableForm({
           </label>
           <label>
             Target time
-            <input
+            <Input
               type="text"
               value={targetTime}
               onChange={(e) => setTargetTime(e.target.value)}
@@ -136,7 +141,7 @@ function EditableForm({
 
       <label className={styles.contextLabel}>
         Goals &amp; context
-        <textarea
+        <Textarea
           rows={3}
           value={context}
           onChange={(e) => setContext(e.target.value)}
@@ -145,20 +150,20 @@ function EditableForm({
       </label>
 
       <div className={styles.actions}>
-        <button type="submit" className={styles.btnPrimary}>
+        <Button type="submit" variant="primary">
           Build plan
-        </button>
-        <button type="button" className={styles.btnText} onClick={onCancel}>
+        </Button>
+        <Button type="button" variant="text" onClick={onCancel}>
           Cancel
-        </button>
+        </Button>
       </div>
-    </form>
+    </Card>
   );
 }
 
 function LockedView({ values, showSpinner }: { values: BuildFormInput; showSpinner: boolean }) {
   return (
-    <div className={styles.card} aria-label="Plan request">
+    <Card aria-label="Plan request" className={styles.wrap}>
       <h2 className={styles.heading}>Plan request</h2>
       <ul className={styles.summary}>
         <li>
@@ -188,9 +193,9 @@ function LockedView({ values, showSpinner }: { values: BuildFormInput; showSpinn
       </ul>
       {showSpinner && (
         <div className={styles.spinnerRow} role="status">
-          <span className={styles.spinner} aria-hidden="true" /> Loading your training history…
+          <Spinner size="sm" style={{ color: "var(--color-brown)" }} /> Loading your training history…
         </div>
       )}
-    </div>
+    </Card>
   );
 }

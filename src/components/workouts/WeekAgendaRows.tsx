@@ -1,21 +1,10 @@
 "use client";
 import { addDays, formatDayLabel } from "@/lib/dates";
+import { formatDistance, formatDuration } from "@/lib/format";
 import { WorkoutBadge } from "./WorkoutBadge";
 import type { WorkoutRow } from "@/plans/dateQueries";
 import type { ActivityRow } from "@/strava/dateQueries";
 import styles from "./WeekAgendaRows.module.scss";
-
-function fmtDist(m: string | number | null | undefined, units: "mi" | "km"): string {
-  if (m == null) return "—";
-  return (Number(m) / (units === "mi" ? 1609.344 : 1000)).toFixed(1);
-}
-
-function fmtDur(s: number | null | undefined): string {
-  if (s == null || s <= 0) return "—";
-  const h = Math.floor(s / 3600);
-  const min = Math.floor((s % 3600) / 60);
-  return h > 0 ? `${h}h ${min}m` : `${min}m`;
-}
 
 interface Props {
   monday: string;
@@ -66,10 +55,10 @@ export function WeekAgendaRows({ monday, byDate, activitiesByDate, today, units,
               {isToday && <span className={styles.now}>Today</span>}
               {!isRest && w && (
                 <span className={styles.meta}>
-                  <span className={styles.metaVal}>{fmtDist(w.distance_meters as string | null, units)}</span>
+                  <span className={styles.metaVal}>{formatDistance(w.distance_meters as string | null, units) ?? "—"}</span>
                   <span className={styles.metaUnit}>{units}</span>
                   <span className={styles.metaSep}>·</span>
-                  <span className={styles.metaVal}>{fmtDur(w.duration_seconds)}</span>
+                  <span className={styles.metaVal}>{formatDuration(w.duration_seconds) ?? "—"}</span>
                 </span>
               )}
             </button>
@@ -84,8 +73,8 @@ export function WeekAgendaRows({ monday, byDate, activitiesByDate, today, units,
                 <span className={styles.activityLabel}>Completed</span>
                 <span className={styles.activityName}>{act.name}</span>
                 <span className={styles.activityMeta}>
-                  {fmtDist(act.distance_meters, units)}{" "}{units}
-                  {act.moving_time_seconds ? ` · ${fmtDur(act.moving_time_seconds)}` : ""}
+                  {formatDistance(act.distance_meters, units) ?? "—"}{" "}{units}
+                  {act.moving_time_seconds ? ` · ${formatDuration(act.moving_time_seconds) ?? ""}` : ""}
                 </span>
               </a>
             ))}
@@ -96,7 +85,7 @@ export function WeekAgendaRows({ monday, byDate, activitiesByDate, today, units,
         <div className={styles.weekTotal}>
           <span className={styles.totalLabel}>Week total</span>
           <span className={styles.totalValue}>
-            {fmtDist(String(totalMeters), units)} {units} · {fmtDur(totalSeconds)}
+            {formatDistance(totalMeters, units) ?? "—"} {units} · {formatDuration(totalSeconds) ?? "—"}
           </span>
         </div>
       )}

@@ -38,22 +38,6 @@
   margin: 0;
 }
 
-.badge {
-  font-size: 0.625rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  padding: 3px 10px;
-  border-radius: var(--radius-pill);
-  flex-shrink: 0;
-  margin-top: 2px;
-}
-
-.badge_active   { background: var(--color-brown); color: #fff; }
-.badge_upcoming { background: var(--color-terra-subtle); color: var(--color-terra); }
-.badge_archived { background: var(--color-bg-subtle); color: var(--color-fg-tertiary); }
-.badge_generating { background: var(--color-bg-subtle); color: var(--color-fg-secondary); }
-
 .meta {
   font-size: 0.8125rem;
   color: var(--color-fg-secondary);

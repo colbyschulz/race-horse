@@ -1,4 +1,5 @@
 "use client";
+import { formatDateMedium } from "@/lib/dates";
 import styles from "./PlanMeta.module.scss";
 
 // Permissive shape so we accept both DB `Goal` (optional fields) and
@@ -16,12 +17,6 @@ interface Props {
   goal?: GoalLike | null;
 }
 
-function fmtDate(iso: string): string {
-  return new Date(iso + "T00:00:00").toLocaleDateString("en-US", {
-    month: "short", day: "numeric", year: "numeric",
-  });
-}
-
 function MetaItem({ label, value }: { label: string; value: string }) {
   return (
     <div className={styles.item}>
@@ -33,15 +28,15 @@ function MetaItem({ label, value }: { label: string; value: string }) {
 
 export function PlanMeta({ startDate, endDate, mode, goal }: Props) {
   const items: { label: string; value: string }[] = [
-    { label: "Starts", value: fmtDate(startDate) },
+    { label: "Starts", value: formatDateMedium(startDate) },
   ];
 
   if (endDate) {
-    items.push({ label: "Ends", value: fmtDate(endDate) });
+    items.push({ label: "Ends", value: formatDateMedium(endDate) });
   }
 
   if (mode === "goal" && goal?.race_date) {
-    items.push({ label: "Race date", value: fmtDate(goal.race_date) });
+    items.push({ label: "Race date", value: formatDateMedium(goal.race_date) });
   }
   if (mode === "goal" && goal?.race_distance) {
     items.push({ label: "Distance", value: goal.race_distance });

@@ -3,7 +3,7 @@
 import styles from "./Plans.module.scss";
 import { PlanCard } from "@/components/plans/PlanCard";
 import { UploadDropzone } from "@/components/plans/UploadDropzone";
-import { PlansEmptyState } from "@/components/plans/PlansEmptyState";
+import { EmptyState } from "@/components/EmptyState";
 import { InFlightUploadCard } from "@/components/plans/InFlightUploadCard";
 import type { PlanWithCounts } from "@/plans/types";
 
@@ -39,7 +39,14 @@ export function PlansPageClient({ plans, today, planFiles, units }: Props) {
         </section>
       )}
 
-      {plans.length === 0 && planFiles.length === 0 && <PlansEmptyState />}
+      {plans.length === 0 && planFiles.length === 0 && (
+        <EmptyState
+          title="No plans yet"
+          body="Once the coach is online or upload is wired up, your plans will live here."
+          variant="bordered"
+          size="sm"
+        />
+      )}
 
       {sorted.length > 0 && (
         <div className={styles.planList}>

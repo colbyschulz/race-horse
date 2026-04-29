@@ -6,11 +6,8 @@ import { runCoach } from "@/coach/runner";
 import { fetchStravaPreload } from "@/coach/stravaPreload";
 import { formatBuildForm, type BuildFormInput } from "@/coach/buildForm";
 import { todayIso } from "@/lib/dates";
-import type { BuildRequestBody, SSEEvent } from "@/coach/types";
-
-function sse(event: SSEEvent): string {
-  return `event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`;
-}
+import { sseResponse } from "@/lib/sse";
+import type { BuildRequestBody } from "@/coach/types";
 
 function validate(body: unknown): { ok: true; value: BuildRequestBody } | { ok: false; error: string } {
   if (!body || typeof body !== "object") return { ok: false, error: "body required" };
@@ -87,35 +84,12 @@ export async function POST(req: Request): Promise<Response> {
   const tz = (userRow?.preferences as { timezone?: string } | null)?.timezone;
   const today = todayIso(tz);
 
-  const stream = new ReadableStream<Uint8Array>({
-    async start(controller) {
-      const enc = new TextEncoder();
-      try {
-        const preload = await fetchStravaPreload(session.user.id!);
-        for await (const event of runCoach({
-          userId: session.user.id!,
-          message,
-          today,
-          stravaPreload: preload,
-          coldStartBuild: true,
-        })) {
-          controller.enqueue(enc.encode(sse(event)));
-        }
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : "unknown error";
-        controller.enqueue(enc.encode(sse({ type: "error", error: msg })));
-      } finally {
-        controller.close();
-      }
-    },
-  });
-
-  return new Response(stream, {
-    headers: {
-      "content-type": "text/event-stream",
-      "cache-control": "no-cache, no-transform",
-      "connection": "keep-alive",
-      "x-accel-buffering": "no",
-    },
-  });
+  const preload = await fetchStravaPreload(session.user.id!);
+  return sseResponse(runCoach({
+    userId: session.user.id!,
+    message,
+    today,
+    stravaPreload: preload,
+    coldStartBuild: true,
+  }));
 }

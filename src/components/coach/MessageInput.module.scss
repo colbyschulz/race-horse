@@ -9,7 +9,7 @@
 .input {
   flex: 1;
   font-family: var(--font-body);
-  color: var(--color-fg-default);
+  color: var(--color-fg-primary);
   background: var(--color-bg-surface);
   border: 1px solid var(--color-border-default);
   border-radius: var(--radius-md);
@@ -34,25 +34,7 @@
 }
 
 .send {
-  font-family: var(--font-body);
-  font-size: 0.9375rem;
-  font-weight: 600;
-  background: var(--color-brown);
-  color: #fff;
-  border: none;
-  border-radius: var(--radius-md);
-  padding: var(--space-2) var(--space-4);
-  cursor: pointer;
   flex-shrink: 0;
   align-self: flex-end;
   height: 40px;
-
-  &:hover:not(:disabled) {
-    background: var(--color-brown-hover);
-  }
-
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
 }

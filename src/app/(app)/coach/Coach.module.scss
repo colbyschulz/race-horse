@@ -26,18 +26,6 @@
   margin: 0;
 }
 
-.clearBtn {
-  background: none;
-  border: 1px solid var(--color-border-default);
-  border-radius: var(--radius-md);
-  padding: 6px 12px;
-  font-family: var(--font-body);
-  font-size: 0.8125rem;
-  color: var(--color-fg-secondary);
-  cursor: pointer;
-  &:hover { color: var(--color-brown); border-color: var(--color-brown); }
-}
-
 .stream {
   flex: 1;
   overflow-y: auto;

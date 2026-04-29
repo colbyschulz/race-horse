@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { WorkoutRow } from "@/plans/dateQueries";
 import type { ActivityRow } from "@/strava/dateQueries";
-import { mondayOf, addDays } from "@/lib/dates";
+import { mondayOf, addDays, formatDateShort, weekIndexFromStart } from "@/lib/dates";
 import { PlanHeading } from "./PlanHeading";
 import { PlanMeta, type GoalLike } from "./PlanMeta";
 import { PlanStats } from "@/app/(app)/plans/[id]/PlanStats";
@@ -43,16 +43,6 @@ interface Props {
   currentWeek?: CurrentWeek;
 }
 
-function fmtShortDate(iso: string): string {
-  return new Date(iso + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" });
-}
-
-function weekIndexFromStart(planStart: string, monday: string): number {
-  const startMon = mondayOf(planStart);
-  const ms = new Date(monday + "T00:00:00").getTime() - new Date(startMon + "T00:00:00").getTime();
-  return Math.round(ms / (7 * 24 * 60 * 60 * 1000)) + 1;
-}
-
 export function PlanView({
   plan,
   today,
@@ -86,8 +76,8 @@ export function PlanView({
     const weekIndex = weekIndexFromStart(plan.start_date, currentWeek.monday);
     return {
       byDate,
-      weekTitle: insidePlan ? `Week ${weekIndex}` : fmtShortDate(currentWeek.monday),
-      weekRange: `${fmtShortDate(currentWeek.monday)} – ${fmtShortDate(sunday)}`,
+      weekTitle: insidePlan ? `Week ${weekIndex}` : formatDateShort(currentWeek.monday),
+      weekRange: `${formatDateShort(currentWeek.monday)} – ${formatDateShort(sunday)}`,
     };
   }, [currentWeek, allWorkouts, plan.start_date, plan.end_date]);
 

@@ -6,6 +6,7 @@ import { eq } from "drizzle-orm";
 import { users } from "@/db/schema";
 import { getPlanById } from "@/plans/queries";
 import { addDays, mondayOf, todayIso } from "@/lib/dates";
+import { planNavBounds } from "@/lib/planNav";
 import { PlanWeekSection } from "./PlanWeekSection";
 import { WeekAgendaSkeleton } from "@/app/(app)/training/WeekAgendaSkeleton";
 import styles from "./PlanDetail.module.scss";
@@ -31,8 +32,11 @@ export default async function PlanDetailPage({
 
   const units = (pref?.preferences?.units === "km" ? "km" : "mi") as "mi" | "km";
   const today = todayIso();
-  const planFirstMonday = mondayOf(plan.start_date);
-  const planLastMonday = plan.end_date ? mondayOf(addDays(plan.end_date, -1)) : null;
+  const { firstMonday: planFirstMonday, lastMonday: planLastMonday } = planNavBounds(
+    plan.start_date,
+    plan.end_date,
+    mondayOf(today),
+  );
 
   const defaultMonday =
     planLastMonday == null || mondayOf(today) <= planLastMonday
@@ -44,8 +48,7 @@ export default async function PlanDetailPage({
   const monday = week && /^\d{4}-\d{2}-\d{2}$/.test(week) ? mondayOf(week) : defaultMonday;
   const sunday = addDays(monday, 6);
 
-  const prevDisabled = monday <= planFirstMonday;
-  const nextDisabled = !!planLastMonday && monday >= planLastMonday;
+  const { prevDisabled, nextDisabled } = planNavBounds(plan.start_date, plan.end_date, monday);
   const isCurrentWeek = monday === mondayOf(today);
 
   return (
