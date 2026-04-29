@@ -6,6 +6,8 @@ import { CoachNotesSection } from "./CoachNotesSection";
 import { CoachNotesSkeleton } from "./CoachNotesSkeleton";
 import { Button } from "@/components/Button";
 import { signOutAction } from "@/app/_actions/sign-out";
+import { PageHeader } from "@/components/layout/PageHeader";
+import { StickyTop } from "@/components/layout/StickyTop";
 import styles from "./Settings.module.scss";
 
 export default async function SettingsPage() {
@@ -14,7 +16,9 @@ export default async function SettingsPage() {
 
   return (
     <div className={styles.page}>
-      <h1 className={styles.header}>Settings</h1>
+      <StickyTop>
+        <PageHeader title="Settings" />
+      </StickyTop>
       <SettingsForm initial={session.user.preferences} />
       <Suspense fallback={<CoachNotesSkeleton />}>
         <CoachNotesSection userId={session.user.id!} />

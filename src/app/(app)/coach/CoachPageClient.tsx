@@ -7,6 +7,7 @@ import { consumeStream } from "@/lib/sse";
 import type { BuildFormInput } from "@/coach/buildForm";
 
 import { Button } from "@/components/Button";
+import { PageHeader } from "@/components/layout/PageHeader";
 import { ContextPill } from "@/components/coach/ContextPill";
 import { MessageBubble } from "@/components/coach/MessageBubble";
 import { ToolIndicator } from "@/components/coach/ToolIndicator";
@@ -186,12 +187,14 @@ export function CoachPageClient({
   return (
     <div className={styles.page}>
       <ContextPill fromRoute={fromRoute} fromLabel={fromLabel} />
-      <header className={styles.header}>
-        <h1 className={styles.title}>Coach</h1>
-        <Button variant="ghost" size="sm" onClick={() => setClearOpen(true)}>
-          Clear chat
-        </Button>
-      </header>
+      <PageHeader
+        title="Coach"
+        actions={
+          <Button variant="ghost" size="sm" onClick={() => setClearOpen(true)}>
+            Clear chat
+          </Button>
+        }
+      />
       <div className={styles.stream} ref={streamRef}>
         {messages.map((m) => (
           <MessageBubble key={m.id} message={m} />

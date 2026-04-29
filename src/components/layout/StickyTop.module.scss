@@ -1,0 +1,17 @@
+.sticky {
+  position: sticky;
+  top: var(--space-3);
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  background: var(--color-bg-base);
+  margin: calc(var(--space-6) * -1) calc(var(--space-4) * -1) 0;
+  padding: var(--space-6) var(--space-4) var(--space-3);
+
+  @media (min-width: 768px) {
+    top: 0;
+    margin: calc(var(--space-6) * -1) 0 0;
+    padding: var(--space-6) 0 var(--space-3);
+  }
+}

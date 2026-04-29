@@ -6,7 +6,8 @@ import { WeekNavigator } from "@/components/workouts/WeekNavigator";
 import { WeekAgendaRows } from "@/components/workouts/WeekAgendaRows";
 import { WorkoutDetailSheet } from "@/components/workouts/WorkoutDetailSheet";
 import { CoachLink } from "@/components/layout/CoachLink";
-import styles from "./Calendar.module.scss";
+import { PageHeader } from "@/components/layout/PageHeader";
+import { StickyTop } from "@/components/layout/StickyTop";
 
 interface Props {
   planTitle: string;
@@ -55,12 +56,12 @@ export function TrainingClient({
 
   return (
     <>
-      <header className={styles.pageHeader}>
-        <div className={styles.pageTitles}>
-          <h1 className={styles.pageTitle}>Training</h1>
-          <p className={styles.pageSubtitle}>{planTitle}</p>
-        </div>
-        <CoachLink planId={activePlanId} />
+      <StickyTop>
+        <PageHeader
+          title="Training"
+          subtitle={planTitle}
+          actions={<CoachLink planId={activePlanId} />}
+        />
         <WeekNavigator
           weekTitle={weekTitle}
           weekRange={weekRange}
@@ -69,7 +70,7 @@ export function TrainingClient({
           today={{ href: todayHref }}
           showToday={!isCurrentWeek}
         />
-      </header>
+      </StickyTop>
       <WeekAgendaRows
         monday={monday}
         byDate={byDate}

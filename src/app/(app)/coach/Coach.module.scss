@@ -12,20 +12,6 @@
   }
 }
 
-.header {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-}
-
-.title {
-  flex: 1;
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 1.375rem;
-  margin: 0;
-}
-
 .stream {
   flex: 1;
   overflow-y: auto;
