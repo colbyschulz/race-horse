@@ -1,15 +1,15 @@
 import { auth } from "@/auth";
+import { db } from "@/db";
+import { eq } from "drizzle-orm";
+import { users } from "@/db/schema";
 import { runCoach } from "@/coach/runner";
 import { fetchStravaPreload } from "@/coach/stravaPreload";
 import { formatBuildForm, type BuildFormInput } from "@/coach/buildForm";
+import { todayIso } from "@/lib/dates";
 import type { BuildRequestBody, SSEEvent } from "@/coach/types";
 
 function sse(event: SSEEvent): string {
   return `event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`;
-}
-
-function isoToday(): string {
-  return new Date().toISOString().slice(0, 10);
 }
 
 function validate(body: unknown): { ok: true; value: BuildRequestBody } | { ok: false; error: string } {
@@ -83,6 +83,10 @@ export async function POST(req: Request): Promise<Response> {
   };
   const message = formatBuildForm(formInput);
 
+  const [userRow] = await db.select({ preferences: users.preferences }).from(users).where(eq(users.id, session.user.id!)).limit(1);
+  const tz = (userRow?.preferences as { timezone?: string } | null)?.timezone;
+  const today = todayIso(tz);
+
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
       const enc = new TextEncoder();
@@ -91,7 +95,7 @@ export async function POST(req: Request): Promise<Response> {
         for await (const event of runCoach({
           userId: session.user.id!,
           message,
-          today: isoToday(),
+          today,
           stravaPreload: preload,
           coldStartBuild: true,
         })) {

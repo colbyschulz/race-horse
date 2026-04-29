@@ -1,5 +1,9 @@
-export function todayIso(): string {
-  return new Date().toISOString().slice(0, 10);
+export function todayIso(timezone?: string): string {
+  if (!timezone || timezone === "UTC") {
+    return new Date().toISOString().slice(0, 10);
+  }
+  // en-CA locale returns YYYY-MM-DD format
+  return new Date().toLocaleDateString("en-CA", { timeZone: timezone });
 }
 
 export function parseIso(iso: string): string {

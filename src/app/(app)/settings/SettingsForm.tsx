@@ -6,7 +6,6 @@ import styles from "./SettingsForm.module.scss";
 
 export function SettingsForm({ initial }: { initial: UserPreferences }) {
   const [units, setUnits] = useState<UserPreferences["units"]>(initial.units);
-  const [timezone, setTimezone] = useState(initial.timezone);
   const [paceFormat, setPaceFormat] = useState<UserPreferences["pace_format"]>(
     initial.pace_format,
   );
@@ -22,7 +21,7 @@ export function SettingsForm({ initial }: { initial: UserPreferences }) {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
         units,
-        timezone,
+        timezone: initial.timezone,
         pace_format: paceFormat,
         power_units: "watts",
       }),
@@ -43,17 +42,6 @@ export function SettingsForm({ initial }: { initial: UserPreferences }) {
           <option value="mi">Miles (mi)</option>
           <option value="km">Kilometers (km)</option>
         </select>
-      </div>
-
-      <div className={styles.field}>
-        <label className={styles.label} htmlFor="timezone">Timezone (IANA)</label>
-        <input
-          id="timezone"
-          className={styles.input}
-          value={timezone}
-          onChange={(e) => setTimezone(e.target.value)}
-          placeholder="America/Los_Angeles"
-        />
       </div>
 
       <div className={styles.field}>

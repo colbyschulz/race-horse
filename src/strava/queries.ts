@@ -67,11 +67,29 @@ export async function getActivityWithLaps(
   userId: string,
   activityId: string,
 ): Promise<{
-  activity: typeof activities.$inferSelect;
+  activity: Omit<typeof activities.$inferSelect, "raw">;
   laps: (typeof activityLaps.$inferSelect)[];
 } | null> {
   const activityRows = await db
-    .select()
+    .select({
+      id: activities.id,
+      userId: activities.userId,
+      strava_id: activities.strava_id,
+      name: activities.name,
+      type: activities.type,
+      start_date: activities.start_date,
+      distance_meters: activities.distance_meters,
+      moving_time_seconds: activities.moving_time_seconds,
+      elapsed_time_seconds: activities.elapsed_time_seconds,
+      avg_hr: activities.avg_hr,
+      max_hr: activities.max_hr,
+      avg_pace_seconds_per_km: activities.avg_pace_seconds_per_km,
+      avg_power_watts: activities.avg_power_watts,
+      elevation_gain_m: activities.elevation_gain_m,
+      matched_workout_id: activities.matched_workout_id,
+      created_at: activities.created_at,
+      updated_at: activities.updated_at,
+    })
     .from(activities)
     .where(and(eq(activities.id, activityId), eq(activities.userId, userId)))
     .limit(1);

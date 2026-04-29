@@ -20,13 +20,14 @@ export default async function TodayPage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/");
   const userId = session.user.id;
-  const today = todayIso();
 
   const [[pref], activePlan] = await Promise.all([
     db.select({ preferences: users.preferences }).from(users).where(eq(users.id, userId)).limit(1),
     getActivePlan(userId),
   ]);
   const units = (pref?.preferences?.units === "km" ? "km" : "mi") as "mi" | "km";
+  const tz = (pref?.preferences as { timezone?: string } | null)?.timezone;
+  const today = todayIso(tz);
 
   return (
     <div className={styles.page}>
@@ -42,17 +43,17 @@ export default async function TodayPage() {
 
       {activePlan && (
         <Suspense fallback={<HeroSkeleton />}>
-          <HeroSection userId={userId} units={units} />
+          <HeroSection userId={userId} units={units} today={today} />
         </Suspense>
       )}
 
       <Suspense fallback={activePlan ? <ActivitiesSkeleton /> : null}>
-        <ActivitiesSection userId={userId} units={units} />
+        <ActivitiesSection userId={userId} units={units} today={today} />
       </Suspense>
 
       {activePlan && (
         <Suspense fallback={<UpNextSkeleton />}>
-          <UpNextSection userId={userId} units={units} />
+          <UpNextSection userId={userId} units={units} today={today} />
         </Suspense>
       )}
     </div>

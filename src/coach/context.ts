@@ -52,7 +52,8 @@ export function renderContextPrefix(params: {
 }): string {
   const lines: string[] = [];
   lines.push(`<context>`);
-  lines.push(`Today: ${params.today}`);
+  const dayName = new Date(`${params.today}T12:00:00`).toLocaleDateString("en-US", { weekday: "long" });
+  lines.push(`Today: ${params.today} (${dayName})`);
   lines.push(`User units: ${params.units}`);
   if (params.activePlan && !params.coldStartBuild) {
     const a = params.activePlan;

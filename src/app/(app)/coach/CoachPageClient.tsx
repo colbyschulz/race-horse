@@ -175,9 +175,9 @@ export function CoachPageClient({ initialMessages, fromRoute, fromLabel, planId,
         )}
         {streaming && (
           <>
-            {!streaming.text && streaming.tools.length === 0 && <ThinkingIndicator />}
-            {streaming.text && <MessageBubble streaming message={{ id: "streaming", role: "assistant", plan_id: planId ?? null, created_at: new Date(), content: [{ type: "text", text: streaming.text }] }} />}
             {streaming.tools.map((t, i) => <ToolIndicator key={i} name={t.name} summary={t.summary} />)}
+            {!streaming.text && (streaming.tools.length === 0 || streaming.tools[streaming.tools.length - 1].summary !== undefined) && <ThinkingIndicator />}
+            {streaming.text && <MessageBubble streaming message={{ id: "streaming", role: "assistant", plan_id: planId ?? null, created_at: new Date(), content: [{ type: "text", text: streaming.text }] }} />}
           </>
         )}
       </div>

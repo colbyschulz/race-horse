@@ -29,17 +29,18 @@ export default async function CalendarPage({
   const session = await auth();
   if (!session?.user?.id) redirect("/");
   const userId = session.user.id;
-  const today = todayIso();
 
   const { week } = await searchParams;
-  const monday = week && /^\d{4}-\d{2}-\d{2}$/.test(week) ? mondayOf(week) : mondayOf(today);
-  const sunday = addDays(monday, 6);
 
   const [[pref], activePlan] = await Promise.all([
     db.select({ preferences: users.preferences }).from(users).where(eq(users.id, userId)).limit(1),
     getActivePlan(userId),
   ]);
   const units = (pref?.preferences?.units === "km" ? "km" : "mi") as "mi" | "km";
+  const tz = (pref?.preferences as { timezone?: string } | null)?.timezone;
+  const today = todayIso(tz);
+  const monday = week && /^\d{4}-\d{2}-\d{2}$/.test(week) ? mondayOf(week) : mondayOf(today);
+  const sunday = addDays(monday, 6);
 
   if (!activePlan) {
     return (

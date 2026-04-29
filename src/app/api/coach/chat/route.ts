@@ -1,13 +1,13 @@
 import { auth } from "@/auth";
+import { db } from "@/db";
+import { eq } from "drizzle-orm";
+import { users } from "@/db/schema";
 import { runCoach } from "@/coach/runner";
+import { todayIso } from "@/lib/dates";
 import type { ChatRequestBody, SSEEvent } from "@/coach/types";
 
 function sse(event: SSEEvent): string {
   return `event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`;
-}
-
-function isoToday(): string {
-  return new Date().toISOString().slice(0, 10);
 }
 
 export async function POST(req: Request): Promise<Response> {
@@ -34,6 +34,10 @@ export async function POST(req: Request): Promise<Response> {
     });
   }
 
+  const [userRow] = await db.select({ preferences: users.preferences }).from(users).where(eq(users.id, session.user.id!)).limit(1);
+  const tz = (userRow?.preferences as { timezone?: string } | null)?.timezone;
+  const today = todayIso(tz);
+
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
       const enc = new TextEncoder();
@@ -44,7 +48,7 @@ export async function POST(req: Request): Promise<Response> {
           planId: body.plan_id ?? null,
           fromRoute: body.from_route,
           planFileId: body.plan_file_id,
-          today: isoToday(),
+          today,
         })) {
           controller.enqueue(enc.encode(sse(event)));
         }

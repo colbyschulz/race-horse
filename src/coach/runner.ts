@@ -10,35 +10,174 @@ import type { SSEEvent, ToolName, ContentBlock } from "./types";
 import type { Anthropic } from "@anthropic-ai/sdk";
 import type { StravaPreload } from "./stravaPreload";
 
+const KNOWN_TOOLS = new Set([
+  "get_active_plan","list_plans","get_plan","create_plan","update_workouts",
+  "set_active_plan","archive_plan","finalize_plan","get_recent_activities",
+  "get_activity_laps","update_activity_match","get_athlete_summary",
+  "update_coach_notes","update_plan_notes","read_uploaded_file",
+]);
+
+// Block types the Anthropic API accepts from us. Built-in/server tools like
+// code_execution use non-standard types (e.g. "server_tool_use" with IDs
+// prefixed "srvtoolu_") that we must strip before sending history back.
+const ALLOWED_BLOCK_TYPES = new Set([
+  "text", "tool_use", "tool_result", "image", "document",
+  "thinking", "redacted_thinking",
+]);
+
 /**
- * Drop any trailing messages that form an incomplete tool_use/tool_result pair.
- * A crashed run can leave an assistant message with tool_use blocks but no
- * following user message with tool_result blocks — the Anthropic API rejects this.
+ * Strip tool_use/tool_result pairs for tools not in our known set, plus any
+ * non-standard block types (e.g. "server_tool_use" from built-in code_execution).
+ * The API rejects any tool_use that lacks a matching result block.
+ */
+function stripUnknownToolBlocks(msgs: Anthropic.MessageParam[]): Anthropic.MessageParam[] {
+  // Collect IDs of blocks to remove: standard tool_use with unknown names,
+  // plus any non-standard block type (server_tool_use, etc.)
+  const unknownIds = new Set<string>();
+  for (const m of msgs) {
+    if (!Array.isArray(m.content)) continue;
+    for (const b of m.content) {
+      const block = b as { type: string; id?: string; name?: string };
+      if (block.type === "tool_use" && block.id && block.name && !KNOWN_TOOLS.has(block.name)) {
+        unknownIds.add(block.id);
+      }
+      // Non-standard types (server_tool_use, etc.) — collect id so we can
+      // also remove any referencing result blocks
+      if (!ALLOWED_BLOCK_TYPES.has(block.type) && block.id) {
+        unknownIds.add(block.id);
+      }
+    }
+  }
+
+  return msgs.map((m) => {
+    if (!Array.isArray(m.content)) return m;
+    const content = m.content.filter((b) => {
+      const block = b as { type: string; id?: string; tool_use_id?: string };
+      // Drop any non-standard block type entirely
+      if (!ALLOWED_BLOCK_TYPES.has(block.type)) return false;
+      // Drop standard tool_use blocks whose name isn't in KNOWN_TOOLS
+      if (block.type === "tool_use" && block.id && unknownIds.has(block.id)) return false;
+      // Drop tool_result blocks that reference a stripped tool_use
+      if (block.type === "tool_result" && block.tool_use_id && unknownIds.has(block.tool_use_id)) return false;
+      return true;
+    });
+    if (content.length === m.content.length) return m;
+    return { ...m, content };
+  }).filter((m) => !Array.isArray(m.content) || m.content.length > 0);
+}
+
+/**
+ * Remove broken tool_use/tool_result pairs anywhere in history (not just at the
+ * tail). A handler crash can leave an assistant turn with tool_use blocks but no
+ * following user turn with tool_result blocks — the Anthropic API rejects this
+ * even when the broken pair is buried mid-conversation.
  */
 function sanitizeMessages(msgs: Anthropic.MessageParam[]): Anthropic.MessageParam[] {
-  const out = [...msgs];
-  // Walk backwards and drop trailing incomplete tool exchanges.
-  while (out.length > 0) {
-    const last = out[out.length - 1];
-    const content = Array.isArray(last.content) ? last.content : [];
-    const hasToolResult = content.some((b) => (b as { type: string }).type === "tool_result");
-    const secondLast = out.length >= 2 ? out[out.length - 2] : null;
-    const secondLastContent = secondLast && Array.isArray(secondLast.content) ? secondLast.content : [];
-    const secondLastHasToolUse = secondLastContent.some((b) => (b as { type: string }).type === "tool_use");
+  const out: Anthropic.MessageParam[] = [];
+  let i = 0;
+  while (i < msgs.length) {
+    const m = msgs[i];
+    const content = Array.isArray(m.content) ? m.content : [];
 
-    if (last.role === "assistant") {
-      const hasToolUse = content.some((b) => (b as { type: string }).type === "tool_use");
-      if (hasToolUse) {
-        // Trailing assistant turn with tool_use but no following tool_result — drop it.
-        out.pop();
-        continue;
+    if (m.role === "assistant") {
+      const toolUseIds = content
+        .filter((b) => (b as { type: string }).type === "tool_use")
+        .map((b) => (b as { type: string; id: string }).id);
+
+      if (toolUseIds.length > 0) {
+        const next = msgs[i + 1];
+        const nextContent = next && Array.isArray(next.content) ? next.content : [];
+        const resultIds = new Set(
+          nextContent
+            .filter((b) => (b as { type: string }).type === "tool_result")
+            .map((b) => (b as { type: string; tool_use_id: string }).tool_use_id),
+        );
+        const allAccountedFor = toolUseIds.every((id) => resultIds.has(id));
+
+        if (!allAccountedFor) {
+          // Drop this broken assistant turn and skip the next user turn too
+          // if it consists only of tool_results (it's the orphaned result side).
+          i++;
+          if (next && next.role === "user" && nextContent.length > 0 &&
+              nextContent.every((b) => (b as { type: string }).type === "tool_result")) {
+            i++;
+          }
+          continue;
+        }
       }
-    } else if (last.role === "user" && hasToolResult && !secondLastHasToolUse) {
-      // Orphaned tool_result with no preceding tool_use assistant turn — drop it.
-      out.pop();
-      continue;
     }
-    break;
+
+    // Drop orphaned tool_result user turns with no preceding tool_use.
+    if (m.role === "user") {
+      const hasToolResult = content.some((b) => (b as { type: string }).type === "tool_result");
+      if (hasToolResult) {
+        const prev = out[out.length - 1];
+        const prevContent = prev && Array.isArray(prev.content) ? prev.content : [];
+        const prevHasToolUse = prevContent.some((b) => (b as { type: string }).type === "tool_use");
+        if (!prevHasToolUse) {
+          i++;
+          continue;
+        }
+      }
+    }
+
+    out.push(m);
+    i++;
+  }
+  return out;
+}
+
+const TOOL_CONTENT_LIMIT = 3000;
+const TOOL_INTACT_WINDOW = 8; // keep last N messages fully intact
+
+/**
+ * Truncate large tool_use inputs and tool_result content in old history.
+ * The model doesn't need the full JSON of a plan build that happened 10 turns ago —
+ * only recent tool exchanges need their full payload. Keeps token counts manageable.
+ */
+function trimOldToolContent(messages: Anthropic.MessageParam[]): Anthropic.MessageParam[] {
+  if (messages.length <= TOOL_INTACT_WINDOW) return messages;
+  // Keep last TOOL_INTACT_WINDOW messages intact; truncate tool payloads in older history
+  return messages.map((m, i) => {
+    if (i >= messages.length - TOOL_INTACT_WINDOW) return m;
+    if (!Array.isArray(m.content)) return m;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const content = m.content.map((block: any) => {
+      if (block.type === "tool_result") {
+        const text = typeof block.content === "string" ? block.content : JSON.stringify(block.content);
+        if (text.length <= TOOL_CONTENT_LIMIT) return block;
+        return { ...block, content: text.slice(0, TOOL_CONTENT_LIMIT) + "…[truncated]" };
+      }
+      if (block.type === "tool_use") {
+        const text = JSON.stringify(block.input);
+        if (text.length <= TOOL_CONTENT_LIMIT) return block;
+        return { ...block, input: { _truncated: text.slice(0, TOOL_CONTENT_LIMIT) + "…" } };
+      }
+      return block;
+    });
+    return { ...m, content } as Anthropic.MessageParam;
+  });
+}
+
+/**
+ * Mark the second-to-last message's last content block as a cache breakpoint.
+ * Anthropic caches all tokens up to and including this block, so repeated API
+ * calls within an agentic loop (and across consecutive turns) don't re-charge
+ * the stable history. We already cache the system prompt; this covers the rest.
+ */
+function withCacheBreakpoint(messages: Anthropic.MessageParam[]): Anthropic.MessageParam[] {
+  if (messages.length < 2) return messages;
+  const out = messages.map((m) => ({ ...m }));
+  const target = out[out.length - 2];
+  const content = Array.isArray(target.content)
+    ? [...target.content]
+    : [{ type: "text" as const, text: target.content as string }];
+  if (content.length > 0) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const last = content[content.length - 1] as any;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    content[content.length - 1] = { ...last, cache_control: { type: "ephemeral" } } as any;
+    out[out.length - 2] = { ...target, content };
   }
   return out;
 }
@@ -175,7 +314,7 @@ export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
       role: m.role,
       content: m.content as Anthropic.ContentBlockParam[],
     }));
-    const anthropicMessages = sanitizeMessages(rawMessages);
+    const anthropicMessages = trimOldToolContent(sanitizeMessages(stripUnknownToolBlocks(rawMessages)));
 
     // 5. Call Anthropic SDK with streaming
     const client = getAnthropic();
@@ -202,7 +341,7 @@ export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
         max_tokens: 8096,
         system: systemBlocks,
         tools: input.coldStartBuild ? getColdStartTools(planId) : getTools(planId),
-        messages: currentMessages,
+        messages: withCacheBreakpoint(currentMessages),
       });
 
       // Accumulate content blocks for this turn
@@ -277,6 +416,10 @@ export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
 
       const effectiveStopReason = stopReason ?? finalMsg.stop_reason;
 
+      if (effectiveStopReason === "max_tokens") {
+        throw new Error("Response was too long to complete. Try asking for a smaller change (e.g. one week at a time).");
+      }
+
       if (effectiveStopReason !== "tool_use") {
         // Final turn — persist assistant message (text only, no tool_use blocks)
         const storedMsg = await appendMessage(userId, "assistant", finalTurnBlocks, planId);
@@ -313,13 +456,18 @@ export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
         let resultValue: unknown;
         let resultText: string;
 
-        if (handler) {
-          resultValue = await handler(toolBlock.input, { userId, planId });
-          resultText = JSON.stringify(resultValue);
-        } else {
-          resultValue = { error: `Unknown tool: ${toolName}` };
-          resultText = JSON.stringify(resultValue);
+        try {
+          if (handler) {
+            resultValue = await handler(toolBlock.input, { userId, planId });
+          } else {
+            resultValue = { error: `Unknown tool: ${toolName}` };
+          }
+        } catch (err) {
+          // Convert handler errors to error result so the tool_result is always
+          // persisted and history stays valid for subsequent requests.
+          resultValue = { error: err instanceof Error ? err.message : String(err) };
         }
+        resultText = JSON.stringify(resultValue);
 
         const summary = handler != null
           ? summarizeToolResult(toolName, resultValue)

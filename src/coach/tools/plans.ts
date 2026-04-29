@@ -207,7 +207,7 @@ export const list_plans_handler: ToolHandler<
 
 export const get_plan_handler: ToolHandler<
   { plan_id: string },
-  { plan: typeof plans.$inferSelect; workouts: (typeof workouts.$inferSelect)[] }
+  { plan: typeof plans.$inferSelect; workouts: { id: string; date: string; type: string; distance_meters: string | null; duration_seconds: number | null; notes: string; target_intensity: unknown; intervals: unknown }[] }
 > = async ({ plan_id }, { userId }) => {
   const plan = await getPlanById(plan_id, userId);
   if (!plan || plan.userId !== userId) {
@@ -215,9 +215,19 @@ export const get_plan_handler: ToolHandler<
   }
 
   const planWorkouts = await db
-    .select()
+    .select({
+      id: workouts.id,
+      date: workouts.date,
+      type: workouts.type,
+      distance_meters: workouts.distance_meters,
+      duration_seconds: workouts.duration_seconds,
+      notes: workouts.notes,
+      target_intensity: workouts.target_intensity,
+      intervals: workouts.intervals,
+    })
     .from(workouts)
-    .where(eq(workouts.plan_id, plan_id));
+    .where(eq(workouts.plan_id, plan_id))
+    .orderBy(workouts.date);
 
   return { plan, workouts: planWorkouts };
 };
@@ -279,41 +289,39 @@ export const update_workouts_handler: ToolHandler<
     throw new Error("plan not found or not owned");
   }
 
-  return await db.transaction(async (tx) => {
-    let upserted = 0;
-    let deleted = 0;
+  let upserted = 0;
+  let deleted = 0;
 
-    for (const op of operations) {
-      if (op.op === "delete") {
-        await tx
-          .delete(workouts)
-          .where(and(eq(workouts.plan_id, plan_id), eq(workouts.date, op.date)));
-        deleted++;
-      } else if (op.op === "upsert") {
-        // No unique constraint on (plan_id, date) — use delete + insert
-        await tx
-          .delete(workouts)
-          .where(and(eq(workouts.plan_id, plan_id), eq(workouts.date, op.date)));
+  for (const op of operations) {
+    if (op.op === "delete") {
+      await db
+        .delete(workouts)
+        .where(and(eq(workouts.plan_id, plan_id), eq(workouts.date, op.date)));
+      deleted++;
+    } else if (op.op === "upsert") {
+      // No unique constraint on (plan_id, date) — use delete + insert
+      await db
+        .delete(workouts)
+        .where(and(eq(workouts.plan_id, plan_id), eq(workouts.date, op.date)));
 
-        await tx.insert(workouts).values({
-          plan_id,
-          date: op.date,
-          sport: plan.sport,
-          type: op.workout.type as typeof workouts.$inferInsert["type"],
-          distance_meters: op.workout.distance_km != null
-            ? String(op.workout.distance_km * 1000)
-            : null,
-          duration_seconds: op.workout.duration_minutes != null
-            ? op.workout.duration_minutes * 60
-            : null,
-          notes: op.workout.notes ?? "",
-        });
-        upserted++;
-      }
+      await db.insert(workouts).values({
+        plan_id,
+        date: op.date,
+        sport: plan.sport,
+        type: op.workout.type as typeof workouts.$inferInsert["type"],
+        distance_meters: op.workout.distance_km != null
+          ? String(op.workout.distance_km * 1000)
+          : null,
+        duration_seconds: op.workout.duration_minutes != null
+          ? op.workout.duration_minutes * 60
+          : null,
+        notes: op.workout.notes ?? "",
+      });
+      upserted++;
     }
+  }
 
-    return { upserted, deleted };
-  });
+  return { upserted, deleted };
 };
 
 export const set_active_plan_handler: ToolHandler<
