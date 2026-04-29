@@ -165,7 +165,7 @@ export const archivePlanTool: Tool = {
 export const finalizePlanTool: Tool = {
   name: "finalize_plan",
   description:
-    "Marks a plan as fully generated. MUST be the last tool call after `create_plan` + all `update_workouts` for a cold-start plan build. Until called, the plan shows as 'GENERATING' in the UI.",
+    "Marks a plan as fully generated (moves it from 'GENERATING' to ready). Cold-start plans are auto-finalized when the turn ends — calling this explicitly is optional, useful only when you want the plan visible mid-stream.",
   input_schema: {
     type: "object" as const,
     properties: {
@@ -257,7 +257,10 @@ export const create_plan_handler: ToolHandler<
     set_active?: boolean;
   },
   { plan_id: string }
-> = async ({ title, sport, mode, goal, start_date, end_date, set_active }, { userId }) => {
+> = async (
+  { title, sport, mode, goal, start_date, end_date, set_active },
+  { userId, coldStartBuild }
+) => {
   const newPlan = await createPlan(userId, {
     title,
     sport,
@@ -269,7 +272,8 @@ export const create_plan_handler: ToolHandler<
     generation_status: "generating",
   });
 
-  if (set_active) {
+  // In cold-start the existing active plan is read-only — never let a new plan steal it.
+  if (set_active && !coldStartBuild) {
     await setActivePlan(newPlan.id, userId);
   }
 

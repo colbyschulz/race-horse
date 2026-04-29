@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import styles from "./Coach.module.scss";
 import type { StoredMessage, SSEEvent } from "@/coach/types";
@@ -24,7 +24,11 @@ interface Props {
   intent?: string;
 }
 
-type StreamingState = { text: string; tools: { name: string; summary?: string }[] };
+type StreamingState = {
+  text: string;
+  tools: { name: string; summary?: string }[];
+  done: boolean;
+};
 
 export function CoachPageClient({
   initialMessages,
@@ -40,12 +44,28 @@ export function CoachPageClient({
   const [sending, setSending] = useState(false);
   const [clearOpen, setClearOpen] = useState(false);
   const streamRef = useRef<HTMLDivElement>(null);
+  const pinnedRef = useRef(true);
 
   const [buildState, setBuildState] = useState<BuildFormCardState | null>(
     intent === "build" ? { kind: "editable" } : null
   );
 
   useEffect(() => {
+    const el = streamRef.current;
+    if (!el) return;
+    function onScroll() {
+      const el = streamRef.current;
+      if (!el) return;
+      pinnedRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+    }
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => el.removeEventListener("scroll", onScroll);
+  }, []);
+
+  // useLayoutEffect fires before paint — scroll is set before the browser draws the frame,
+  // eliminating the visual jump caused by a post-paint scroll correction.
+  useLayoutEffect(() => {
+    if (!pinnedRef.current) return;
     const el = streamRef.current;
     if (!el) return;
     el.scrollTop = el.scrollHeight;
@@ -56,8 +76,10 @@ export function CoachPageClient({
     const r = await fetch(`/api/coach/messages${qs}`);
     if (r.ok) {
       const { messages: m } = (await r.json()) as { messages: StoredMessage[] };
+      // Batch both updates so streaming bubble never disappears before the real message appears.
       setMessages(m);
     }
+    setStreaming(null);
   }
 
   function handleSSE(
@@ -66,15 +88,17 @@ export function CoachPageClient({
   ): void {
     if (ev.type === "text-delta") {
       assembled.text += ev.delta;
-      setStreaming({ text: assembled.text, tools: [...assembled.tools] });
+      setStreaming({ text: assembled.text, tools: [...assembled.tools], done: false });
     } else if (ev.type === "tool-use") {
       assembled.tools.push({ name: ev.name });
-      setStreaming({ text: assembled.text, tools: [...assembled.tools] });
+      setStreaming({ text: assembled.text, tools: [...assembled.tools], done: false });
     } else if (ev.type === "tool-result") {
       const last = assembled.tools.findLast((t) => t.name === ev.name && !t.summary);
       if (last) last.summary = ev.result_summary;
-      setStreaming({ text: assembled.text, tools: [...assembled.tools] });
+      setStreaming({ text: assembled.text, tools: [...assembled.tools], done: false });
     } else if (ev.type === "done") {
+      // Mark done immediately so the working-indicator hides before reloadHistory resolves.
+      setStreaming((s) => (s ? { ...s, done: true } : s));
       void reloadHistory();
     } else if (ev.type === "error") {
       throw new Error(ev.error);
@@ -82,6 +106,7 @@ export function CoachPageClient({
   }
 
   async function send(text: string) {
+    pinnedRef.current = true;
     setSending(true);
     setMessages((prev) => [
       ...prev,
@@ -93,7 +118,7 @@ export function CoachPageClient({
         content: [{ type: "text", text }],
       },
     ]);
-    setStreaming({ text: "", tools: [] });
+    setStreaming({ text: "", tools: [], done: false });
     try {
       const res = await fetch("/api/coach/chat", {
         method: "POST",
@@ -110,8 +135,8 @@ export function CoachPageClient({
     } catch (err) {
       console.error(err);
       alert("Coach error — please try again.");
+      setStreaming(null); // reloadHistory won't run on error, so clear here
     } finally {
-      setStreaming(null);
       setSending(false);
     }
   }
@@ -119,7 +144,7 @@ export function CoachPageClient({
   async function buildSubmit(values: BuildFormInput) {
     setSending(true);
     setBuildState({ kind: "submitting", values });
-    setStreaming({ text: "", tools: [] });
+    setStreaming({ text: "", tools: [], done: false });
     try {
       const res = await fetch("/api/coach/build", {
         method: "POST",
@@ -141,8 +166,8 @@ export function CoachPageClient({
       console.error(err);
       alert("Coach error — please try again.");
       setBuildState(null);
+      setStreaming(null); // reloadHistory won't run on error, so clear here
     } finally {
-      setStreaming(null);
       setSending(false);
     }
   }
@@ -179,11 +204,6 @@ export function CoachPageClient({
             {streaming.tools.map((t, i) => (
               <ToolIndicator key={i} name={t.name} summary={t.summary} />
             ))}
-            {!streaming.text &&
-              (streaming.tools.length === 0 ||
-                streaming.tools[streaming.tools.length - 1].summary !== undefined) && (
-                <ThinkingIndicator />
-              )}
             {streaming.text && (
               <MessageBubble
                 streaming
@@ -196,6 +216,14 @@ export function CoachPageClient({
                 }}
               />
             )}
+            {/* Working-indicator persists across turn boundaries so the user
+                always knows the run is still in flight. Hidden when a tool
+                is in-flight (its pulsing dot is the indicator) or when done. */}
+            {!streaming.done &&
+              (streaming.tools.length === 0 ||
+                streaming.tools[streaming.tools.length - 1].summary !== undefined) && (
+                <ThinkingIndicator />
+              )}
           </>
         )}
       </div>

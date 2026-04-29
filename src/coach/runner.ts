@@ -369,6 +369,11 @@ export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
     // For "done" event message_id, we'll use the stored message id
     let assistantMessageId = "";
 
+    // Track plans the model creates vs. finalizes within this turn so we can
+    // auto-finalize any cold-start plan that was left in 'GENERATING'.
+    const createdPlanIds: string[] = [];
+    const finalizedPlanIds = new Set<string>();
+
     while (true) {
       const stream = client.messages.stream({
         model: input.coldStartBuild ? COACH_BUILD_MODEL : COACH_MODEL,
@@ -491,7 +496,11 @@ export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
 
         try {
           if (handler) {
-            resultValue = await handler(toolBlock.input, { userId, planId });
+            resultValue = await handler(toolBlock.input, {
+              userId,
+              planId,
+              coldStartBuild: input.coldStartBuild,
+            });
           } else {
             resultValue = { error: `Unknown tool: ${toolName}` };
           }
@@ -501,6 +510,14 @@ export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
           resultValue = { error: err instanceof Error ? err.message : String(err) };
         }
         resultText = JSON.stringify(resultValue);
+
+        if (toolName === "create_plan") {
+          const created = resultValue as { plan_id?: string } | null;
+          if (created?.plan_id) createdPlanIds.push(created.plan_id);
+        } else if (toolName === "finalize_plan") {
+          const inp = toolBlock.input as { plan_id?: string } | null;
+          if (inp?.plan_id) finalizedPlanIds.add(inp.plan_id);
+        }
 
         const summary =
           handler != null
@@ -521,6 +538,20 @@ export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
 
       // Add tool results as user message in-memory
       currentMessages = [...currentMessages, { role: "user" as const, content: toolResultContent }];
+    }
+
+    // Auto-finalize any cold-start plan the model created but didn't explicitly
+    // finalize. Without this, a build that "forgets" finalize_plan strands the
+    // plan in 'GENERATING' forever.
+    if (input.coldStartBuild) {
+      for (const id of createdPlanIds) {
+        if (finalizedPlanIds.has(id)) continue;
+        try {
+          await HANDLERS.finalize_plan({ plan_id: id }, { userId, planId, coldStartBuild: true });
+        } catch (err) {
+          console.error("auto-finalize failed", id, err);
+        }
+      }
     }
 
     yield { type: "done", message_id: assistantMessageId };

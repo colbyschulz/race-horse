@@ -32,7 +32,7 @@ export type ToolName =
 
 export type ToolHandler<I = unknown, O = unknown> = (
   input: I,
-  ctx: { userId: string; planId?: string | null }
+  ctx: { userId: string; planId?: string | null; coldStartBuild?: boolean }
 ) => Promise<O>;
 
 export type SSEEvent =
