@@ -7,6 +7,7 @@
 **Architecture:** Next.js 15 App Router on Vercel. NextAuth v5 (Auth.js) with a custom Strava OAuth provider, persisted to Neon Postgres via Drizzle ORM (`@auth/drizzle-adapter`). The app surface is a mobile-first bottom tab bar (sidebar on desktop) with empty placeholder pages for Today / Calendar / Plans, plus a floating "Ask coach" button that opens a "coming soon" modal. On first sign-in, a client component captures the browser's IANA timezone and persists default preferences via an authed POST.
 
 **Tech Stack:**
+
 - Next.js 15 (App Router) + React 19 + TypeScript
 - SCSS Modules + Radix UI Primitives
 - NextAuth v5 (`next-auth` package, v5+) + custom Strava provider
@@ -43,6 +44,7 @@ Keep these three values handy — you'll need them in Task 4.
 ## Task 1: Bootstrap Next.js project
 
 **Files:**
+
 - Create: `package.json`, `tsconfig.json`, `next.config.ts`, `src/app/layout.tsx`, `src/app/page.tsx`, `src/styles/globals.scss`, `src/styles/tokens.scss`, `pnpm-lock.yaml`, `next-env.d.ts`, `eslint.config.mjs`, `postcss.config.mjs`
 
 - [ ] **Step 1: Initialize Next.js with the right flags**
@@ -117,11 +119,14 @@ Create `src/styles/globals.scss`:
 ```scss
 @use "./tokens.scss";
 
-*, *::before, *::after {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
 }
 
-html, body {
+html,
+body {
   margin: 0;
   padding: 0;
   font-family: var(--font-sans);
@@ -152,11 +157,7 @@ export const metadata: Metadata = {
   description: "Virtual coach for runners and cyclists",
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <body>{children}</body>
@@ -201,6 +202,7 @@ git commit -m "Bootstrap Next.js 15 app with TypeScript + SCSS"
 ## Task 2: Add Vitest test harness
 
 **Files:**
+
 - Create: `vitest.config.ts`, `vitest.setup.ts`, `src/lib/__tests__/sanity.test.ts`
 - Modify: `package.json` (add scripts + dev deps)
 
@@ -282,6 +284,7 @@ git commit -m "Add Vitest + Testing Library test harness"
 ## Task 3: Configure environment variables
 
 **Files:**
+
 - Create: `.env.example`, `.env.local`
 - Modify: `.gitignore` (already excludes `.env*`)
 
@@ -332,6 +335,7 @@ git commit -m "Add environment variable template"
 ## Task 4: Set up Drizzle + Neon connection
 
 **Files:**
+
 - Create: `src/db/index.ts`, `drizzle.config.ts`
 - Modify: `package.json` (add deps + scripts)
 
@@ -399,6 +403,7 @@ git commit -m "Wire up Drizzle ORM + Neon serverless driver"
 ## Task 5: Define database schema (NextAuth tables + user preferences)
 
 **Files:**
+
 - Create: `src/db/schema.ts`, `src/db/__tests__/schema.test.ts`
 
 - [ ] **Step 1: Install the auth adapter**
@@ -460,20 +465,12 @@ Expected: FAILS with "Cannot find module '../schema'".
 - [ ] **Step 4: Implement `src/db/schema.ts`**
 
 ```ts
-import {
-  pgTable,
-  text,
-  timestamp,
-  primaryKey,
-  integer,
-  jsonb,
-  uuid,
-} from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, primaryKey, integer, jsonb, uuid } from "drizzle-orm/pg-core";
 import type { AdapterAccountType } from "next-auth/adapters";
 
 export type UserPreferences = {
   units: "mi" | "km";
-  timezone: string;          // IANA, e.g. "America/Los_Angeles"
+  timezone: string; // IANA, e.g. "America/Los_Angeles"
   pace_format: "min_per_mi" | "min_per_km";
   power_units: "watts";
 };
@@ -492,10 +489,7 @@ export const users = pgTable("user", {
   email: text("email").unique(),
   emailVerified: timestamp("emailVerified", { mode: "date" }),
   image: text("image"),
-  preferences: jsonb("preferences")
-    .$type<UserPreferences>()
-    .default(DEFAULT_PREFERENCES)
-    .notNull(),
+  preferences: jsonb("preferences").$type<UserPreferences>().default(DEFAULT_PREFERENCES).notNull(),
   // Durable, user-level memory the coach maintains across the rolling chat.
   // 4 KB cap is enforced in the update_coach_notes tool, not at the DB layer.
   coach_notes: text("coach_notes").notNull().default(""),
@@ -522,7 +516,7 @@ export const accounts = pgTable(
     primaryKey({
       columns: [account.provider, account.providerAccountId],
     }),
-  ],
+  ]
 );
 
 export const sessions = pgTable("session", {
@@ -540,7 +534,7 @@ export const verificationTokens = pgTable(
     token: text("token").notNull(),
     expires: timestamp("expires", { mode: "date" }).notNull(),
   },
-  (vt) => [primaryKey({ columns: [vt.identifier, vt.token] })],
+  (vt) => [primaryKey({ columns: [vt.identifier, vt.token] })]
 );
 ```
 
@@ -564,6 +558,7 @@ git commit -m "Define NextAuth schema with user preferences extension"
 ## Task 6: Generate and apply the initial migration
 
 **Files:**
+
 - Create: `drizzle/0000_*.sql` (auto-generated)
 
 - [ ] **Step 1: Generate the migration SQL**
@@ -602,6 +597,7 @@ git commit -m "Initial migration: NextAuth tables + user preferences"
 ## Task 7: Configure NextAuth with custom Strava OAuth provider
 
 **Files:**
+
 - Create: `src/auth/strava.ts`, `src/auth/index.ts`, `src/auth/config.ts`, `src/types/next-auth.d.ts`, `src/app/api/auth/[...nextauth]/route.ts`, `src/middleware.ts`
 
 - [ ] **Step 1: Install NextAuth v5**
@@ -623,12 +619,12 @@ interface StravaProfile {
   id: number;
   firstname: string;
   lastname: string;
-  profile: string;     // avatar URL
+  profile: string; // avatar URL
   username?: string;
 }
 
 export default function Strava<P extends StravaProfile>(
-  options: OAuthUserConfig<P>,
+  options: OAuthUserConfig<P>
 ): OAuthConfig<P> {
   return {
     id: "strava",
@@ -794,6 +790,7 @@ git commit -m "Configure NextAuth v5 with custom Strava provider"
 ## Task 8: Implement the landing page with "Sign in with Strava"
 
 **Files:**
+
 - Modify: `src/app/page.tsx`
 - Create: `src/app/page.module.scss`, `src/app/_actions/sign-in.ts`
 
@@ -869,8 +866,8 @@ export default async function HomePage() {
     <main className={styles.main}>
       <h1 className={styles.title}>colbystrainingplan</h1>
       <p className={styles.tagline}>
-        A virtual running and cycling coach for athletes who already think in
-        pace zones, FTP, and threshold.
+        A virtual running and cycling coach for athletes who already think in pace zones, FTP, and
+        threshold.
       </p>
       <form action={signInWithStrava}>
         <button type="submit" className={styles.button}>
@@ -908,6 +905,7 @@ git commit -m "Add landing page with Strava sign-in"
 ## Task 9: Build the authenticated app shell (sidebar + bottom tabs)
 
 **Files:**
+
 - Create: `src/app/(app)/layout.tsx`, `src/components/layout/AppShell.tsx`, `src/components/layout/AppShell.module.scss`, `src/components/layout/NavLinks.tsx`
 
 - [ ] **Step 1: Create the navigation links component**
@@ -1070,11 +1068,7 @@ import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { AppShell } from "@/components/layout/AppShell";
 
-export default async function AppLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
   if (!session?.user) redirect("/");
 
@@ -1094,6 +1088,7 @@ git commit -m "Add authenticated AppShell with sidebar + bottom tabs"
 ## Task 10: Add placeholder pages for Today / Calendar / Plans / Coach / Settings
 
 **Files:**
+
 - Create: `src/app/(app)/today/page.tsx`, `src/app/(app)/calendar/page.tsx`, `src/app/(app)/plans/page.tsx`, `src/app/(app)/coach/page.tsx`, `src/app/(app)/settings/page.tsx`, `src/components/EmptyState.tsx`, `src/components/EmptyState.module.scss`
 
 - [ ] **Step 1: Create the EmptyState component**
@@ -1126,13 +1121,7 @@ git commit -m "Add authenticated AppShell with sidebar + bottom tabs"
 ```tsx
 import styles from "./EmptyState.module.scss";
 
-export function EmptyState({
-  title,
-  body,
-}: {
-  title: string;
-  body: string;
-}) {
+export function EmptyState({ title, body }: { title: string; body: string }) {
   return (
     <div className={styles.root}>
       <h2 className={styles.title}>{title}</h2>
@@ -1193,12 +1182,7 @@ export default function PlansPage() {
 import { EmptyState } from "@/components/EmptyState";
 
 export default function CoachPage() {
-  return (
-    <EmptyState
-      title="Coach"
-      body="Chat with your virtual coach — ships in Phase 4."
-    />
-  );
+  return <EmptyState title="Coach" body="Chat with your virtual coach — ships in Phase 4." />;
 }
 ```
 
@@ -1208,12 +1192,7 @@ export default function CoachPage() {
 import { EmptyState } from "@/components/EmptyState";
 
 export default function SettingsPage() {
-  return (
-    <EmptyState
-      title="Settings"
-      body="Preferences UI lands in Task 12."
-    />
-  );
+  return <EmptyState title="Settings" body="Preferences UI lands in Task 12." />;
 }
 ```
 
@@ -1224,6 +1203,7 @@ pnpm dev
 ```
 
 Sign in, then click each tab. Confirm:
+
 - All five pages render without errors
 - Active tab highlights correctly
 - Mobile layout (resize the window narrow): bottom tab bar
@@ -1243,6 +1223,7 @@ git commit -m "Add placeholder pages for Today / Calendar / Plans / Coach / Sett
 ## Task 11: Add the floating "Ask coach" button (placeholder)
 
 **Files:**
+
 - Create: `src/components/layout/AskCoachButton.tsx`, `src/components/layout/AskCoachButton.module.scss`
 - Modify: `src/components/layout/AppShell.tsx`
 
@@ -1341,8 +1322,8 @@ export function AskCoachButton() {
         <Dialog.Content className={styles.content}>
           <Dialog.Title className={styles.title}>Coach coming soon</Dialog.Title>
           <Dialog.Description className={styles.body}>
-            The coach lands in Phase 4. For now, take a look at the empty
-            Today / Calendar / Plans tabs.
+            The coach lands in Phase 4. For now, take a look at the empty Today / Calendar / Plans
+            tabs.
           </Dialog.Description>
           <Dialog.Close asChild>
             <button className={styles.close}>Close</button>
@@ -1402,6 +1383,7 @@ git commit -m "Add Ask coach floating button (placeholder modal)"
 ## Task 12: Implement preferences capture + Settings UI
 
 **Files:**
+
 - Create: `src/app/api/preferences/route.ts`, `src/app/api/preferences/__tests__/route.test.ts`, `src/components/PreferencesCapture.tsx`, `src/lib/preferences.ts`, `src/app/(app)/settings/SettingsForm.tsx`, `src/app/(app)/settings/SettingsForm.module.scss`
 - Modify: `src/app/(app)/layout.tsx`, `src/app/(app)/settings/page.tsx`
 
@@ -1541,14 +1523,11 @@ export async function POST(req: Request) {
   if (!parsed.success) {
     return NextResponse.json(
       { error: "invalid payload", details: parsed.error.flatten() },
-      { status: 400 },
+      { status: 400 }
     );
   }
 
-  await db
-    .update(users)
-    .set({ preferences: parsed.data })
-    .where(eq(users.id, session.user.id));
+  await db.update(users).set({ preferences: parsed.data }).where(eq(users.id, session.user.id));
 
   return NextResponse.json({ ok: true });
 }
@@ -1607,11 +1586,7 @@ import { redirect } from "next/navigation";
 import { AppShell } from "@/components/layout/AppShell";
 import { PreferencesCapture } from "@/components/PreferencesCapture";
 
-export default async function AppLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
   if (!session?.user) redirect("/");
 
@@ -1689,12 +1664,8 @@ import styles from "./SettingsForm.module.scss";
 export function SettingsForm({ initial }: { initial: UserPreferences }) {
   const [units, setUnits] = useState<UserPreferences["units"]>(initial.units);
   const [timezone, setTimezone] = useState(initial.timezone);
-  const [paceFormat, setPaceFormat] = useState<UserPreferences["pace_format"]>(
-    initial.pace_format,
-  );
-  const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">(
-    "idle",
-  );
+  const [paceFormat, setPaceFormat] = useState<UserPreferences["pace_format"]>(initial.pace_format);
+  const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -1750,9 +1721,7 @@ export function SettingsForm({ initial }: { initial: UserPreferences }) {
           id="pace"
           className={styles.select}
           value={paceFormat}
-          onChange={(e) =>
-            setPaceFormat(e.target.value as UserPreferences["pace_format"])
-          }
+          onChange={(e) => setPaceFormat(e.target.value as UserPreferences["pace_format"])}
         >
           <option value="min_per_mi">Min/mile</option>
           <option value="min_per_km">Min/km</option>
@@ -1764,9 +1733,7 @@ export function SettingsForm({ initial }: { initial: UserPreferences }) {
       </button>
       {status === "saving" && <span className={styles.status}>Saving…</span>}
       {status === "saved" && <span className={styles.status}>Saved.</span>}
-      {status === "error" && (
-        <span className={styles.status}>Error saving — try again.</span>
-      )}
+      {status === "error" && <span className={styles.status}>Error saving — try again.</span>}
     </form>
   );
 }
@@ -1818,6 +1785,7 @@ git commit -m "Capture user preferences + settings page"
 ## Task 13: Add error boundary, not-found, and loading states
 
 **Files:**
+
 - Create: `src/app/error.tsx`, `src/app/not-found.tsx`, `src/app/(app)/loading.tsx`
 
 - [ ] **Step 1: Create the global error boundary**
@@ -1827,13 +1795,7 @@ git commit -m "Capture user preferences + settings page"
 ```tsx
 "use client";
 
-export default function GlobalError({
-  error,
-  reset,
-}: {
-  error: Error;
-  reset: () => void;
-}) {
+export default function GlobalError({ error, reset }: { error: Error; reset: () => void }) {
   return (
     <html>
       <body>
@@ -1881,9 +1843,7 @@ export default function NotFound() {
       }}
     >
       <h1>Not found</h1>
-      <p style={{ color: "var(--color-muted)" }}>
-        That page doesn't exist.
-      </p>
+      <p style={{ color: "var(--color-muted)" }}>That page doesn't exist.</p>
       <Link
         href="/today"
         style={{
@@ -1908,11 +1868,7 @@ export default function NotFound() {
 
 ```tsx
 export default function Loading() {
-  return (
-    <div style={{ padding: "var(--space-8)", color: "var(--color-muted)" }}>
-      Loading…
-    </div>
-  );
+  return <div style={{ padding: "var(--space-8)", color: "var(--color-muted)" }}>Loading…</div>;
 }
 ```
 
@@ -1938,6 +1894,7 @@ git commit -m "Add error boundary, not-found, and loading states"
 ## Task 14: Final verification + Vercel-ready production build
 
 **Files:**
+
 - Modify: nothing (verification only)
 
 - [ ] **Step 1: Run all tests**

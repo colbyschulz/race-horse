@@ -60,9 +60,15 @@ export const read_uploaded_file_handler: ToolHandler<Input, Output> = async (inp
     const parsed = Papa.parse(text, { header: true, skipEmptyLines: true });
     const rows = (parsed as { data: unknown[] }).data;
     const truncated = rows.slice(0, MAX_ROWS);
-    const truncNote = rows.length > MAX_ROWS ? ` (showing first ${MAX_ROWS} of ${rows.length})` : "";
+    const truncNote =
+      rows.length > MAX_ROWS ? ` (showing first ${MAX_ROWS} of ${rows.length})` : "";
     return {
-      content: [{ type: "text", text: `Filename: ${filename}${truncNote}\n${JSON.stringify(truncated, null, 2)}` }],
+      content: [
+        {
+          type: "text",
+          text: `Filename: ${filename}${truncNote}\n${JSON.stringify(truncated, null, 2)}`,
+        },
+      ],
     };
   }
 

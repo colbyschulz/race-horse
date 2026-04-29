@@ -11,7 +11,7 @@ export interface PlanNavBounds {
 export function planNavBounds(
   startDate: string,
   endDate: string | null,
-  monday: string,
+  monday: string
 ): PlanNavBounds {
   const firstMonday = mondayOf(startDate);
   const lastMonday = endDate ? mondayOf(addDays(endDate, -1)) : null;

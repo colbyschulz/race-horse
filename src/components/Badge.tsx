@@ -10,7 +10,9 @@ interface Props {
 
 export function Badge({ variant, label, className }: Props) {
   return (
-    <span className={`${styles.badge} ${styles[`badge_${variant}`]}${className ? ` ${className}` : ""}`}>
+    <span
+      className={`${styles.badge} ${styles[`badge_${variant}`]}${className ? ` ${className}` : ""}`}
+    >
       {label}
     </span>
   );

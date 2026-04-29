@@ -58,7 +58,7 @@ describe("BuildFormCard", () => {
         }}
         onSubmit={vi.fn()}
         onCancel={vi.fn()}
-      />,
+      />
     );
     expect(screen.getByText(/loading your training history/i)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /build plan/i })).toBeNull();
@@ -80,7 +80,7 @@ describe("BuildFormCard", () => {
         }}
         onSubmit={vi.fn()}
         onCancel={vi.fn()}
-      />,
+      />
     );
     expect(screen.queryByText(/loading your training history/i)).toBeNull();
     expect(screen.getByText("Boston Marathon")).toBeInTheDocument();

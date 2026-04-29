@@ -11,7 +11,13 @@ const PLAN_FROM_RE = new RegExp(`^/plans/(${UUID_RE})$`);
 export default async function CoachPage({
   searchParams,
 }: {
-  searchParams: Promise<{ from?: string; from_label?: string; plan_file_id?: string; intent?: string; plan_id?: string }>;
+  searchParams: Promise<{
+    from?: string;
+    from_label?: string;
+    plan_file_id?: string;
+    intent?: string;
+    plan_id?: string;
+  }>;
 }) {
   const session = await auth();
   if (!session?.user?.id) redirect("/");

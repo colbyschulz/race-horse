@@ -66,7 +66,7 @@ export async function updatePlanFileStatus(
   id: string,
   userId: string,
   status: "extracting" | "extracted" | "failed",
-  error?: string | null,
+  error?: string | null
 ): Promise<void> {
   await db
     .update(planFiles)
@@ -81,7 +81,7 @@ export async function updatePlanFileStatus(
 export async function setExtractedPayload(
   id: string,
   userId: string,
-  payload: unknown,
+  payload: unknown
 ): Promise<void> {
   await db
     .update(planFiles)
@@ -97,7 +97,7 @@ export async function setExtractedPayload(
 export async function setExtractedPlanId(
   id: string,
   userId: string,
-  planId: string,
+  planId: string
 ): Promise<void> {
   await db
     .update(planFiles)
@@ -106,12 +106,13 @@ export async function setExtractedPlanId(
 }
 
 export async function deletePlanFile(id: string, userId: string): Promise<void> {
-  await db
-    .delete(planFiles)
-    .where(and(eq(planFiles.id, id), eq(planFiles.userId, userId)));
+  await db.delete(planFiles).where(and(eq(planFiles.id, id), eq(planFiles.userId, userId)));
 }
 
-export async function deletePlanFilesByPlanId(planId: string, userId: string): Promise<PlanFileRow[]> {
+export async function deletePlanFilesByPlanId(
+  planId: string,
+  userId: string
+): Promise<PlanFileRow[]> {
   return db
     .delete(planFiles)
     .where(and(eq(planFiles.extracted_plan_id, planId), eq(planFiles.userId, userId)))

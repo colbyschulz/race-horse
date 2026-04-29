@@ -48,12 +48,15 @@ export default async function CalendarPage({
   }
 
   const isCurrentWeek = monday === mondayOf(today);
-  const { prevDisabled, insidePlan } = planNavBounds(activePlan.start_date, activePlan.end_date, monday);
+  const { prevDisabled, insidePlan } = planNavBounds(
+    activePlan.start_date,
+    activePlan.end_date,
+    monday
+  );
 
-  const weekTitle =
-    insidePlan
-      ? `Week ${weekIndexFromStart(activePlan.start_date, monday)}`
-      : formatDateShort(monday);
+  const weekTitle = insidePlan
+    ? `Week ${weekIndexFromStart(activePlan.start_date, monday)}`
+    : formatDateShort(monday);
   const weekRange = `${formatDateShort(monday)} – ${formatDateShort(sunday)}`;
 
   return (

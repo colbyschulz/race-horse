@@ -13,5 +13,8 @@
   border: 1px solid var(--color-border-default);
   border-radius: var(--radius-pill);
   white-space: nowrap;
-  &:hover { color: var(--color-brown); border-color: var(--color-brown); }
+  &:hover {
+    color: var(--color-brown);
+    border-color: var(--color-brown);
+  }
 }

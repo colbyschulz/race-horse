@@ -24,7 +24,21 @@ interface Props {
   activePlanId: string;
 }
 
-export function TrainingClient({ planTitle, monday, weekTitle, weekRange, prevHref, nextHref, todayHref, isCurrentWeek, workouts, activities, today, units, activePlanId }: Props) {
+export function TrainingClient({
+  planTitle,
+  monday,
+  weekTitle,
+  weekRange,
+  prevHref,
+  nextHref,
+  todayHref,
+  isCurrentWeek,
+  workouts,
+  activities,
+  today,
+  units,
+  activePlanId,
+}: Props) {
   const byDate = useMemo(() => new Map(workouts.map((w) => [w.date, w])), [workouts]);
   const activitiesByDate = useMemo(() => {
     const map = new Map<string, ActivityRow[]>();

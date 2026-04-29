@@ -30,24 +30,23 @@ describe("/api/strava/subscribe", () => {
     const res = await GET(
       new Request("http://test/api/strava/subscribe", {
         headers: { Authorization: "Bearer whatever" },
-      }),
+      })
     );
     expect(res.status).toBe(401);
   });
 
   it("GET forwards to Strava and returns result when authed", async () => {
     (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
-      new Response(JSON.stringify([]), { status: 200 }),
+      new Response(JSON.stringify([]), { status: 200 })
     );
     const res = await GET(
       new Request("http://test/api/strava/subscribe", {
         headers: { Authorization: "Bearer admin-secret" },
-      }),
+      })
     );
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual([]);
-    const fetchedUrl = (globalThis.fetch as ReturnType<typeof vi.fn>).mock
-      .calls[0][0] as URL;
+    const fetchedUrl = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls[0][0] as URL;
     expect(fetchedUrl.toString()).toContain("push_subscriptions");
     expect(fetchedUrl.searchParams.get("client_id")).toBe("sid");
   });
@@ -61,7 +60,7 @@ describe("/api/strava/subscribe", () => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({}),
-      }),
+      })
     );
     expect(res.status).toBe(400);
   });
@@ -75,7 +74,7 @@ describe("/api/strava/subscribe", () => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({}),
-      }),
+      })
     );
     expect(res.status).toBe(400);
   });

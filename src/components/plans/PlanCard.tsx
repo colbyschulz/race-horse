@@ -11,7 +11,7 @@ type Status = "active" | "generating" | "upcoming" | "archived";
 
 function statusOf(
   plan: { is_active: boolean; start_date: string; generation_status: "generating" | "complete" },
-  today: string,
+  today: string
 ): Status {
   if (plan.generation_status === "generating") return "generating";
   if (plan.is_active) return "active";
@@ -69,11 +69,15 @@ export function PlanCard({ plan, today, units }: Props) {
             </div>
           )}
           <div className={styles.stat}>
-            <span className={styles.statValue}>{formatDistance(Number(plan.max_weekly_meters), units) ?? "—"}</span>
+            <span className={styles.statValue}>
+              {formatDistance(Number(plan.max_weekly_meters), units) ?? "—"}
+            </span>
             <span className={styles.statLabel}>Max wk ({units})</span>
           </div>
           <div className={styles.stat}>
-            <span className={styles.statValue}>{formatDistance(Number(plan.longest_run_meters), units) ?? "—"}</span>
+            <span className={styles.statValue}>
+              {formatDistance(Number(plan.longest_run_meters), units) ?? "—"}
+            </span>
             <span className={styles.statLabel}>Long run ({units})</span>
           </div>
         </div>

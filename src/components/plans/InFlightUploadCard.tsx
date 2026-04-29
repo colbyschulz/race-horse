@@ -64,7 +64,12 @@ export function InFlightUploadCard({ row }: { row: Row }) {
             <Button variant="danger" size="sm" disabled={disabled} onClick={discard}>
               Yes
             </Button>
-            <Button variant="ghost" size="sm" disabled={disabled} onClick={() => setConfirmDiscard(false)}>
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={disabled}
+              onClick={() => setConfirmDiscard(false)}
+            >
               No
             </Button>
           </div>
@@ -107,7 +112,12 @@ export function InFlightUploadCard({ row }: { row: Row }) {
           <Button variant="danger" size="sm" disabled={disabled} onClick={discard}>
             Yes
           </Button>
-          <Button variant="ghost" size="sm" disabled={disabled} onClick={() => setConfirmDiscard(false)}>
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={disabled}
+            onClick={() => setConfirmDiscard(false)}
+          >
             No
           </Button>
         </div>

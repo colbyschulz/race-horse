@@ -3,29 +3,24 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { workouts } from "@/db/schema";
 import { auth } from "@/auth";
-import {
-  getPlanFileById,
-  setExtractedPlanId,
-} from "@/plans/files";
-import {
-  createPlan,
-  deletePlan,
-  setActivePlan,
-} from "@/plans/queries";
-import {
-  materializeWorkouts,
-  computeEndDate,
-  type ExtractedWorkout,
-} from "@/plans/materialize";
+import { getPlanFileById, setExtractedPlanId } from "@/plans/files";
+import { createPlan, deletePlan, setActivePlan } from "@/plans/queries";
+import { materializeWorkouts, computeEndDate, type ExtractedWorkout } from "@/plans/materialize";
 import { ExtractedPlanSchema } from "@/extraction/schema";
 import type { Sport, PlanMode, Goal } from "@/plans/types";
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 type Ctx = { params: Promise<{ id: string }> };
 
-function unauthorized() { return NextResponse.json({ error: "unauthorized" }, { status: 401 }); }
-function notFound() { return NextResponse.json({ error: "not found" }, { status: 404 }); }
-function badRequest(msg: string) { return NextResponse.json({ error: msg }, { status: 400 }); }
+function unauthorized() {
+  return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+}
+function notFound() {
+  return NextResponse.json({ error: "not found" }, { status: 404 });
+}
+function badRequest(msg: string) {
+  return NextResponse.json({ error: msg }, { status: 400 });
+}
 
 type SaveBody = {
   title: string;
@@ -69,18 +64,20 @@ export async function POST(req: Request, ctx: Ctx): Promise<NextResponse> {
   if (!parsed.success) return badRequest("payload corrupt");
 
   let body: unknown;
-  try { body = await req.json(); } catch { return badRequest("invalid JSON"); }
+  try {
+    body = await req.json();
+  } catch {
+    return badRequest("invalid JSON");
+  }
   const input = validate(body);
   if (!input) return badRequest("invalid body");
 
   const materialized = materializeWorkouts(
     input.start_date,
-    parsed.data.workouts as ExtractedWorkout[],
+    parsed.data.workouts as ExtractedWorkout[]
   );
   const endDate =
-    input.mode === "indefinite" || materialized.length === 0
-      ? null
-      : computeEndDate(materialized);
+    input.mode === "indefinite" || materialized.length === 0 ? null : computeEndDate(materialized);
 
   // 1. Insert plan (always inactive at first; we activate in step 4 if requested).
   const plan = await createPlan(userId, {
@@ -108,11 +105,15 @@ export async function POST(req: Request, ctx: Ctx): Promise<NextResponse> {
           target_intensity: w.target_intensity,
           intervals: w.intervals,
           notes: w.notes,
-        })),
+        }))
       );
     } catch (err) {
       // Best-effort rollback: delete the plan we just inserted.
-      try { await deletePlan(plan.id, userId); } catch { /* swallow */ }
+      try {
+        await deletePlan(plan.id, userId);
+      } catch {
+        /* swallow */
+      }
       throw err;
     }
   }

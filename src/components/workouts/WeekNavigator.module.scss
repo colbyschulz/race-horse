@@ -106,5 +106,7 @@
   white-space: nowrap;
   line-height: 1;
 
-  &:hover { background: var(--color-brown-subtle); }
+  &:hover {
+    background: var(--color-brown-subtle);
+  }
 }

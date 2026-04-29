@@ -193,7 +193,8 @@ function LockedView({ values, showSpinner }: { values: BuildFormInput; showSpinn
       </ul>
       {showSpinner && (
         <div className={styles.spinnerRow} role="status">
-          <Spinner size="sm" style={{ color: "var(--color-brown)" }} /> Loading your training history…
+          <Spinner size="sm" style={{ color: "var(--color-brown)" }} /> Loading your training
+          history…
         </div>
       )}
     </Card>

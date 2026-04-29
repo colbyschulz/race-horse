@@ -36,10 +36,15 @@ export function ReviewClient({ initialFile, units, today, hasActivePlan, isRetry
         if (!res.ok) return;
         const data = (await res.json()) as FileSnapshot;
         if (!cancelled) setFile(data);
-      } catch { /* swallow */ }
+      } catch {
+        /* swallow */
+      }
     };
     const handle = setInterval(tick, 2000);
-    return () => { cancelled = true; clearInterval(handle); };
+    return () => {
+      cancelled = true;
+      clearInterval(handle);
+    };
   }, [file.id, file.status, isRetry]);
 
   if (file.status === "extracting" || file.status === "failed") {

@@ -21,6 +21,7 @@
 ## File structure
 
 **Create:**
+
 - `src/plans/planStats.ts` — pure functions: `computePlanStats(workouts, units)` and `weeklyMileage(workouts, units)`.
 - `src/plans/__tests__/planStats.test.ts`
 - Extend `src/plans/dateQueries.ts` with `getWorkoutsForPlan(planId)`.
@@ -35,6 +36,7 @@
 - `src/app/(app)/training/` (renamed from `src/app/(app)/calendar/`)
 
 **Modify:**
+
 - `src/components/layout/NavLinks.tsx` — change `Calendar`/`/calendar` → `Training`/`/training`.
 - `src/coach/context.ts` — extend `routeLabel()` to recognize `/training` and `/plans/<uuid>` and `/plans/<uuid>/<YYYY-MM-DD>` patterns.
 - `src/app/(app)/plans/PlansPageClient.tsx` — make plan cards full-card links to `/plans/[id]`, remove inline action buttons.
@@ -43,6 +45,7 @@
 - `src/components/coach/ContextPill.tsx` (if route logic lives here) — recognize new patterns. (Verify — may already pull from `routeLabel`.)
 
 **Delete:**
+
 - The contents of `src/app/(app)/calendar/` after moving to `/training/`.
 
 ---
@@ -63,6 +66,7 @@ Sheet rendered as a fixed bottom-anchored panel with a backdrop. Closes on backd
 ## Task 1: getWorkoutsForPlan query
 
 **Files:**
+
 - Modify: `src/plans/dateQueries.ts`
 - Modify: `src/plans/__tests__/dateQueries.test.ts`
 
@@ -100,11 +104,7 @@ Append to `src/plans/dateQueries.ts`:
 
 ```ts
 export async function getWorkoutsForPlan(planId: string): Promise<WorkoutRow[]> {
-  return db
-    .select()
-    .from(workouts)
-    .where(eq(workouts.plan_id, planId))
-    .orderBy(asc(workouts.date));
+  return db.select().from(workouts).where(eq(workouts.plan_id, planId)).orderBy(asc(workouts.date));
 }
 ```
 
@@ -115,6 +115,7 @@ export async function getWorkoutsForPlan(planId: string): Promise<WorkoutRow[]> 
 ## Task 2: planStats utilities
 
 **Files:**
+
 - Create: `src/plans/planStats.ts`
 - Create: `src/plans/__tests__/planStats.test.ts`
 
@@ -126,19 +127,24 @@ import { describe, it, expect } from "vitest";
 import { computePlanStats, weeklyMileage } from "../planStats";
 
 const w = (date: string, distance_meters: number | null, duration_seconds: number | null = null) =>
-  ({ date, distance_meters: distance_meters == null ? null : String(distance_meters), duration_seconds, type: "easy" } as never);
+  ({
+    date,
+    distance_meters: distance_meters == null ? null : String(distance_meters),
+    duration_seconds,
+    type: "easy",
+  }) as never;
 
 describe("weeklyMileage", () => {
   it("buckets workouts into weeks (Mon-anchored)", () => {
     const workouts = [
-      w("2026-04-20", 5000),  // Mon
+      w("2026-04-20", 5000), // Mon
       w("2026-04-21", 8000),
       w("2026-04-27", 10000), // next Mon
     ];
     const result = weeklyMileage(workouts, "mi");
     expect(result).toEqual([
-      { mondayIso: "2026-04-20", miles: (13000 / 1609.344) },
-      { mondayIso: "2026-04-27", miles: (10000 / 1609.344) },
+      { mondayIso: "2026-04-20", miles: 13000 / 1609.344 },
+      { mondayIso: "2026-04-27", miles: 10000 / 1609.344 },
     ]);
   });
   it("returns [] for no workouts", () => {
@@ -156,14 +162,14 @@ describe("computePlanStats", () => {
     const workouts = [
       w("2026-04-20", 5000),
       w("2026-04-21", 8000),
-      w("2026-04-27", 32000),  // longest run, peak week
+      w("2026-04-27", 32000), // longest run, peak week
       w("2026-05-04", 6000),
     ];
     const stats = computePlanStats(workouts, "mi");
-    expect(stats.totalDistance).toBeCloseTo((51000 / 1609.344));
-    expect(stats.peakWeek.distance).toBeCloseTo((32000 / 1609.344));
+    expect(stats.totalDistance).toBeCloseTo(51000 / 1609.344);
+    expect(stats.peakWeek.distance).toBeCloseTo(32000 / 1609.344);
     expect(stats.peakWeek.mondayIso).toBe("2026-04-27");
-    expect(stats.longestRun.distance).toBeCloseTo((32000 / 1609.344));
+    expect(stats.longestRun.distance).toBeCloseTo(32000 / 1609.344);
     expect(stats.longestRun.dateIso).toBe("2026-04-27");
     expect(stats.weeksCount).toBe(3);
   });
@@ -236,12 +242,12 @@ export function computePlanStats(workouts: WorkoutRow[], units: "mi" | "km"): Pl
   }
   const totalMeters = workouts.reduce(
     (s, w) => s + (w.distance_meters == null ? 0 : Number(w.distance_meters)),
-    0,
+    0
   );
   const weekly = weeklyMileage(workouts, units);
   const peak = weekly.reduce<WeeklyMileage | null>(
     (best, w) => (best == null || w.miles > best.miles ? w : best),
-    null,
+    null
   );
   let longest: { dateIso: string; meters: number } | null = null;
   for (const w of workouts) {
@@ -267,6 +273,7 @@ export function computePlanStats(workouts: WorkoutRow[], units: "mi" | "km"): Pl
 ## Task 3: Rename `/calendar` → `/training`
 
 **Files:**
+
 - Move: `src/app/(app)/calendar/` → `src/app/(app)/training/`
 - Modify: `src/components/layout/NavLinks.tsx`
 - Modify: `src/coach/context.ts`
@@ -328,6 +335,7 @@ Both must pass. Stage.
 ## Task 4: Coach context — plan-route awareness
 
 **Files:**
+
 - Modify: `src/coach/context.ts`
 - Modify: `src/coach/__tests__/context.test.ts` (if exists; otherwise add)
 
@@ -341,12 +349,14 @@ import { routeLabel } from "../context";
 
 describe("routeLabel", () => {
   it("labels plan detail routes with the plan id", () => {
-    expect(routeLabel("/plans/3f2c4a91-aa11-4cb1-9f2d-12345678abcd"))
-      .toBe("Plan detail (plan id: 3f2c4a91-aa11-4cb1-9f2d-12345678abcd)");
+    expect(routeLabel("/plans/3f2c4a91-aa11-4cb1-9f2d-12345678abcd")).toBe(
+      "Plan detail (plan id: 3f2c4a91-aa11-4cb1-9f2d-12345678abcd)"
+    );
   });
   it("labels plan workout drill-in routes with id and date", () => {
-    expect(routeLabel("/plans/3f2c4a91-aa11-4cb1-9f2d-12345678abcd/2026-05-04"))
-      .toBe("Workout detail (plan id: 3f2c4a91-aa11-4cb1-9f2d-12345678abcd, date: 2026-05-04)");
+    expect(routeLabel("/plans/3f2c4a91-aa11-4cb1-9f2d-12345678abcd/2026-05-04")).toBe(
+      "Workout detail (plan id: 3f2c4a91-aa11-4cb1-9f2d-12345678abcd, date: 2026-05-04)"
+    );
   });
   it("returns null for unknown routes", () => {
     expect(routeLabel("/random")).toBeNull();
@@ -399,6 +409,7 @@ Stage.
 ## Task 5: WorkoutDetailSheet component
 
 **Files:**
+
 - Create: `src/components/workouts/WorkoutDetailSheet.tsx`
 - Create: `src/components/workouts/WorkoutDetailSheet.module.scss`
 - Create: `src/components/workouts/__tests__/WorkoutDetailSheet.test.tsx`
@@ -427,7 +438,7 @@ const w = {
 describe("WorkoutDetailSheet", () => {
   it("renders nothing when workout is null", () => {
     const { container } = render(
-      <WorkoutDetailSheet workout={null} planId="p1" units="mi" onClose={() => {}} />,
+      <WorkoutDetailSheet workout={null} planId="p1" units="mi" onClose={() => {}} />
     );
     expect(container.firstChild).toBeNull();
   });
@@ -496,10 +507,13 @@ function fmtPace(secPerKm: number, units: "mi" | "km"): string {
   const sec = units === "mi" ? Math.round(secPerKm * 1.609344) : Math.round(secPerKm);
   return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, "0")}`;
 }
-function fmtPaceRange(p: { min_seconds_per_km?: number; max_seconds_per_km?: number }, units: "mi" | "km"): string {
+function fmtPaceRange(
+  p: { min_seconds_per_km?: number; max_seconds_per_km?: number },
+  units: "mi" | "km"
+): string {
   const min = p.min_seconds_per_km != null ? fmtPace(p.min_seconds_per_km, units) : "";
   const max = p.max_seconds_per_km != null ? fmtPace(p.max_seconds_per_km, units) : "";
-  return min && max ? `${min}–${max}` : (min || max || "—");
+  return min && max ? `${min}–${max}` : min || max || "—";
 }
 
 interface Props {
@@ -538,7 +552,9 @@ export function WorkoutDetailSheet({ workout, planId, units, onClose }: Props) {
 
         <div className={styles.statRow}>
           <div className={styles.stat}>
-            <span className={styles.statValue}>{fmtDist(workout.distance_meters as string | null, units)}</span>
+            <span className={styles.statValue}>
+              {fmtDist(workout.distance_meters as string | null, units)}
+            </span>
             <span className={styles.statUnit}>{units}</span>
           </div>
           <div className={styles.statDivider} />
@@ -559,7 +575,12 @@ export function WorkoutDetailSheet({ workout, planId, units, onClose }: Props) {
 
         {(t.pace || t.hr || t.rpe != null || t.power) && (
           <div className={styles.intensityRow}>
-            {t.pace && <div className={styles.intensityCell}><span className={styles.lbl}>Pace</span><span className={styles.val}>{paceText ?? "—"}</span></div>}
+            {t.pace && (
+              <div className={styles.intensityCell}>
+                <span className={styles.lbl}>Pace</span>
+                <span className={styles.val}>{paceText ?? "—"}</span>
+              </div>
+            )}
             {t.hr && (
               <div className={styles.intensityCell}>
                 <span className={styles.lbl}>HR</span>
@@ -568,11 +589,18 @@ export function WorkoutDetailSheet({ workout, planId, units, onClose }: Props) {
                 </span>
               </div>
             )}
-            {t.rpe != null && <div className={styles.intensityCell}><span className={styles.lbl}>RPE</span><span className={styles.val}>{t.rpe}/10</span></div>}
+            {t.rpe != null && (
+              <div className={styles.intensityCell}>
+                <span className={styles.lbl}>RPE</span>
+                <span className={styles.val}>{t.rpe}/10</span>
+              </div>
+            )}
             {t.power && (
               <div className={styles.intensityCell}>
                 <span className={styles.lbl}>Power</span>
-                <span className={styles.val}>{`${t.power.min_watts ?? ""}–${t.power.max_watts ?? ""} W`}</span>
+                <span
+                  className={styles.val}
+                >{`${t.power.min_watts ?? ""}–${t.power.max_watts ?? ""} W`}</span>
               </div>
             )}
           </div>
@@ -585,11 +613,17 @@ export function WorkoutDetailSheet({ workout, planId, units, onClose }: Props) {
               {intervals.map((iv, i) => (
                 <li key={i} className={styles.intervalRow}>
                   {iv.reps} ×{" "}
-                  {iv.distance_m != null ? `${(iv.distance_m / (units === "mi" ? 1609.344 : 1000)).toFixed(2)} ${units}` : null}
+                  {iv.distance_m != null
+                    ? `${(iv.distance_m / (units === "mi" ? 1609.344 : 1000)).toFixed(2)} ${units}`
+                    : null}
                   {iv.duration_s != null ? `${fmtDur(iv.duration_s)}` : null}
-                  {iv.target_intensity?.pace ? ` @ ${fmtPaceRange(iv.target_intensity.pace, units)}` : null}
+                  {iv.target_intensity?.pace
+                    ? ` @ ${fmtPaceRange(iv.target_intensity.pace, units)}`
+                    : null}
                   {iv.rest?.duration_s != null ? ` / ${fmtDur(iv.rest.duration_s)} rest` : null}
-                  {iv.rest?.distance_m != null ? ` / ${(iv.rest.distance_m / (units === "mi" ? 1609.344 : 1000)).toFixed(2)} ${units} rest` : null}
+                  {iv.rest?.distance_m != null
+                    ? ` / ${(iv.rest.distance_m / (units === "mi" ? 1609.344 : 1000)).toFixed(2)} ${units} rest`
+                    : null}
                 </li>
               ))}
             </ul>
@@ -599,8 +633,12 @@ export function WorkoutDetailSheet({ workout, planId, units, onClose }: Props) {
         {workout.notes && <p className={styles.notes}>{workout.notes}</p>}
 
         <div className={styles.footer}>
-          <Link href={coachHref} className={styles.askCoach}>Ask coach about this workout →</Link>
-          <button type="button" className={styles.closeBtn} onClick={onClose}>Close</button>
+          <Link href={coachHref} className={styles.askCoach}>
+            Ask coach about this workout →
+          </Link>
+          <button type="button" className={styles.closeBtn} onClick={onClose}>
+            Close
+          </button>
         </div>
       </div>
     </>
@@ -644,7 +682,11 @@ export function WorkoutDetailSheet({ workout, planId, units, onClose }: Props) {
     max-height: min(720px, 88dvh);
   }
 }
-.header { display: flex; flex-direction: column; gap: var(--space-2); }
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
 .headline {
   font-family: var(--font-display);
   font-size: 1.75rem;
@@ -654,9 +696,22 @@ export function WorkoutDetailSheet({ workout, planId, units, onClose }: Props) {
   margin: 0;
   color: var(--color-fg-primary);
 }
-.day { font-size: 0.8125rem; color: var(--color-fg-tertiary); margin: 0; }
-.statRow { display: flex; gap: var(--space-4); align-items: center; flex-wrap: wrap; }
-.stat { display: flex; flex-direction: column; gap: 2px; }
+.day {
+  font-size: 0.8125rem;
+  color: var(--color-fg-tertiary);
+  margin: 0;
+}
+.statRow {
+  display: flex;
+  gap: var(--space-4);
+  align-items: center;
+  flex-wrap: wrap;
+}
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
 .statValue {
   font-family: var(--font-display);
   font-size: 1.5rem;
@@ -671,8 +726,16 @@ export function WorkoutDetailSheet({ workout, planId, units, onClose }: Props) {
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
-.statDivider { width: 1px; height: 36px; background: var(--color-border-default); }
-.intensityRow { display: flex; gap: var(--space-3); flex-wrap: wrap; }
+.statDivider {
+  width: 1px;
+  height: 36px;
+  background: var(--color-border-default);
+}
+.intensityRow {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
 .intensityCell {
   display: flex;
   flex-direction: column;
@@ -682,9 +745,22 @@ export function WorkoutDetailSheet({ workout, planId, units, onClose }: Props) {
   border-radius: var(--radius-md);
   min-width: 80px;
 }
-.lbl { font-size: 0.6875rem; color: var(--color-fg-tertiary); text-transform: uppercase; letter-spacing: 0.06em; }
-.val { font-size: 0.9375rem; font-weight: 600; color: var(--color-fg-primary); }
-.intervals { display: flex; flex-direction: column; gap: var(--space-2); }
+.lbl {
+  font-size: 0.6875rem;
+  color: var(--color-fg-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.val {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--color-fg-primary);
+}
+.intervals {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
 .h3 {
   font-family: var(--font-body);
   font-size: 0.75rem;
@@ -694,9 +770,24 @@ export function WorkoutDetailSheet({ workout, planId, units, onClose }: Props) {
   color: var(--color-fg-tertiary);
   margin: 0;
 }
-.intervalList { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: var(--space-1); }
-.intervalRow { font-size: 0.875rem; color: var(--color-fg-secondary); }
-.notes { font-size: 0.9375rem; color: var(--color-fg-secondary); line-height: 1.5; margin: 0; }
+.intervalList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.intervalRow {
+  font-size: 0.875rem;
+  color: var(--color-fg-secondary);
+}
+.notes {
+  font-size: 0.9375rem;
+  color: var(--color-fg-secondary);
+  line-height: 1.5;
+  margin: 0;
+}
 .footer {
   display: flex;
   align-items: center;
@@ -720,7 +811,10 @@ export function WorkoutDetailSheet({ workout, planId, units, onClose }: Props) {
   border-radius: var(--radius-md);
   padding: var(--space-2) var(--space-3);
   cursor: pointer;
-  &:hover { border-color: var(--color-brown); color: var(--color-brown); }
+  &:hover {
+    border-color: var(--color-brown);
+    color: var(--color-brown);
+  }
 }
 ```
 
@@ -737,6 +831,7 @@ Stage.
 ## Task 6: Plan detail page — server scaffold + 404/auth
 
 **Files:**
+
 - Create: `src/app/(app)/plans/[id]/page.tsx`
 - Create: `src/app/(app)/plans/[id]/PlanDetail.module.scss`
 
@@ -754,11 +849,7 @@ import { getWorkoutsForPlan } from "@/plans/dateQueries";
 import { todayIso } from "@/lib/dates";
 import { PlanDetailClient } from "./PlanDetailClient";
 
-export default async function PlanDetailPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+export default async function PlanDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
   if (!session?.user?.id) redirect("/");
   const userId = session.user.id;
@@ -832,6 +923,7 @@ Visit `/plans/<id>` in dev — should render plan title + workout count. `/plans
 ## Task 7: PlanHeader
 
 **Files:**
+
 - Create: `src/app/(app)/plans/[id]/PlanHeader.tsx`
 - Modify: `src/app/(app)/plans/[id]/PlanDetail.module.scss`
 
@@ -914,12 +1006,22 @@ export function PlanHeader({ plan, today }: Props) {
       </span>
       <div className={styles.actions}>
         {status !== "active" && (
-          <button type="button" className={styles.btnPrimary} disabled={disabled} onClick={() => patch({ is_active: true })}>
+          <button
+            type="button"
+            className={styles.btnPrimary}
+            disabled={disabled}
+            onClick={() => patch({ is_active: true })}
+          >
             Set active
           </button>
         )}
         {status === "active" && (
-          <button type="button" className={styles.btnSecondary} disabled={disabled} onClick={() => patch({ is_active: false })}>
+          <button
+            type="button"
+            className={styles.btnSecondary}
+            disabled={disabled}
+            onClick={() => patch({ is_active: false })}
+          >
             Archive
           </button>
         )}
@@ -944,7 +1046,11 @@ Append to `src/app/(app)/plans/[id]/PlanDetail.module.scss`:
   padding-bottom: var(--space-4);
   border-bottom: 1px solid var(--color-border-subtle);
 }
-.titleBlock { display: flex; flex-direction: column; gap: var(--space-1); }
+.titleBlock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
 .title {
   font-family: var(--font-display);
   font-size: clamp(1.75rem, 5vw, 2.25rem);
@@ -954,7 +1060,12 @@ Append to `src/app/(app)/plans/[id]/PlanDetail.module.scss`:
   color: var(--color-fg-primary);
   margin: 0;
 }
-.subline { font-size: 0.875rem; color: var(--color-fg-tertiary); margin: 0; text-transform: capitalize; }
+.subline {
+  font-size: 0.875rem;
+  color: var(--color-fg-tertiary);
+  margin: 0;
+  text-transform: capitalize;
+}
 .statusBadge {
   align-self: flex-start;
   font-size: 0.6875rem;
@@ -964,11 +1075,26 @@ Append to `src/app/(app)/plans/[id]/PlanDetail.module.scss`:
   padding: 3px 10px;
   border-radius: var(--radius-pill);
 }
-.status_active { background: var(--color-brown); color: #fff; }
-.status_upcoming { background: color-mix(in srgb, var(--color-terra) 18%, transparent); color: var(--color-terra); }
-.status_archived { background: var(--color-bg-subtle); color: var(--color-fg-tertiary); }
-.actions { display: flex; gap: var(--space-2); flex-wrap: wrap; }
-.btnPrimary, .btnSecondary, .btnDanger {
+.status_active {
+  background: var(--color-brown);
+  color: #fff;
+}
+.status_upcoming {
+  background: color-mix(in srgb, var(--color-terra) 18%, transparent);
+  color: var(--color-terra);
+}
+.status_archived {
+  background: var(--color-bg-subtle);
+  color: var(--color-fg-tertiary);
+}
+.actions {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+.btnPrimary,
+.btnSecondary,
+.btnDanger {
   font-family: var(--font-body);
   font-size: 0.875rem;
   font-weight: 600;
@@ -976,11 +1102,36 @@ Append to `src/app/(app)/plans/[id]/PlanDetail.module.scss`:
   border-radius: var(--radius-md);
   cursor: pointer;
   border: 1px solid transparent;
-  &:disabled { opacity: 0.5; cursor: not-allowed; }
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
 }
-.btnPrimary { background: var(--color-brown); color: #fff; &:hover:not(:disabled) { background: var(--color-brown-hover); } }
-.btnSecondary { background: transparent; color: var(--color-fg-primary); border-color: var(--color-border-default); &:hover:not(:disabled) { border-color: var(--color-brown); color: var(--color-brown); } }
-.btnDanger { background: transparent; color: var(--color-fg-secondary); border-color: var(--color-border-default); &:hover:not(:disabled) { border-color: #B83232; color: #B83232; } }
+.btnPrimary {
+  background: var(--color-brown);
+  color: #fff;
+  &:hover:not(:disabled) {
+    background: var(--color-brown-hover);
+  }
+}
+.btnSecondary {
+  background: transparent;
+  color: var(--color-fg-primary);
+  border-color: var(--color-border-default);
+  &:hover:not(:disabled) {
+    border-color: var(--color-brown);
+    color: var(--color-brown);
+  }
+}
+.btnDanger {
+  background: transparent;
+  color: var(--color-fg-secondary);
+  border-color: var(--color-border-default);
+  &:hover:not(:disabled) {
+    border-color: #b83232;
+    color: #b83232;
+  }
+}
 ```
 
 - [ ] **Step 3: Wire into PlanDetailClient**
@@ -1016,6 +1167,7 @@ export function PlanDetailClient({ plan, today }: Props) {
 ## Task 8: PlanStats card
 
 **Files:**
+
 - Create: `src/app/(app)/plans/[id]/PlanStats.tsx`
 - Modify: `src/app/(app)/plans/[id]/PlanDetail.module.scss`
 - Modify: `src/app/(app)/plans/[id]/PlanDetailClient.tsx`
@@ -1081,7 +1233,12 @@ function Stat({ label, value, sub }: { label: string; value: string; sub?: strin
   border-radius: var(--radius-lg);
   flex-wrap: wrap;
 }
-.statBlock { display: flex; flex-direction: column; gap: 2px; min-width: 96px; }
+.statBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 96px;
+}
 .statLabel {
   font-size: 0.6875rem;
   color: var(--color-fg-tertiary);
@@ -1096,8 +1253,14 @@ function Stat({ label, value, sub }: { label: string; value: string; sub?: strin
   letter-spacing: -0.02em;
   color: var(--color-fg-primary);
 }
-.statSub { font-size: 0.75rem; color: var(--color-fg-tertiary); }
-.statsDivider { width: 1px; background: var(--color-border-subtle); }
+.statSub {
+  font-size: 0.75rem;
+  color: var(--color-fg-tertiary);
+}
+.statsDivider {
+  width: 1px;
+  background: var(--color-border-subtle);
+}
 ```
 
 - [ ] **Step 3: Wire into client**
@@ -1105,7 +1268,7 @@ function Stat({ label, value, sub }: { label: string; value: string; sub?: strin
 ```tsx
 import { PlanStats } from "./PlanStats";
 // ...inside JSX, after <PlanHeader />:
-<PlanStats workouts={workouts} units={units} />
+<PlanStats workouts={workouts} units={units} />;
 ```
 
 - [ ] **Step 4: Verify in browser. Stage.**
@@ -1115,6 +1278,7 @@ import { PlanStats } from "./PlanStats";
 ## Task 9: WeekGrid component
 
 **Files:**
+
 - Create: `src/app/(app)/plans/[id]/WeekGrid.tsx`
 - Modify: `src/app/(app)/plans/[id]/PlanDetail.module.scss`
 
@@ -1155,7 +1319,16 @@ interface Props {
   onDayClick: (date: string) => void;
 }
 
-export function WeekGrid({ monday, weekTotalMeters, weekTotalSeconds, byDate, today, isActivePlan, units, onDayClick }: Props) {
+export function WeekGrid({
+  monday,
+  weekTotalMeters,
+  weekTotalSeconds,
+  byDate,
+  today,
+  isActivePlan,
+  units,
+  onDayClick,
+}: Props) {
   const days = Array.from({ length: 7 }, (_, i) => addDays(monday, i));
   const totalDist = (weekTotalMeters / (units === "mi" ? 1609.344 : 1000)).toFixed(1);
   const h = Math.floor(weekTotalSeconds / 3600);
@@ -1165,8 +1338,12 @@ export function WeekGrid({ monday, weekTotalMeters, weekTotalSeconds, byDate, to
   return (
     <section className={styles.week} id={`week-${monday}`}>
       <div className={styles.weekHeader}>
-        <span className={styles.weekRange}>{formatDayLabel(monday)} – {formatDayLabel(addDays(monday, 6))}</span>
-        <span className={styles.weekTotal}>{totalDist} {units} · {totalDur}</span>
+        <span className={styles.weekRange}>
+          {formatDayLabel(monday)} – {formatDayLabel(addDays(monday, 6))}
+        </span>
+        <span className={styles.weekTotal}>
+          {totalDist} {units} · {totalDur}
+        </span>
       </div>
       <div className={styles.weekGrid}>
         {days.map((d) => {
@@ -1182,10 +1359,21 @@ export function WeekGrid({ monday, weekTotalMeters, weekTotalSeconds, byDate, to
               onClick={() => w && onDayClick(d)}
               disabled={!w}
             >
-              {w && !isRest && <span className={`${styles.dayStripe} ${styles[`stripe_${w.type}`]}`} />}
+              {w && !isRest && (
+                <span className={`${styles.dayStripe} ${styles[`stripe_${w.type}`]}`} />
+              )}
               <span className={styles.dayDate}>{d.slice(-2)}</span>
-              {w && !isRest && <span className={`${styles.dayType} ${styles[`type_${w.type}`]}`}>{TYPE_LABEL[w.type]}</span>}
-              {distLabel && <span className={styles.dayDist}>{distLabel}<small>{units}</small></span>}
+              {w && !isRest && (
+                <span className={`${styles.dayType} ${styles[`type_${w.type}`]}`}>
+                  {TYPE_LABEL[w.type]}
+                </span>
+              )}
+              {distLabel && (
+                <span className={styles.dayDist}>
+                  {distLabel}
+                  <small>{units}</small>
+                </span>
+              )}
               {isRest && <span className={styles.dayRest}>Rest</span>}
               {isToday && <span className={styles.dayNow}>now</span>}
             </button>
@@ -1200,7 +1388,11 @@ export function WeekGrid({ monday, weekTotalMeters, weekTotalSeconds, byDate, to
 - [ ] **Step 2: SCSS append**
 
 ```scss
-.week { display: flex; flex-direction: column; gap: var(--space-2); }
+.week {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
 .weekHeader {
   display: flex;
   align-items: baseline;
@@ -1237,27 +1429,59 @@ export function WeekGrid({ monday, weekTotalMeters, weekTotalSeconds, byDate, to
   border: 1px solid var(--color-border-subtle);
   border-radius: var(--radius-md);
   overflow: hidden;
-  &:disabled { opacity: 0.55; cursor: default; }
-  &:hover:not(:disabled) { border-color: var(--color-brown-mid); }
+  &:disabled {
+    opacity: 0.55;
+    cursor: default;
+  }
+  &:hover:not(:disabled) {
+    border-color: var(--color-brown-mid);
+  }
 }
 .dayCellToday {
   border: 2px solid var(--color-brown) !important;
   background: var(--color-brown-subtle);
   padding: 5px 5px 4px;
 }
-.dayStripe { position: absolute; top: 0; left: 0; right: 0; height: 3px; }
-.dayDate { font-size: 11px; color: var(--color-fg-tertiary); font-weight: 500; }
-.dayCellToday .dayDate { color: var(--color-brown); font-weight: 700; }
-.dayType { font-size: 9px; font-weight: 600; line-height: 1.2; }
+.dayStripe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+}
+.dayDate {
+  font-size: 11px;
+  color: var(--color-fg-tertiary);
+  font-weight: 500;
+}
+.dayCellToday .dayDate {
+  color: var(--color-brown);
+  font-weight: 700;
+}
+.dayType {
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 1.2;
+}
 .dayDist {
   font-family: var(--font-display);
   font-size: 14px;
   font-weight: 700;
   line-height: 1;
   color: var(--color-fg-primary);
-  small { font-family: var(--font-body); font-size: 9px; font-weight: 400; color: var(--color-fg-tertiary); margin-left: 2px; }
+  small {
+    font-family: var(--font-body);
+    font-size: 9px;
+    font-weight: 400;
+    color: var(--color-fg-tertiary);
+    margin-left: 2px;
+  }
 }
-.dayRest { font-size: 10px; color: var(--color-fg-tertiary); margin-top: auto; }
+.dayRest {
+  font-size: 10px;
+  color: var(--color-fg-tertiary);
+  margin-top: auto;
+}
 .dayNow {
   font-size: 8px;
   font-weight: 600;
@@ -1266,14 +1490,46 @@ export function WeekGrid({ monday, weekTotalMeters, weekTotalSeconds, byDate, to
   color: var(--color-brown);
   margin-top: auto;
 }
-.stripe_easy, .type_easy { background: var(--color-workout-easy); color: var(--color-workout-easy); }
-.stripe_long, .type_long { background: var(--color-workout-long); color: var(--color-workout-long); }
-.stripe_tempo, .type_tempo { background: var(--color-workout-tempo); color: var(--color-workout-tempo); }
-.stripe_threshold, .type_threshold { background: var(--color-workout-threshold); color: var(--color-workout-threshold); }
-.stripe_intervals, .type_intervals { background: var(--color-workout-intervals); color: var(--color-workout-intervals); }
-.stripe_recovery, .type_recovery { background: var(--color-workout-recovery); color: var(--color-workout-recovery); }
-.stripe_race, .type_race { background: var(--color-workout-race); color: var(--color-workout-race); }
-.stripe_cross, .type_cross { background: var(--color-workout-recovery); color: var(--color-workout-recovery); }
+.stripe_easy,
+.type_easy {
+  background: var(--color-workout-easy);
+  color: var(--color-workout-easy);
+}
+.stripe_long,
+.type_long {
+  background: var(--color-workout-long);
+  color: var(--color-workout-long);
+}
+.stripe_tempo,
+.type_tempo {
+  background: var(--color-workout-tempo);
+  color: var(--color-workout-tempo);
+}
+.stripe_threshold,
+.type_threshold {
+  background: var(--color-workout-threshold);
+  color: var(--color-workout-threshold);
+}
+.stripe_intervals,
+.type_intervals {
+  background: var(--color-workout-intervals);
+  color: var(--color-workout-intervals);
+}
+.stripe_recovery,
+.type_recovery {
+  background: var(--color-workout-recovery);
+  color: var(--color-workout-recovery);
+}
+.stripe_race,
+.type_race {
+  background: var(--color-workout-race);
+  color: var(--color-workout-race);
+}
+.stripe_cross,
+.type_cross {
+  background: var(--color-workout-recovery);
+  color: var(--color-workout-recovery);
+}
 ```
 
 (The `.stripe_*` classes set `background`; `.type_*` use the same color for the text label — CSS deduplicates because each class only sets two properties and the consumer uses one or the other.)
@@ -1361,7 +1617,11 @@ export function PlanDetailClient({ plan, workouts, units, today }: Props) {
 Append to SCSS:
 
 ```scss
-.weeks { display: flex; flex-direction: column; gap: var(--space-5); }
+.weeks {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
 ```
 
 - [ ] **Step 4: tsc + visit page.** Verify clicking a day opens the sheet. Stage.
@@ -1371,6 +1631,7 @@ Append to SCSS:
 ## Task 10: MileageChart
 
 **Files:**
+
 - Create: `src/app/(app)/plans/[id]/MileageChart.tsx`
 - Modify: `src/app/(app)/plans/[id]/PlanDetail.module.scss`
 - Modify: `src/app/(app)/plans/[id]/PlanDetailClient.tsx`
@@ -1406,7 +1667,10 @@ export function MileageChart({ workouts, units }: Props) {
             className={styles.chartBar}
             title={`Week of ${w.mondayIso}: ${w.miles.toFixed(1)} ${units}`}
             aria-label={`Week of ${w.mondayIso}, ${w.miles.toFixed(1)} ${units}`}
-            style={{ height: `${heightPct}%`, background: `color-mix(in srgb, var(--color-brown) ${tint}%, var(--color-bg-subtle))` }}
+            style={{
+              height: `${heightPct}%`,
+              background: `color-mix(in srgb, var(--color-brown) ${tint}%, var(--color-bg-subtle))`,
+            }}
           />
         );
       })}
@@ -1432,7 +1696,9 @@ export function MileageChart({ workouts, units }: Props) {
   border-radius: var(--radius-sm);
   transition: opacity 120ms ease;
   cursor: pointer;
-  &:hover { opacity: 0.85; }
+  &:hover {
+    opacity: 0.85;
+  }
 }
 ```
 
@@ -1447,6 +1713,7 @@ Add `<MileageChart workouts={workouts} units={units} />` between `<PlanStats />`
 ## Task 11: Plans-list cleanup
 
 **Files:**
+
 - Modify: `src/app/(app)/plans/PlansPageClient.tsx`
 - Modify: `src/components/plans/ActivePlanCard.tsx`
 - Modify: `src/components/plans/ArchivedPlanCard.tsx`
@@ -1462,6 +1729,7 @@ Note current props (action handlers, busy state) so you can remove them cleanly.
 - [ ] **Step 2: Strip actions, wrap in Link**
 
 For `ActivePlanCard.tsx`:
+
 - Remove `onArchive`, `onDelete`, `busy` props.
 - Wrap the entire card root element in `<Link href={`/plans/${plan.id}`} className={styles.cardLink}>`.
 - Remove the trailing button row JSX.
@@ -1471,8 +1739,14 @@ For `ArchivedPlanCard.tsx`: same pattern (remove `onRestore`, `onDelete`, `busy`
 Add to `Plans.module.scss`:
 
 ```scss
-.cardLink { display: block; text-decoration: none; color: inherit; }
-.cardLink:hover { /* card hover handled by inner card class */ }
+.cardLink {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+}
+.cardLink:hover {
+  /* card hover handled by inner card class */
+}
 ```
 
 - [ ] **Step 3: Simplify PlansPageClient**
@@ -1506,7 +1780,9 @@ export function PlansPageClient({ plans, today }: Props) {
         <>
           <div className={styles.archivedLabel}>Archived</div>
           <div className={styles.archivedList}>
-            {archived.map((p) => <ArchivedPlanCard key={p.id} plan={p} />)}
+            {archived.map((p) => (
+              <ArchivedPlanCard key={p.id} plan={p} />
+            ))}
           </div>
         </>
       )}
@@ -1549,6 +1825,7 @@ Open the app. Confirm the bottom tab bar / sidebar shows **Today / Training / Pl
 - [ ] **Step 3: Visit `/plans`**
 
 Confirm:
+
 - Each plan card is now a single clickable link (no inline buttons).
 - Empty state still shows when no plans.
 - Hovering a card shows hover affordance.
@@ -1556,6 +1833,7 @@ Confirm:
 - [ ] **Step 4: Visit `/plans/<id>` for an active plan**
 
 Confirm:
+
 - Title, sport, dates, mode, "Active" badge.
 - Action row shows "Archive" and "Delete".
 - Stats card shows total mileage, peak week, longest run, weeks count.
@@ -1570,6 +1848,7 @@ Confirm:
 - [ ] **Step 5: Visit `/plans/<id>` for an archived plan**
 
 Same as active, but:
+
 - Status badge says "Archived".
 - Action row shows "Set active" + "Delete".
 - No "now" indicator on any cell.
@@ -1588,6 +1867,7 @@ Click "Delete" on any plan → confirm dialog → confirm redirect to `/plans` a
 ## Self-review
 
 Spec coverage:
+
 - §3 Architecture — Tasks 6–10 (server scaffold, client wrapper, header, stats, week grid, mileage chart). ✓
 - §4.1 Plan header (title/dates/status/actions) — Task 7. ✓
 - §4.2 Stats card (4 numbers, no countdown) — Task 8 + Task 2 (`computePlanStats`). ✓
@@ -1601,6 +1881,7 @@ Spec coverage:
 - §11 Testing — Tasks 1, 2, 4, 5 have unit/component tests. ✓
 
 Phase boundary checklist (§12):
+
 - ✓ Plan-detail page at `/plans/[id]`
 - ✓ Shared `WorkoutDetailSheet` built (Task 5)
 - ✓ Plan-level actions on detail page (Task 7)
@@ -1610,6 +1891,7 @@ Phase boundary checklist (§12):
 - ❌ Sheet wiring into Training/Today — deferred (per spec)
 
 Type consistency:
+
 - `WorkoutRow`: imported from `@/plans/dateQueries` everywhere. ✓
 - `PlanStats` shape: defined in Task 2, consumed in Task 8. ✓
 - Sheet props (`workout`, `planId`, `units`, `onClose`): defined in Task 5, used in Task 9. ✓

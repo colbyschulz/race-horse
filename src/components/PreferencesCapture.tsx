@@ -3,11 +3,7 @@
 import { useEffect } from "react";
 import type { UserPreferences } from "@/db/schema";
 
-export function PreferencesCapture({
-  preferences,
-}: {
-  preferences?: UserPreferences | null;
-}) {
+export function PreferencesCapture({ preferences }: { preferences?: UserPreferences | null }) {
   const needsCapture = preferences?.timezone === "UTC";
 
   useEffect(() => {

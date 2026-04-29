@@ -10,7 +10,9 @@ export function UpNext({ workouts, units }: { workouts: WorkoutRow[]; units: "mi
       <h2 className={styles.h2}>Up next</h2>
       <ul className={styles.upNextList}>
         {workouts.map((w) => {
-          const dist = formatDistance(w.distance_meters as string | null, units, { withUnit: true });
+          const dist = formatDistance(w.distance_meters as string | null, units, {
+            withUnit: true,
+          });
           const dur = formatDuration(w.duration_seconds);
           return (
             <li key={w.id} className={styles.upNextRow}>

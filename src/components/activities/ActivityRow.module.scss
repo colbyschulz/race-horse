@@ -8,7 +8,9 @@
   text-decoration: none;
   color: var(--color-fg-primary);
   background: var(--color-bg-surface);
-  transition: border-color 120ms ease, background 120ms ease;
+  transition:
+    border-color 120ms ease,
+    background 120ms ease;
   &:hover {
     border-color: var(--color-brown);
     background: color-mix(in srgb, var(--color-brown) 4%, var(--color-bg-surface));
@@ -34,5 +36,8 @@
   gap: 14px;
   font-size: 0.8125rem;
   color: var(--color-fg-secondary);
-  strong { color: var(--color-fg-primary); font-weight: 600; }
+  strong {
+    color: var(--color-fg-primary);
+    font-weight: 600;
+  }
 }

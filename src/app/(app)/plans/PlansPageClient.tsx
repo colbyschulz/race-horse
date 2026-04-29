@@ -21,10 +21,7 @@ interface Props {
 
 export function PlansPageClient({ plans, today, planFiles, units }: Props) {
   // Active plan first, then rest in existing order
-  const sorted = [
-    ...plans.filter((p) => p.is_active),
-    ...plans.filter((p) => !p.is_active),
-  ];
+  const sorted = [...plans.filter((p) => p.is_active), ...plans.filter((p) => !p.is_active)];
 
   return (
     <div className={styles.page}>

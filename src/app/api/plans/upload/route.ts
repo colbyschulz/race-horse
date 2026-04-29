@@ -14,7 +14,9 @@ const ALLOWED: Record<string, string> = {
   txt: "text/plain",
 };
 
-function unauthorized() { return NextResponse.json({ error: "unauthorized" }, { status: 401 }); }
+function unauthorized() {
+  return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+}
 
 function extFromName(name: string): string | null {
   const i = name.lastIndexOf(".");
@@ -65,7 +67,11 @@ export async function POST(req: Request): Promise<NextResponse> {
     });
   } catch (err) {
     // Best-effort blob cleanup
-    try { await del(blobUrl); } catch { /* swallow */ }
+    try {
+      await del(blobUrl);
+    } catch {
+      /* swallow */
+    }
     return NextResponse.json({ error: "could not record upload" }, { status: 500 });
   }
 

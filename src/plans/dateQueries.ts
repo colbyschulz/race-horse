@@ -17,7 +17,7 @@ export async function getActivePlan(userId: string): Promise<PlanRow | null> {
 export async function getWorkoutsForDateRange(
   userId: string,
   startDate: string,
-  endDate: string,
+  endDate: string
 ): Promise<WorkoutRow[]> {
   const active = await getActivePlan(userId);
   if (!active) return [];
@@ -28,8 +28,8 @@ export async function getWorkoutsForDateRange(
       and(
         eq(workouts.plan_id, active.id),
         gte(workouts.date, startDate),
-        lte(workouts.date, endDate),
-      ),
+        lte(workouts.date, endDate)
+      )
     )
     .orderBy(asc(workouts.date));
 }
@@ -37,7 +37,7 @@ export async function getWorkoutsForDateRange(
 export async function getNextWorkouts(
   userId: string,
   today: string,
-  n: number,
+  n: number
 ): Promise<WorkoutRow[]> {
   const active = await getActivePlan(userId);
   if (!active) return [];
@@ -50,10 +50,5 @@ export async function getNextWorkouts(
 }
 
 export async function getWorkoutsForPlan(planId: string): Promise<WorkoutRow[]> {
-  return db
-    .select()
-    .from(workouts)
-    .where(eq(workouts.plan_id, planId))
-    .orderBy(asc(workouts.date));
+  return db.select().from(workouts).where(eq(workouts.plan_id, planId)).orderBy(asc(workouts.date));
 }
-

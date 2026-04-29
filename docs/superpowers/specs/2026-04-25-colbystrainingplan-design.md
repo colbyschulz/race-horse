@@ -10,7 +10,7 @@ A virtual running and cycling coach. Users authenticate with Strava, then chat w
 
 Plans are highly structured (typed workouts, target intensities, intervals, HR zones, RPE) so the coach can reason over them and the UI can render rich Today / Calendar views.
 
-The product is **free**, **public**, **multi-tenant**, and **gated to athletes who use Strava** (the auth path *is* the integration). Target audience is advanced athletes — the kind of runner or cyclist who already thinks in pace zones, FTP, threshold, etc.
+The product is **free**, **public**, **multi-tenant**, and **gated to athletes who use Strava** (the auth path _is_ the integration). Target audience is advanced athletes — the kind of runner or cyclist who already thinks in pace zones, FTP, threshold, etc.
 
 ## 2. Non-goals (v1)
 
@@ -26,18 +26,18 @@ The product is **free**, **public**, **multi-tenant**, and **gated to athletes w
 
 ## 3. Stack
 
-| Concern | Choice |
-|---|---|
-| Framework | Next.js 15 (App Router) |
-| Language | TypeScript |
-| Styling | SCSS Modules + Radix UI Primitives + custom design system |
-| Auth | NextAuth.js v5 with Strava as the only provider |
-| Database | Neon Postgres |
-| ORM | Drizzle |
-| File storage | Vercel Blob (for uploaded plan files) |
-| LLM | Anthropic SDK in Next.js API routes — `claude-opus-4-7` |
-| Hosting | Vercel |
-| Domain | colbystrainingplan.com |
+| Concern      | Choice                                                    |
+| ------------ | --------------------------------------------------------- |
+| Framework    | Next.js 15 (App Router)                                   |
+| Language     | TypeScript                                                |
+| Styling      | SCSS Modules + Radix UI Primitives + custom design system |
+| Auth         | NextAuth.js v5 with Strava as the only provider           |
+| Database     | Neon Postgres                                             |
+| ORM          | Drizzle                                                   |
+| File storage | Vercel Blob (for uploaded plan files)                     |
+| LLM          | Anthropic SDK in Next.js API routes — `claude-opus-4-7`   |
+| Hosting      | Vercel                                                    |
+| Domain       | colbystrainingplan.com                                    |
 
 ### Why Neon over Supabase
 
@@ -51,28 +51,28 @@ Drizzle is TypeScript-first with a tiny runtime and effectively zero serverless 
 
 ### Pages
 
-| Route | Purpose |
-|---|---|
-| `/` | Marketing landing + "Sign in with Strava" |
-| `/today` | Today's workout, plus Strava match if available |
+| Route       | Purpose                                                                           |
+| ----------- | --------------------------------------------------------------------------------- |
+| `/`         | Marketing landing + "Sign in with Strava"                                         |
+| `/today`    | Today's workout, plus Strava match if available                                   |
 | `/calendar` | Week (default on mobile) / Month (default on desktop) calendar of the active plan |
-| `/plans` | Manage page — list of plans, set active, archive, delete, upload |
-| `/coach` | Full-screen coach chat (also accessible as slide-up sheet from any view) |
-| `/settings` | Preferences (units, timezone, pace format) + coach-notes editor |
+| `/plans`    | Manage page — list of plans, set active, archive, delete, upload                  |
+| `/coach`    | Full-screen coach chat (also accessible as slide-up sheet from any view)          |
+| `/settings` | Preferences (units, timezone, pace format) + coach-notes editor                   |
 
 ### API routes
 
-| Route | Purpose |
-|---|---|
-| `/api/auth/*` | NextAuth (Strava OAuth) |
-| `/api/coach/chat` | Streaming chat endpoint (Server-Sent Events) with Claude + tool use |
-| `/api/coach/messages` | `GET` returns the rolling chat for the user; `DELETE` clears it ("Clear chat") |
-| `/api/coach/notes` | `GET` returns the user's coach notes; `PUT` overwrites them (user-edit path) |
-| `/api/plans` | GET list, GET by id, POST update-active, DELETE |
-| `/api/plans/upload` | Receives file → Vercel Blob → kicks off LLM extraction job |
-| `/api/plans/upload/:id` | Status poll for extraction job |
-| `/api/strava/webhook` | Strava activity webhook receiver |
-| `/api/strava/sync` | Manual sync trigger (7-day backfill) |
+| Route                   | Purpose                                                                        |
+| ----------------------- | ------------------------------------------------------------------------------ |
+| `/api/auth/*`           | NextAuth (Strava OAuth)                                                        |
+| `/api/coach/chat`       | Streaming chat endpoint (Server-Sent Events) with Claude + tool use            |
+| `/api/coach/messages`   | `GET` returns the rolling chat for the user; `DELETE` clears it ("Clear chat") |
+| `/api/coach/notes`      | `GET` returns the user's coach notes; `PUT` overwrites them (user-edit path)   |
+| `/api/plans`            | GET list, GET by id, POST update-active, DELETE                                |
+| `/api/plans/upload`     | Receives file → Vercel Blob → kicks off LLM extraction job                     |
+| `/api/plans/upload/:id` | Status poll for extraction job                                                 |
+| `/api/strava/webhook`   | Strava activity webhook receiver                                               |
+| `/api/strava/sync`      | Manual sync trigger (7-day backfill)                                           |
 
 ### Server-side modules
 
@@ -108,38 +108,37 @@ Timezone is required for date-bucketing in workout matching and "today" semantic
 
 **`coach_notes` (text, default `''`)** — durable, user-level memory the coach maintains across the rolling chat. Capped at **4 KB** (enforced in the `update_coach_notes` tool, not at the DB layer). The coach uses this to record persistent facts that should survive a "Clear chat": current goals, injuries, training history insights, strong preferences. Injected into every coach turn (see §7) so the coach is always aware. User can view and edit in `/settings`.
 
-
 ### `plans`
 
-| column | type | notes |
-|---|---|---|
-| `id` | uuid pk | |
-| `user_id` | uuid fk users | |
-| `title` | text | e.g., "Boston Marathon Build" |
-| `sport` | enum | `run` \| `bike` |
-| `mode` | enum | `goal` \| `indefinite` |
-| `goal` | jsonb | `{race_date, race_distance, target_time, ...}` — null if indefinite |
-| `start_date` | date | |
-| `end_date` | date null | null for indefinite |
-| `is_active` | bool | partial unique index on `(user_id) where is_active` enforces one active per user |
-| `source` | enum | `uploaded` \| `coach_generated` |
-| `source_file_id` | uuid null | fk to `plan_files` if uploaded |
-| `created_at`, `updated_at` | timestamptz | |
+| column                     | type          | notes                                                                            |
+| -------------------------- | ------------- | -------------------------------------------------------------------------------- |
+| `id`                       | uuid pk       |                                                                                  |
+| `user_id`                  | uuid fk users |                                                                                  |
+| `title`                    | text          | e.g., "Boston Marathon Build"                                                    |
+| `sport`                    | enum          | `run` \| `bike`                                                                  |
+| `mode`                     | enum          | `goal` \| `indefinite`                                                           |
+| `goal`                     | jsonb         | `{race_date, race_distance, target_time, ...}` — null if indefinite              |
+| `start_date`               | date          |                                                                                  |
+| `end_date`                 | date null     | null for indefinite                                                              |
+| `is_active`                | bool          | partial unique index on `(user_id) where is_active` enforces one active per user |
+| `source`                   | enum          | `uploaded` \| `coach_generated`                                                  |
+| `source_file_id`           | uuid null     | fk to `plan_files` if uploaded                                                   |
+| `created_at`, `updated_at` | timestamptz   |                                                                                  |
 
 ### `workouts`
 
-| column | type | notes |
-|---|---|---|
-| `id` | uuid pk | |
-| `plan_id` | uuid fk plans (cascade) | |
-| `date` | date | |
-| `sport` | enum | `run` \| `bike` — defaults to plan sport, overridable |
-| `type` | enum | `easy` \| `long` \| `tempo` \| `threshold` \| `intervals` \| `recovery` \| `race` \| `rest` \| `cross` |
-| `distance_meters` | numeric null | canonical SI; UI converts per user pref |
-| `duration_seconds` | int null | |
-| `target_intensity` | jsonb null | `{pace?, power?, hr?, rpe?}` — see schema below |
-| `intervals` | jsonb null | array of `{reps, distance_m?, duration_s?, target_intensity, rest}` |
-| `notes` | text | |
+| column             | type                    | notes                                                                                                  |
+| ------------------ | ----------------------- | ------------------------------------------------------------------------------------------------------ |
+| `id`               | uuid pk                 |                                                                                                        |
+| `plan_id`          | uuid fk plans (cascade) |                                                                                                        |
+| `date`             | date                    |                                                                                                        |
+| `sport`            | enum                    | `run` \| `bike` — defaults to plan sport, overridable                                                  |
+| `type`             | enum                    | `easy` \| `long` \| `tempo` \| `threshold` \| `intervals` \| `recovery` \| `race` \| `rest` \| `cross` |
+| `distance_meters`  | numeric null            | canonical SI; UI converts per user pref                                                                |
+| `duration_seconds` | int null                |                                                                                                        |
+| `target_intensity` | jsonb null              | `{pace?, power?, hr?, rpe?}` — see schema below                                                        |
+| `intervals`        | jsonb null              | array of `{reps, distance_m?, duration_s?, target_intensity, rest}`                                    |
+| `notes`            | text                    |                                                                                                        |
 
 **`target_intensity` shape:**
 
@@ -156,75 +155,75 @@ All fields optional; coach picks the right one(s) per workout. Running typically
 
 **Workout type → sport mapping:**
 
-| type | running | cycling |
-|---|---|---|
-| `easy` | easy run | endurance / Z2 |
-| `long` | long run | long endurance |
-| `tempo` | tempo (~20-30min sustained) | tempo (Coggan Z3) |
-| `threshold` | LT pace, ~1hr race effort | FTP intervals (Coggan Z4) |
-| `intervals` | shorter VO2/track intervals | VO2 intervals |
-| `recovery` | recovery jog/shake-out | recovery spin |
-| `race` | race | race |
-| `rest` | rest | rest |
-| `cross` | cross-training (anything not run/bike) | cross-training |
+| type        | running                                | cycling                   |
+| ----------- | -------------------------------------- | ------------------------- |
+| `easy`      | easy run                               | endurance / Z2            |
+| `long`      | long run                               | long endurance            |
+| `tempo`     | tempo (~20-30min sustained)            | tempo (Coggan Z3)         |
+| `threshold` | LT pace, ~1hr race effort              | FTP intervals (Coggan Z4) |
+| `intervals` | shorter VO2/track intervals            | VO2 intervals             |
+| `recovery`  | recovery jog/shake-out                 | recovery spin             |
+| `race`      | race                                   | race                      |
+| `rest`      | rest                                   | rest                      |
+| `cross`     | cross-training (anything not run/bike) | cross-training            |
 
 ### `activities`
 
-| column | type | notes |
-|---|---|---|
-| `id` | uuid pk | |
-| `user_id` | uuid fk users | |
-| `strava_id` | bigint unique | Strava's activity id |
-| `start_date` | timestamptz | |
-| `name`, `type` | text | Strava-reported (`Run`, `Ride`, `VirtualRide`, etc.) |
-| `distance_meters`, `moving_time_seconds`, `elapsed_time_seconds` | numeric/int | |
-| `avg_hr`, `max_hr` | numeric null | |
-| `avg_pace_seconds_per_km`, `avg_power_watts` | numeric null | |
-| `elevation_gain_m` | numeric null | |
-| `raw` | jsonb | full Strava response for future analysis |
-| `matched_workout_id` | uuid null fk workouts | best-effort match |
-| `created_at`, `updated_at` | timestamptz | |
+| column                                                           | type                  | notes                                                |
+| ---------------------------------------------------------------- | --------------------- | ---------------------------------------------------- |
+| `id`                                                             | uuid pk               |                                                      |
+| `user_id`                                                        | uuid fk users         |                                                      |
+| `strava_id`                                                      | bigint unique         | Strava's activity id                                 |
+| `start_date`                                                     | timestamptz           |                                                      |
+| `name`, `type`                                                   | text                  | Strava-reported (`Run`, `Ride`, `VirtualRide`, etc.) |
+| `distance_meters`, `moving_time_seconds`, `elapsed_time_seconds` | numeric/int           |                                                      |
+| `avg_hr`, `max_hr`                                               | numeric null          |                                                      |
+| `avg_pace_seconds_per_km`, `avg_power_watts`                     | numeric null          |                                                      |
+| `elevation_gain_m`                                               | numeric null          |                                                      |
+| `raw`                                                            | jsonb                 | full Strava response for future analysis             |
+| `matched_workout_id`                                             | uuid null fk workouts | best-effort match                                    |
+| `created_at`, `updated_at`                                       | timestamptz           |                                                      |
 
 ### `activity_laps`
 
-| column | type | notes |
-|---|---|---|
-| `id` | uuid pk | |
-| `activity_id` | uuid fk activities (cascade) | |
-| `lap_index` | smallint | 1-based |
-| `distance_meters` | numeric | |
-| `moving_time_seconds`, `elapsed_time_seconds` | int | |
-| `avg_pace_seconds_per_km`, `avg_power_watts`, `avg_hr`, `max_hr` | numeric null | |
-| `elevation_gain_m` | numeric null | |
-| `start_index`, `end_index` | int null | offsets into Strava's stream — useful if streams ever added later |
+| column                                                           | type                         | notes                                                             |
+| ---------------------------------------------------------------- | ---------------------------- | ----------------------------------------------------------------- |
+| `id`                                                             | uuid pk                      |                                                                   |
+| `activity_id`                                                    | uuid fk activities (cascade) |                                                                   |
+| `lap_index`                                                      | smallint                     | 1-based                                                           |
+| `distance_meters`                                                | numeric                      |                                                                   |
+| `moving_time_seconds`, `elapsed_time_seconds`                    | int                          |                                                                   |
+| `avg_pace_seconds_per_km`, `avg_power_watts`, `avg_hr`, `max_hr` | numeric null                 |                                                                   |
+| `elevation_gain_m`                                               | numeric null                 |                                                                   |
+| `start_index`, `end_index`                                       | int null                     | offsets into Strava's stream — useful if streams ever added later |
 
 ### `messages`
 
 There is **one rolling chat per user**. No `conversations` table — messages are scoped directly to the user. "Clear chat" is a `DELETE` on this table for the current user.
 
-| column | type | notes |
-|---|---|---|
-| `id` | uuid pk | |
-| `user_id` | uuid fk users (cascade) | |
-| `role` | enum | `user` \| `assistant` |
-| `content` | jsonb | full Anthropic content-block array — preserves `text`, `tool_use`, `tool_result`, `thinking` |
-| `created_at` | timestamptz | ordering key for the rolling chat |
+| column       | type                    | notes                                                                                        |
+| ------------ | ----------------------- | -------------------------------------------------------------------------------------------- |
+| `id`         | uuid pk                 |                                                                                              |
+| `user_id`    | uuid fk users (cascade) |                                                                                              |
+| `role`       | enum                    | `user` \| `assistant`                                                                        |
+| `content`    | jsonb                   | full Anthropic content-block array — preserves `text`, `tool_use`, `tool_result`, `thinking` |
+| `created_at` | timestamptz             | ordering key for the rolling chat                                                            |
 
 We persist the full Anthropic `content` array (not just text) because tool calls and thinking blocks must be round-tripped exactly on the next request, per the Anthropic SDK's content-handling model.
 
 ### `plan_files`
 
-| column | type | notes |
-|---|---|---|
-| `id` | uuid pk | |
-| `user_id` | uuid fk users | |
-| `blob_url` | text | Vercel Blob URL (private — accessed only via authed route) |
-| `original_filename`, `mime_type` | text | |
-| `size_bytes` | int | |
-| `status` | enum | `extracting` \| `extracted` \| `failed` |
-| `extraction_error` | text null | |
-| `extracted_plan_id` | uuid null fk plans | |
-| `created_at`, `updated_at` | timestamptz | |
+| column                           | type               | notes                                                      |
+| -------------------------------- | ------------------ | ---------------------------------------------------------- |
+| `id`                             | uuid pk            |                                                            |
+| `user_id`                        | uuid fk users      |                                                            |
+| `blob_url`                       | text               | Vercel Blob URL (private — accessed only via authed route) |
+| `original_filename`, `mime_type` | text               |                                                            |
+| `size_bytes`                     | int                |                                                            |
+| `status`                         | enum               | `extracting` \| `extracted` \| `failed`                    |
+| `extraction_error`               | text null          |                                                            |
+| `extracted_plan_id`              | uuid null fk plans |                                                            |
+| `created_at`, `updated_at`       | timestamptz        |                                                            |
 
 ### Cross-cutting
 
@@ -282,21 +281,21 @@ POST /api/coach/chat
 
 All tools enforce `user_id` from the session — Claude can only see/modify the current user's data.
 
-| Tool | Purpose |
-|---|---|
-| `get_active_plan` | Returns active plan + all workouts as structured JSON |
-| `list_plans` | Returns all plans (active + archived) for the user |
-| `get_plan(plan_id)` | Specific plan + workouts |
-| `create_plan({title, sport, mode, goal?, start_date, end_date?, workouts[], set_active})` | Create a new plan |
-| `update_workouts({plan_id, operations})` | Atomic batch upsert/delete by date |
-| `set_active_plan(plan_id)` | Set a plan as active (deactivates others) |
-| `archive_plan(plan_id)` | Mark inactive without deleting |
-| `get_recent_activities({days})` | Strava activities + summary stats |
-| `get_activity_laps(activity_id)` | Lap-by-lap breakdown |
-| `update_activity_match({activity_id, workout_id})` | Re-match an activity to a different workout |
-| `get_athlete_summary` | Strava profile + training-volume rollup (4/12/52 weeks) |
-| `read_uploaded_file({plan_file_id})` | Returns the contents of a previously uploaded plan file (PDF passed as document block, CSV/Excel as parsed rows, text as text). Used when extraction failed or user wants the coach to interactively build a plan from a file. |
-| `update_coach_notes({content})` | Overwrites the user's `coach_notes` with `content` (≤ 4 KB). The coach uses this to keep durable memory tight and curated — e.g., when a goal shifts or an injury heals, the coach edits the doc rather than appending. The current notes are already injected into every turn (per-request flow step 4), so there is no `read_coach_notes` tool. |
+| Tool                                                                                      | Purpose                                                                                                                                                                                                                                                                                                                                           |
+| ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `get_active_plan`                                                                         | Returns active plan + all workouts as structured JSON                                                                                                                                                                                                                                                                                             |
+| `list_plans`                                                                              | Returns all plans (active + archived) for the user                                                                                                                                                                                                                                                                                                |
+| `get_plan(plan_id)`                                                                       | Specific plan + workouts                                                                                                                                                                                                                                                                                                                          |
+| `create_plan({title, sport, mode, goal?, start_date, end_date?, workouts[], set_active})` | Create a new plan                                                                                                                                                                                                                                                                                                                                 |
+| `update_workouts({plan_id, operations})`                                                  | Atomic batch upsert/delete by date                                                                                                                                                                                                                                                                                                                |
+| `set_active_plan(plan_id)`                                                                | Set a plan as active (deactivates others)                                                                                                                                                                                                                                                                                                         |
+| `archive_plan(plan_id)`                                                                   | Mark inactive without deleting                                                                                                                                                                                                                                                                                                                    |
+| `get_recent_activities({days})`                                                           | Strava activities + summary stats                                                                                                                                                                                                                                                                                                                 |
+| `get_activity_laps(activity_id)`                                                          | Lap-by-lap breakdown                                                                                                                                                                                                                                                                                                                              |
+| `update_activity_match({activity_id, workout_id})`                                        | Re-match an activity to a different workout                                                                                                                                                                                                                                                                                                       |
+| `get_athlete_summary`                                                                     | Strava profile + training-volume rollup (4/12/52 weeks)                                                                                                                                                                                                                                                                                           |
+| `read_uploaded_file({plan_file_id})`                                                      | Returns the contents of a previously uploaded plan file (PDF passed as document block, CSV/Excel as parsed rows, text as text). Used when extraction failed or user wants the coach to interactively build a plan from a file.                                                                                                                    |
+| `update_coach_notes({content})`                                                           | Overwrites the user's `coach_notes` with `content` (≤ 4 KB). The coach uses this to keep durable memory tight and curated — e.g., when a goal shifts or an injury heals, the coach edits the doc rather than appending. The current notes are already injected into every turn (per-request flow step 4), so there is no `read_coach_notes` tool. |
 
 Plus the server-side `web_search` tool (`web_search_20260209`) for product / gear / race research. Citations come back automatically.
 
@@ -304,7 +303,7 @@ Plus the server-side `web_search` tool (`web_search_20260209`) for product / gea
 
 - Role: experienced running and cycling coach for advanced athletes.
 - Available data: structured plan schema (so Claude can correctly fill `create_plan` / `update_workouts`), Strava activity + lap shape.
-- Behavior: ask before making large plan changes, acknowledge the user's stated goals, explain the *why* of training decisions, distinguish run vs bike coaching principles where relevant.
+- Behavior: ask before making large plan changes, acknowledge the user's stated goals, explain the _why_ of training decisions, distinguish run vs bike coaching principles where relevant.
 - **Coach-notes discipline**: the notes are the coach's own durable memory — keep them concise, factual, and current. Update via `update_coach_notes` when a goal, injury, constraint, or strong preference changes. Do not duplicate transient chat content; do not exceed the 4 KB cap.
 - Safety: defer to medical professionals on injury / illness questions; do not prescribe medication or specific medical interventions.
 
@@ -348,6 +347,7 @@ Two channels: **OAuth (login)** and **Activity sync (data)**. The coach reads fr
 ### Initial backfill
 
 On first login, pull the last **90 days** of activities:
+
 - Paginate `GET /athlete/activities?per_page=100&after={ts}` with exponential backoff on 429.
 - For `Run` and `Ride`/`VirtualRide` activities: fetch detailed activity + laps (`GET /activities/{id}` with `include_all_efforts=true`).
 - Insert into `activities` + `activity_laps` in transactions.
@@ -367,6 +367,7 @@ On first login, pull the last **90 days** of activities:
 ### Workout matching
 
 When a new activity is upserted:
+
 - Find the user's active plan.
 - Find a `workouts` row where `plan_id = active_plan` AND `date = activity.start_date::date` (in user's TZ).
 - Match if the type aligns: `Run` → run-sport workouts; `Ride`/`VirtualRide` → bike-sport workouts; `cross` matches anything.
@@ -420,15 +421,15 @@ When a new activity is upserted:
 
 Each phase ends in a working app deployable to a Vercel preview.
 
-| Phase | What lands | Depends on |
-|---|---|---|
-| **1. Skeleton** | Next.js + Drizzle + Neon + NextAuth(Strava) + base layout + empty pages + auth flow + user preferences capture (units, TZ) | — |
-| **2. Strava sync** | Activity backfill, webhook subscription, `activities` + `activity_laps` populated, manual sync endpoint | 1 |
-| **3. Plans + manage** | Plan/workout schema, manage page, set-active, archive, delete (no upload yet) | 1 |
-| **4. Coach (full)** | Chat endpoint, single rolling chat persistence (`messages` + Clear chat), `coach_notes` (column + `update_coach_notes` tool + settings editor), full tool surface (read + write) — `get_active_plan`, `get_recent_activities`, `create_plan`, `update_workouts`, `set_active_plan`, etc. — plus `web_search`. Coach can answer questions and build/tweak plans. | 2 + 3 |
-| **5. Today + Calendar** | Today view (hero card + Strava match) + Calendar (week/month, type badges, matched indicator). | 2 + 3 |
-| **6. Upload pipeline** | File upload → Vercel Blob → LLM extraction → review step → save. Includes `read_uploaded_file` tool for coach fallback. | 4 |
-| **7. Polish** | Coach panel UX, loading states, error states, mobile QA, perf. | all |
+| Phase                   | What lands                                                                                                                                                                                                                                                                                                                                                      | Depends on |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
+| **1. Skeleton**         | Next.js + Drizzle + Neon + NextAuth(Strava) + base layout + empty pages + auth flow + user preferences capture (units, TZ)                                                                                                                                                                                                                                      | —          |
+| **2. Strava sync**      | Activity backfill, webhook subscription, `activities` + `activity_laps` populated, manual sync endpoint                                                                                                                                                                                                                                                         | 1          |
+| **3. Plans + manage**   | Plan/workout schema, manage page, set-active, archive, delete (no upload yet)                                                                                                                                                                                                                                                                                   | 1          |
+| **4. Coach (full)**     | Chat endpoint, single rolling chat persistence (`messages` + Clear chat), `coach_notes` (column + `update_coach_notes` tool + settings editor), full tool surface (read + write) — `get_active_plan`, `get_recent_activities`, `create_plan`, `update_workouts`, `set_active_plan`, etc. — plus `web_search`. Coach can answer questions and build/tweak plans. | 2 + 3      |
+| **5. Today + Calendar** | Today view (hero card + Strava match) + Calendar (week/month, type badges, matched indicator).                                                                                                                                                                                                                                                                  | 2 + 3      |
+| **6. Upload pipeline**  | File upload → Vercel Blob → LLM extraction → review step → save. Includes `read_uploaded_file` tool for coach fallback.                                                                                                                                                                                                                                         | 4          |
+| **7. Polish**           | Coach panel UX, loading states, error states, mobile QA, perf.                                                                                                                                                                                                                                                                                                  | all        |
 
 ## 12. Security & privacy
 
@@ -446,7 +447,7 @@ These do not block v1 but should be revisited:
 
 - **Compaction:** the rolling chat will eventually grow beyond practical context length. The "Clear chat" action gives the user a manual reset, but we should still add automatic compaction once the median chat gets long enough to need it. Add `betas: ["compact-2026-01-12"]` + `context_management: { edits: [{ type: "compact_20260112" }] }` when warranted.
 - **Notifications:** race-day reminders, weekly summary email, "you missed yesterday's run" pings — requires capturing an email separately (Strava OAuth doesn't expose it).
-- **Manual workout overrides without the coach:** should there ever be a "skip this workout" or "log a substitute" button? Currently *only* the coach edits plans, by design.
+- **Manual workout overrides without the coach:** should there ever be a "skip this workout" or "log a substitute" button? Currently _only_ the coach edits plans, by design.
 - **Plan templates / cloning:** "build me a plan like Sarah's" or coach-curated starting-point templates.
 - **Rate-limit defenses:** Anthropic budget caps per user, Strava rate-limit observability.
 - **Garmin / Apple Health support:** the data model is sport- and source-agnostic enough to add another import source; the only sticky bit is auth (we made Strava the auth gate).

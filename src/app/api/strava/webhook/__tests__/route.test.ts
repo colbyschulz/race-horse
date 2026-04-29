@@ -47,7 +47,7 @@ describe("Strava webhook route", () => {
       new Request("http://test/api/strava/webhook", {
         method: "POST",
         body: JSON.stringify(event),
-      }),
+      })
     );
     expect(res.status).toBe(200);
     await new Promise((r) => setImmediate(r));
@@ -59,7 +59,7 @@ describe("Strava webhook route", () => {
       new Request("http://test/api/strava/webhook", {
         method: "POST",
         body: "{ not json",
-      }),
+      })
     );
     expect(res.status).toBe(400);
   });

@@ -7,9 +7,17 @@
   flex-shrink: 0;
 }
 
-.size_sm { width: 0.875rem; height: 0.875rem; }
-.size_md { width: 1.125rem; height: 1.125rem; }
+.size_sm {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+.size_md {
+  width: 1.125rem;
+  height: 1.125rem;
+}
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }

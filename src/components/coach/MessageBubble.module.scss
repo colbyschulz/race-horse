@@ -43,10 +43,33 @@
 
 // Markdown content inside assistant bubble
 .assistant .bubble {
-  p { margin: 0 0 var(--space-2) 0; &:last-child { margin-bottom: 0; } }
-  ul, ol { margin: 0 0 var(--space-2) 0; padding-left: 1.5em; }
-  li { margin-bottom: var(--space-1); }
-  strong { font-weight: 700; }
-  code { font-size: 0.875em; background: var(--color-bg-subtle); padding: 2px 4px; border-radius: 3px; }
-  pre { background: var(--color-bg-subtle); padding: var(--space-3); border-radius: var(--radius-md); overflow-x: auto; }
+  p {
+    margin: 0 0 var(--space-2) 0;
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+  ul,
+  ol {
+    margin: 0 0 var(--space-2) 0;
+    padding-left: 1.5em;
+  }
+  li {
+    margin-bottom: var(--space-1);
+  }
+  strong {
+    font-weight: 700;
+  }
+  code {
+    font-size: 0.875em;
+    background: var(--color-bg-subtle);
+    padding: 2px 4px;
+    border-radius: 3px;
+  }
+  pre {
+    background: var(--color-bg-subtle);
+    padding: var(--space-3);
+    border-radius: var(--radius-md);
+    overflow-x: auto;
+  }
 }

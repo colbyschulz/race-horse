@@ -24,10 +24,7 @@ export const update_coach_notes_handler: ToolHandler<
 > = async (input, { userId }) => {
   if (typeof input.content !== "string") throw new Error("content must be string");
   if (input.content.length > 4096) throw new Error("content exceeds 4096 chars");
-  await db
-    .update(users)
-    .set({ coach_notes: input.content })
-    .where(eq(users.id, userId));
+  await db.update(users).set({ coach_notes: input.content }).where(eq(users.id, userId));
   return { ok: true, bytes: input.content.length };
 };
 
@@ -49,7 +46,8 @@ export const update_plan_notes_handler: ToolHandler<
 > = async (input, { userId, planId }) => {
   if (typeof input.content !== "string") throw new Error("content must be string");
   if (input.content.length > 4096) throw new Error("content exceeds 4096 chars");
-  if (!planId) return { ok: false, error: "No plan context — use update_coach_notes for general notes." };
+  if (!planId)
+    return { ok: false, error: "No plan context — use update_coach_notes for general notes." };
   await db
     .update(plans)
     .set({ coach_notes: input.content })

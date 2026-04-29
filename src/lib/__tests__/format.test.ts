@@ -83,6 +83,8 @@ describe("formatPaceRange", () => {
     expect(formatPaceRange({ max_seconds_per_km: 360 }, "km")).toBe("6:00");
   });
   it("returns range when both", () => {
-    expect(formatPaceRange({ min_seconds_per_km: 330, max_seconds_per_km: 360 }, "km")).toBe("5:30–6:00");
+    expect(formatPaceRange({ min_seconds_per_km: 330, max_seconds_per_km: 360 }, "km")).toBe(
+      "5:30–6:00"
+    );
   });
 });

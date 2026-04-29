@@ -1,10 +1,5 @@
 import { describe, it, expect } from "vitest";
-import {
-  computeWeeksLeft,
-  formatDuration,
-  formatGoal,
-  formatSport,
-} from "../stats";
+import { computeWeeksLeft, formatDuration, formatGoal, formatSport } from "../stats";
 
 describe("computeWeeksLeft", () => {
   it("returns ceil of (end - today) / 7 days, never negative", () => {
@@ -29,12 +24,12 @@ describe("formatDuration", () => {
 
 describe("formatGoal", () => {
   it("formats target_time + race_date when present", () => {
-    expect(formatGoal({ target_time: "3:05", race_date: "2026-05-05" }))
-      .toBe("Goal: 3:05 · May 5");
+    expect(formatGoal({ target_time: "3:05", race_date: "2026-05-05" })).toBe("Goal: 3:05 · May 5");
   });
   it("falls back to race_distance when no target_time", () => {
-    expect(formatGoal({ race_distance: "marathon", race_date: "2026-05-05" }))
-      .toBe("Goal: marathon · May 5");
+    expect(formatGoal({ race_distance: "marathon", race_date: "2026-05-05" })).toBe(
+      "Goal: marathon · May 5"
+    );
   });
   it("returns null when goal is null or empty", () => {
     expect(formatGoal(null)).toBeNull();

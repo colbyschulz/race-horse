@@ -71,7 +71,10 @@ export function UploadDropzone() {
   return (
     <div
       className={`${styles.zone} ${hover ? styles.hover : ""}`}
-      onDragOver={(e) => { e.preventDefault(); setHover(true); }}
+      onDragOver={(e) => {
+        e.preventDefault();
+        setHover(true);
+      }}
       onDragLeave={() => setHover(false)}
       onDrop={onDrop}
     >
@@ -84,7 +87,11 @@ export function UploadDropzone() {
         onChange={onChange}
       />
       <PlanActionRow onUpload={pickFile} uploadDisabled={busy} />
-      {error && <p className={styles.error} role="alert">{error}</p>}
+      {error && (
+        <p className={styles.error} role="alert">
+          {error}
+        </p>
+      )}
     </div>
   );
 }

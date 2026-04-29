@@ -46,17 +46,12 @@ vi.mock("drizzle-orm", () => ({
   and: vi.fn(),
   gte: vi.fn(),
   desc: vi.fn(),
-  sql: new Proxy(
-    (..._args: unknown[]) => "sql-fragment",
-    { get: (_t, p) => p === "raw" ? () => "sql-fragment" : undefined },
-  ),
+  sql: new Proxy((..._args: unknown[]) => "sql-fragment", {
+    get: (_t, p) => (p === "raw" ? () => "sql-fragment" : undefined),
+  }),
 }));
 
-import {
-  listRecentActivities,
-  getActivityWithLaps,
-  getAthleteSummary,
-} from "../queries";
+import { listRecentActivities, getActivityWithLaps, getAthleteSummary } from "../queries";
 
 // Helper to reset all chains
 function resetChains() {
@@ -184,8 +179,8 @@ describe("getAthleteSummary", () => {
 
     // getAthleteSummary fires 3 parallel queries, each goes through groupBy
     fromChain.groupBy
-      .mockResolvedValueOnce(makeRows(1))  // 4-week
-      .mockResolvedValueOnce(makeRows(3))  // 12-week
+      .mockResolvedValueOnce(makeRows(1)) // 4-week
+      .mockResolvedValueOnce(makeRows(3)) // 12-week
       .mockResolvedValueOnce(makeRows(13)); // 52-week
 
     const result = await getAthleteSummary("u1");
@@ -208,10 +203,7 @@ describe("getAthleteSummary", () => {
   });
 
   it("returns zero rollup when no activities", async () => {
-    fromChain.groupBy
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([]);
+    fromChain.groupBy.mockResolvedValueOnce([]).mockResolvedValueOnce([]).mockResolvedValueOnce([]);
 
     const result = await getAthleteSummary("u1");
     expect(result.four_week).toEqual({

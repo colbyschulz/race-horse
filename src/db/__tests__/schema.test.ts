@@ -120,9 +120,19 @@ describe("plans table", () => {
   it("declares the expected columns", () => {
     const cols = Object.keys(plans);
     for (const c of [
-      "id", "userId", "title", "sport", "mode", "goal",
-      "start_date", "end_date", "is_active", "source",
-      "source_file_id", "created_at", "updated_at",
+      "id",
+      "userId",
+      "title",
+      "sport",
+      "mode",
+      "goal",
+      "start_date",
+      "end_date",
+      "is_active",
+      "source",
+      "source_file_id",
+      "created_at",
+      "updated_at",
     ]) {
       expect(cols).toContain(c);
     }
@@ -133,9 +143,16 @@ describe("workouts table", () => {
   it("declares the expected columns", () => {
     const cols = Object.keys(workouts);
     for (const c of [
-      "id", "plan_id", "date", "sport", "type",
-      "distance_meters", "duration_seconds",
-      "target_intensity", "intervals", "notes",
+      "id",
+      "plan_id",
+      "date",
+      "sport",
+      "type",
+      "distance_meters",
+      "duration_seconds",
+      "target_intensity",
+      "intervals",
+      "notes",
     ]) {
       expect(cols).toContain(c);
     }
@@ -166,8 +183,15 @@ describe("enums", () => {
   });
   it("workoutTypeEnum declares the 9 types", () => {
     expect(workoutTypeEnum.enumValues).toEqual([
-      "easy", "long", "tempo", "threshold",
-      "intervals", "recovery", "race", "rest", "cross",
+      "easy",
+      "long",
+      "tempo",
+      "threshold",
+      "intervals",
+      "recovery",
+      "race",
+      "rest",
+      "cross",
     ]);
   });
 });

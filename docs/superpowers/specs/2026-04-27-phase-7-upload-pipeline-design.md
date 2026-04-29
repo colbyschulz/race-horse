@@ -14,6 +14,7 @@ In-chat file upload (i.e., dragging a plan file into the coach chat) is **not** 
 ## 2. Phase scope
 
 **In scope.**
+
 - `plan_files` schema (table + status enum + `extracted_payload` staging column).
 - Six new API routes covering upload, extract, status poll, save, discard, file proxy.
 - Drag-drop / click-to-pick upload zone wrapping the existing `PlanActionRow` on `/plans`.
@@ -25,6 +26,7 @@ In-chat file upload (i.e., dragging a plan file into the coach chat) is **not** 
 - Coach deep-link extension (`?from=/plans&plan_file_id=<uuid>`) that injects file context into the next coach turn.
 
 **Out of scope (deferred).**
+
 - In-chat file upload (drag a file into the coach panel).
 - Per-workout editing on review.
 - Image / phone-screenshot ingestion.
@@ -56,19 +58,19 @@ One new migration:
 
 ### `plan_files` table
 
-| column | type | notes |
-|---|---|---|
-| `id` | uuid pk | |
-| `user_id` | uuid fk users (cascade) | |
-| `blob_url` | text | Vercel Blob URL — never public; accessed only via authed proxy. |
-| `original_filename` | text | |
-| `mime_type` | text | |
-| `size_bytes` | int | |
-| `status` | `plan_file_status` | |
-| `extraction_error` | text null | truncated to 1 KB. |
-| `extracted_payload` | jsonb null | staged Zod-validated extraction result; cleared after save. |
-| `extracted_plan_id` | uuid null fk plans | populated after save; nullable (also stays null for failed/discarded files until row is deleted). |
-| `created_at`, `updated_at` | timestamptz | |
+| column                     | type                    | notes                                                                                             |
+| -------------------------- | ----------------------- | ------------------------------------------------------------------------------------------------- |
+| `id`                       | uuid pk                 |                                                                                                   |
+| `user_id`                  | uuid fk users (cascade) |                                                                                                   |
+| `blob_url`                 | text                    | Vercel Blob URL — never public; accessed only via authed proxy.                                   |
+| `original_filename`        | text                    |                                                                                                   |
+| `mime_type`                | text                    |                                                                                                   |
+| `size_bytes`               | int                     |                                                                                                   |
+| `status`                   | `plan_file_status`      |                                                                                                   |
+| `extraction_error`         | text null               | truncated to 1 KB.                                                                                |
+| `extracted_payload`        | jsonb null              | staged Zod-validated extraction result; cleared after save.                                       |
+| `extracted_plan_id`        | uuid null fk plans      | populated after save; nullable (also stays null for failed/discarded files until row is deleted). |
+| `created_at`, `updated_at` | timestamptz             |                                                                                                   |
 
 `extracted_payload` is a **phase-specific extension** to the spec §6 shape, since the staged JSON needs somewhere to live until the user saves.
 
@@ -133,12 +135,12 @@ All routes verify `session.user.id` and scope by `user_id` at the API layer.
 
 ### File formatting
 
-| Input mime | Format for Claude |
-|---|---|
-| `application/pdf` | `document` content block, base64-encoded. Plus a small `text` block: `"Filename: <original_filename>"`. |
-| `text/csv` | `papaparse` to objects; serialize as compact JSON in a single text block. |
+| Input mime                                                                 | Format for Claude                                                                                                        |
+| -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `application/pdf`                                                          | `document` content block, base64-encoded. Plus a small `text` block: `"Filename: <original_filename>"`.                  |
+| `text/csv`                                                                 | `papaparse` to objects; serialize as compact JSON in a single text block.                                                |
 | `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet` (xlsx) | `xlsx.read` → `sheet_to_json` per sheet; serialize as `{ sheet: <name>, rows: [...] }` per sheet in a single text block. |
-| `text/markdown`, `text/plain` | text block as-is. |
+| `text/markdown`, `text/plain`                                              | text block as-is.                                                                                                        |
 
 ### Extraction system prompt
 
@@ -160,22 +162,26 @@ const ExtractedPlanSchema = z.object({
   title: z.string(),
   sport: z.enum(["run", "bike"]),
   mode: z.enum(["goal", "indefinite"]),
-  goal: z.object({
-    race_date: z.string().nullable(),       // YYYY-MM-DD or null
-    race_distance: z.string().nullable(),
-    target_time: z.string().nullable(),
-  }).nullable(),
+  goal: z
+    .object({
+      race_date: z.string().nullable(), // YYYY-MM-DD or null
+      race_distance: z.string().nullable(),
+      target_time: z.string().nullable(),
+    })
+    .nullable(),
   tentative_start_date: z.string().nullable(),
-  workouts: z.array(z.object({
-    day_offset: z.number().int().nonnegative(),
-    sport: z.enum(["run", "bike"]),
-    type: workoutTypeEnumZ,
-    distance_meters: z.number().nullable(),
-    duration_seconds: z.number().int().nullable(),
-    target_intensity: TargetIntensitySchema.nullable(),
-    intervals: z.array(IntervalSpecSchema).nullable(),
-    notes: z.string(),
-  })),
+  workouts: z.array(
+    z.object({
+      day_offset: z.number().int().nonnegative(),
+      sport: z.enum(["run", "bike"]),
+      type: workoutTypeEnumZ,
+      distance_meters: z.number().nullable(),
+      duration_seconds: z.number().int().nullable(),
+      target_intensity: TargetIntensitySchema.nullable(),
+      intervals: z.array(IntervalSpecSchema).nullable(),
+      notes: z.string(),
+    })
+  ),
 });
 ```
 
@@ -256,12 +262,12 @@ No new visual primitives. The review page composes Phase 6 building blocks plus 
 
 **Handler.** Verifies ownership. Fetches blob bytes via the proxy logic (shared util — same code path as `GET /api/plans/upload/[id]/file`, but called server-side, not via HTTP). Dispatches per mime:
 
-| mime | tool_result content |
-|---|---|
-| PDF | array: `[{ type: "document", source: { type: "base64", media_type: "application/pdf", data: <b64> } }, { type: "text", text: "Filename: <name>" }]` |
-| CSV | text block with first ~500 rows as compact JSON, plus truncation count if applicable |
-| XLSX | text block with `{ sheet, rows }` per sheet, same truncation |
-| MD / TXT | text block with raw contents |
+| mime     | tool_result content                                                                                                                                 |
+| -------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| PDF      | array: `[{ type: "document", source: { type: "base64", media_type: "application/pdf", data: <b64> } }, { type: "text", text: "Filename: <name>" }]` |
+| CSV      | text block with first ~500 rows as compact JSON, plus truncation count if applicable                                                                |
+| XLSX     | text block with `{ sheet, rows }` per sheet, same truncation                                                                                        |
+| MD / TXT | text block with raw contents                                                                                                                        |
 
 Anthropic SDK supports content-block arrays in `tool_result`, so PDFs ride in the conversation history exactly once (as part of the tool_result block). The existing `messages` table already persists full content arrays, so no schema change is needed.
 
@@ -269,7 +275,7 @@ Add `case "read_uploaded_file": return "Read uploaded file";` to `summarizeToolR
 
 ### Per-turn context injection
 
-In `src/coach/context.ts`, extend the per-request context block (which already runs *after* the cache breakpoint, per spec §7) to read a new query param.
+In `src/coach/context.ts`, extend the per-request context block (which already runs _after_ the cache breakpoint, per spec §7) to read a new query param.
 
 When the deep-link is `/coach?from=/plans&plan_file_id=<uuid>`:
 

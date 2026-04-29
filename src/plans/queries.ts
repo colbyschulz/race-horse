@@ -12,10 +12,7 @@ export async function listPlans(userId: string): Promise<Plan[]> {
     .orderBy(desc(plans.is_active), desc(plans.start_date)) as Promise<Plan[]>;
 }
 
-export async function getPlanById(
-  planId: string,
-  userId: string,
-): Promise<Plan | null> {
+export async function getPlanById(planId: string, userId: string): Promise<Plan | null> {
   const rows = await db
     .select()
     .from(plans)
@@ -24,10 +21,7 @@ export async function getPlanById(
   return (rows[0] as Plan | undefined) ?? null;
 }
 
-export async function createPlan(
-  userId: string,
-  input: CreatePlanInput,
-): Promise<Plan> {
+export async function createPlan(userId: string, input: CreatePlanInput): Promise<Plan> {
   const result = await db
     .insert(plans)
     .values({
@@ -59,10 +53,7 @@ export async function createPlan(
  * (e.g. via `getPlanById`). If `planId` is foreign, this becomes a no-op activation
  * AND deactivates every plan the user owns — the API route does this guard for us.
  */
-export async function setActivePlan(
-  planId: string,
-  userId: string,
-): Promise<void> {
+export async function setActivePlan(planId: string, userId: string): Promise<void> {
   await db
     .update(plans)
     .set({
@@ -72,39 +63,33 @@ export async function setActivePlan(
     .where(eq(plans.userId, userId));
 }
 
-export async function archivePlan(
-  planId: string,
-  userId: string,
-): Promise<void> {
+export async function archivePlan(planId: string, userId: string): Promise<void> {
   await db
     .update(plans)
     .set({ is_active: false, updated_at: new Date() })
     .where(and(eq(plans.id, planId), eq(plans.userId, userId)));
 }
 
-export async function deletePlan(
-  planId: string,
-  userId: string,
-): Promise<void> {
-  await db
-    .delete(plans)
-    .where(and(eq(plans.id, planId), eq(plans.userId, userId)));
+export async function deletePlan(planId: string, userId: string): Promise<void> {
+  await db.delete(plans).where(and(eq(plans.id, planId), eq(plans.userId, userId)));
 }
 
-export async function listPlansWithCounts(
-  userId: string,
-): Promise<PlanWithCounts[]> {
-  const planRows = await db
+export async function listPlansWithCounts(userId: string): Promise<PlanWithCounts[]> {
+  const planRows = (await db
     .select()
     .from(plans)
     .where(eq(plans.userId, userId))
-    .orderBy(desc(plans.is_active), desc(plans.start_date)) as Plan[];
+    .orderBy(desc(plans.is_active), desc(plans.start_date))) as Plan[];
 
   if (planRows.length === 0) return [];
 
   const planIds = planRows.map((p) => p.id);
   const workoutRows = await db
-    .select({ plan_id: workouts.plan_id, date: workouts.date, distance_meters: workouts.distance_meters })
+    .select({
+      plan_id: workouts.plan_id,
+      date: workouts.date,
+      distance_meters: workouts.distance_meters,
+    })
     .from(workouts)
     .where(inArray(workouts.plan_id, planIds));
 

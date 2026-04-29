@@ -9,12 +9,14 @@
 **Goal:** Ship the Today and Calendar pages. Today renders the date's planned workout (hero), all Strava activities for the date (each linking out to Strava), and a 2-day "Up next" preview. Calendar renders a single week as agenda rows (date + workout badge + distance/duration/pace) with prev/next-week buttons.
 
 **Architecture:**
+
 - Pure server-component pages for data fetching, with a thin client component on Calendar for prev/next-week state. No new schema, no new tables — the underlying data is already in `plans`, `workouts`, `activities`.
 - Two new query helpers: one for date-windowed plan workouts, one for date-windowed activities. Both take `userId` for safety.
 - Shared presentational components: `WorkoutBadge` (badge with type + color) and `ActivityRow` (Strava activity link + stats).
 - Empty state handled at page level: if no active plan → "no plan" callout with link to `/plans`.
 
 **Tech Stack:**
+
 - Next.js 16 App Router (server components + client component for prev/next nav)
 - Drizzle ORM + Neon Postgres (HTTP driver, no transactions)
 - SCSS Modules using existing `--color-*`, `--space-*`, `--font-*` tokens from `src/styles/tokens.scss`
@@ -26,13 +28,14 @@
 
 - **Today**: `docs/design/project/Race Horse Hi-Fi.html` `TodayB` (lines ~332–401) and `TodayDesktop` (~404–502). Editorial big-type headline, stat row, intensity panel, Strava section, "Up next" 2-day list.
 - **Calendar**: same file `CalendarWeekB` (~568–657). Agenda rows, prev/next week buttons, **no checkmarks**, week total at bottom.
-- **Per user**: replace the design's single "Strava matched" pill on Today with a list of *all* activities for the date; each entry is a link to the Strava activity (`https://www.strava.com/activities/{strava_id}`).
+- **Per user**: replace the design's single "Strava matched" pill on Today with a list of _all_ activities for the date; each entry is a link to the Strava activity (`https://www.strava.com/activities/{strava_id}`).
 
 ---
 
 ## File structure
 
 **Create:**
+
 - `src/components/workouts/WorkoutBadge.tsx` + `.module.scss` — workout type badge (one of 9 types), used in Today + Calendar + Plans (later).
 - `src/components/workouts/__tests__/WorkoutBadge.test.tsx` — verifies each enum value renders with correct label.
 - `src/components/activities/ActivityRow.tsx` + `.module.scss` — Strava activity row with deep-link to `https://www.strava.com/activities/{strava_id}`. Shows distance, time, pace/power, HR.
@@ -40,7 +43,7 @@
 - `src/plans/dateQueries.ts` — date-windowed plan queries.
   - `getActivePlanForUser(userId)` — single row from `plans` (already exists in `queries.ts` semantics; reuse if present).
   - `getWorkoutsForDateRange(userId, startDate, endDate)` — joined to active plan.
-  - `getNextWorkouts(userId, today, n)` — next `n` workouts strictly *after* today.
+  - `getNextWorkouts(userId, today, n)` — next `n` workouts strictly _after_ today.
 - `src/plans/__tests__/dateQueries.test.ts` — mocked-DB unit tests.
 - `src/strava/dateQueries.ts`
   - `getActivitiesForDateRange(userId, startDate, endDate)` — full activity rows.
@@ -58,6 +61,7 @@
 - `src/app/(app)/calendar/WeekAgenda.tsx` (server-friendly presentational; takes `days` array)
 
 **Modify:**
+
 - `src/app/(app)/today/page.tsx` if it exists — currently a placeholder; rewrite per this plan.
 - `src/app/(app)/calendar/page.tsx` if it exists — same.
 
@@ -69,17 +73,17 @@
 
 Each `workoutTypeEnum` value gets a label + color for the badge. Match the hi-fi color scheme (`docs/design/project/Race Horse Hi-Fi.html` defines `T.brown`, `T.olive`, `T.terra`, `T.bgSubtle`, etc.; the tokens file is `src/styles/tokens.scss`).
 
-| Enum | Label | Token (subject to designer review — pick the closest existing) |
-|------|-------|----------------------------------------------------------------|
-| `easy` | Easy | `--color-olive-100` bg, `--color-olive` text |
-| `long` | Long | `--color-brown-subtle` bg, `--color-brown` text |
-| `tempo` | Tempo | `--color-terra-100` bg, `--color-terra` text |
-| `threshold` | Threshold | `--color-terra-100` bg, `--color-terra` text |
-| `intervals` | Intervals | `--color-terra-100` bg, `--color-terra` text |
-| `recovery` | Recovery | `--color-olive-100` bg, `--color-olive` text |
-| `race` | Race | `--color-brown` bg, `#fff` text |
-| `rest` | Rest | `--color-bg-subtle` bg, `--color-fg-tertiary` text |
-| `cross` | Cross | `--color-bg-subtle` bg, `--color-fg-secondary` text |
+| Enum        | Label     | Token (subject to designer review — pick the closest existing) |
+| ----------- | --------- | -------------------------------------------------------------- |
+| `easy`      | Easy      | `--color-olive-100` bg, `--color-olive` text                   |
+| `long`      | Long      | `--color-brown-subtle` bg, `--color-brown` text                |
+| `tempo`     | Tempo     | `--color-terra-100` bg, `--color-terra` text                   |
+| `threshold` | Threshold | `--color-terra-100` bg, `--color-terra` text                   |
+| `intervals` | Intervals | `--color-terra-100` bg, `--color-terra` text                   |
+| `recovery`  | Recovery  | `--color-olive-100` bg, `--color-olive` text                   |
+| `race`      | Race      | `--color-brown` bg, `#fff` text                                |
+| `rest`      | Rest      | `--color-bg-subtle` bg, `--color-fg-tertiary` text             |
+| `cross`     | Cross     | `--color-bg-subtle` bg, `--color-fg-secondary` text            |
 
 > **Implementer note:** if any of the named tokens above is missing from `tokens.scss`, fall back to inline-defined rgba values (don't crash the build). Open `tokens.scss` first — the actual palette uses `--color-brown`, `--color-olive`, `--color-terra`, `--color-bg-base`, `--color-bg-surface`, `--color-bg-subtle`, `--color-fg-primary`, `--color-fg-secondary`, `--color-fg-tertiary`, `--color-border-default`, `--color-border-subtle`. If `*-100` variants don't exist, use `color-mix(in srgb, var(--color-X) 12%, transparent)` for the soft backgrounds.
 
@@ -88,6 +92,7 @@ Each `workoutTypeEnum` value gets a label + color for the badge. Match the hi-fi
 ## Task 1: Date helpers
 
 **Files:**
+
 - Create: `src/lib/dates.ts`
 - Create: `src/lib/__tests__/dates.test.ts`
 
@@ -96,7 +101,15 @@ Each `workoutTypeEnum` value gets a label + color for the badge. Match the hi-fi
 ```ts
 // src/lib/__tests__/dates.test.ts
 import { describe, it, expect } from "vitest";
-import { mondayOf, addDays, formatWeekLabel, formatDayLabel, formatLongDate, todayIso, parseIso } from "../dates";
+import {
+  mondayOf,
+  addDays,
+  formatWeekLabel,
+  formatDayLabel,
+  formatLongDate,
+  todayIso,
+  parseIso,
+} from "../dates";
 
 describe("mondayOf", () => {
   it("returns the Monday of the same week (Sun → previous Mon)", () => {
@@ -202,8 +215,34 @@ export function mondayOf(iso: string): string {
   return isoFromUtcDate(d);
 }
 
-const SHORT_MONTH = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-const LONG_MONTH = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+const SHORT_MONTH = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+];
+const LONG_MONTH = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
 const SHORT_WEEKDAY = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const LONG_WEEKDAY = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
@@ -238,6 +277,7 @@ export function formatLongDate(iso: string): string {
 ## Task 2: WorkoutBadge component
 
 **Files:**
+
 - Create: `src/components/workouts/WorkoutBadge.tsx`
 - Create: `src/components/workouts/WorkoutBadge.module.scss`
 - Create: `src/components/workouts/__tests__/WorkoutBadge.test.tsx`
@@ -252,7 +292,17 @@ import { WorkoutBadge } from "../WorkoutBadge";
 
 describe("WorkoutBadge", () => {
   it("renders the label for each type", () => {
-    const types = ["easy", "long", "tempo", "threshold", "intervals", "recovery", "race", "rest", "cross"] as const;
+    const types = [
+      "easy",
+      "long",
+      "tempo",
+      "threshold",
+      "intervals",
+      "recovery",
+      "race",
+      "rest",
+      "cross",
+    ] as const;
     for (const t of types) {
       const { unmount } = render(<WorkoutBadge type={t} />);
       // capitalized label
@@ -283,8 +333,15 @@ If `@testing-library/react` is not installed, install it: `npm install -D @testi
 import styles from "./WorkoutBadge.module.scss";
 
 export type WorkoutType =
-  | "easy" | "long" | "tempo" | "threshold" | "intervals"
-  | "recovery" | "race" | "rest" | "cross";
+  | "easy"
+  | "long"
+  | "tempo"
+  | "threshold"
+  | "intervals"
+  | "recovery"
+  | "race"
+  | "rest"
+  | "cross";
 
 const LABELS: Record<WorkoutType, string> = {
   easy: "Easy",
@@ -304,11 +361,7 @@ interface Props {
 }
 
 export function WorkoutBadge({ type, size = "md" }: Props) {
-  return (
-    <span className={`${styles.badge} ${styles[type]} ${styles[size]}`}>
-      {LABELS[type]}
-    </span>
-  );
+  return <span className={`${styles.badge} ${styles[type]} ${styles[size]}`}>{LABELS[type]}</span>;
 }
 ```
 
@@ -324,10 +377,17 @@ export function WorkoutBadge({ type, size = "md" }: Props) {
   white-space: nowrap;
   border: 1px solid transparent;
 }
-.md { padding: 4px 10px; font-size: 0.75rem; }
-.sm { padding: 2px 8px; font-size: 0.6875rem; }
+.md {
+  padding: 4px 10px;
+  font-size: 0.75rem;
+}
+.sm {
+  padding: 2px 8px;
+  font-size: 0.6875rem;
+}
 
-.easy, .recovery {
+.easy,
+.recovery {
   background: color-mix(in srgb, var(--color-olive) 14%, transparent);
   color: var(--color-olive);
 }
@@ -335,9 +395,11 @@ export function WorkoutBadge({ type, size = "md" }: Props) {
   background: var(--color-brown-subtle, color-mix(in srgb, var(--color-brown) 12%, transparent));
   color: var(--color-brown);
 }
-.tempo, .threshold, .intervals {
-  background: color-mix(in srgb, var(--color-terra, #C4622D) 14%, transparent);
-  color: var(--color-terra, #C4622D);
+.tempo,
+.threshold,
+.intervals {
+  background: color-mix(in srgb, var(--color-terra, #c4622d) 14%, transparent);
+  color: var(--color-terra, #c4622d);
 }
 .race {
   background: var(--color-brown);
@@ -360,6 +422,7 @@ export function WorkoutBadge({ type, size = "md" }: Props) {
 ## Task 3: Plan date queries
 
 **Files:**
+
 - Create: `src/plans/dateQueries.ts`
 - Create: `src/plans/__tests__/dateQueries.test.ts`
 
@@ -388,7 +451,7 @@ export async function getActivePlan(userId: string): Promise<PlanRow | null> {
 export async function getWorkoutsForDateRange(
   userId: string,
   startDate: string,
-  endDate: string,
+  endDate: string
 ): Promise<WorkoutRow[]> {
   const active = await getActivePlan(userId);
   if (!active) return [];
@@ -399,8 +462,8 @@ export async function getWorkoutsForDateRange(
       and(
         eq(workouts.plan_id, active.id),
         gte(workouts.date, startDate),
-        lte(workouts.date, endDate),
-      ),
+        lte(workouts.date, endDate)
+      )
     )
     .orderBy(asc(workouts.date));
 }
@@ -408,7 +471,7 @@ export async function getWorkoutsForDateRange(
 export async function getNextWorkouts(
   userId: string,
   today: string,
-  n: number,
+  n: number
 ): Promise<WorkoutRow[]> {
   const active = await getActivePlan(userId);
   if (!active) return [];
@@ -434,6 +497,7 @@ export async function getNextWorkouts(
 ## Task 4: Strava activity date queries
 
 **Files:**
+
 - Create: `src/strava/dateQueries.ts`
 - Create: `src/strava/__tests__/dateQueries.test.ts`
 
@@ -449,7 +513,7 @@ export type ActivityRow = typeof activities.$inferSelect;
 export async function getActivitiesForDateRange(
   userId: string,
   startDate: string,
-  endDate: string,
+  endDate: string
 ): Promise<ActivityRow[]> {
   return db
     .select()
@@ -459,8 +523,8 @@ export async function getActivitiesForDateRange(
         eq(activities.user_id, userId),
         // activities.start_date is a timestamptz; cast to date for comparison.
         gte(sql`${activities.start_date}::date`, startDate),
-        lte(sql`${activities.start_date}::date`, endDate),
-      ),
+        lte(sql`${activities.start_date}::date`, endDate)
+      )
     )
     .orderBy(asc(activities.start_date));
 }
@@ -477,24 +541,28 @@ export async function getActivitiesForDateRange(
 ## Task 5: ActivityRow component
 
 **Files:**
+
 - Create: `src/components/activities/ActivityRow.tsx`
 - Create: `src/components/activities/ActivityRow.module.scss`
 - Create: `src/components/activities/__tests__/ActivityRow.test.tsx`
 
 **Behavior:**
+
 - Renders a single Strava activity as a clickable row that opens `https://www.strava.com/activities/{strava_id}` in a new tab (`target="_blank"`, `rel="noopener noreferrer"`). Strava's mobile app intercepts this URL on iOS/Android, so a single href works for both.
 - Shows: activity name (`activities.name`), distance (formatted to mi/km per user units), moving time (h:mm:ss or m:ss), avg pace OR avg power (depending on sport), avg HR.
 - Uses `WorkoutBadge`'s sport color for the type indicator (green for Run, terra for Bike — `activities.type` is e.g. "Run", "Ride", "VirtualRide", "Workout").
 
 **Props:**
+
 ```ts
 interface Props {
-  activity: ActivityRow;        // from src/strava/dateQueries.ts
+  activity: ActivityRow; // from src/strava/dateQueries.ts
   units: "mi" | "km";
 }
 ```
 
 **Step 1: TDD test**
+
 ```tsx
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
@@ -584,11 +652,27 @@ export function ActivityRow({ activity, units }: { activity: Activity; units: "m
         <span className={styles.kind}>{activity.type}</span>
       </div>
       <div className={styles.stats}>
-        <span><strong>{fmtDistance(meters, units)}</strong> {units}</span>
-        <span><strong>{fmtDuration(time)}</strong></span>
-        {pace != null && <span><strong>{fmtPace(pace, units)}</strong> /{units}</span>}
-        {power != null && <span><strong>{Math.round(power)}</strong> W</span>}
-        {hr != null && <span><strong>{hr}</strong> bpm</span>}
+        <span>
+          <strong>{fmtDistance(meters, units)}</strong> {units}
+        </span>
+        <span>
+          <strong>{fmtDuration(time)}</strong>
+        </span>
+        {pace != null && (
+          <span>
+            <strong>{fmtPace(pace, units)}</strong> /{units}
+          </span>
+        )}
+        {power != null && (
+          <span>
+            <strong>{Math.round(power)}</strong> W
+          </span>
+        )}
+        {hr != null && (
+          <span>
+            <strong>{hr}</strong> bpm
+          </span>
+        )}
       </div>
     </a>
   );
@@ -607,7 +691,9 @@ export function ActivityRow({ activity, units }: { activity: Activity; units: "m
   text-decoration: none;
   color: var(--color-fg-primary);
   background: var(--color-bg-surface);
-  transition: border-color 120ms ease, background 120ms ease;
+  transition:
+    border-color 120ms ease,
+    background 120ms ease;
   &:hover {
     border-color: var(--color-brown);
     background: color-mix(in srgb, var(--color-brown) 4%, var(--color-bg-surface));
@@ -633,7 +719,10 @@ export function ActivityRow({ activity, units }: { activity: Activity; units: "m
   gap: 14px;
   font-size: 0.8125rem;
   color: var(--color-fg-secondary);
-  strong { color: var(--color-fg-primary); font-weight: 600; }
+  strong {
+    color: var(--color-fg-primary);
+    font-weight: 600;
+  }
 }
 ```
 
@@ -644,6 +733,7 @@ export function ActivityRow({ activity, units }: { activity: Activity; units: "m
 ## Task 6: NoActivePlan empty-state component
 
 **Files:**
+
 - Create: `src/components/plans/NoActivePlan.tsx` + `.module.scss`
 
 A reusable empty-state card with copy and a CTA. Used by both Today and Calendar.
@@ -662,7 +752,9 @@ export function NoActivePlan({ context }: { context: "today" | "calendar" }) {
     <div className={styles.card}>
       <h2 className={styles.title}>No active plan</h2>
       <p className={styles.subline}>{subline}</p>
-      <Link href="/plans" className={styles.cta}>Go to Plans →</Link>
+      <Link href="/plans" className={styles.cta}>
+        Go to Plans →
+      </Link>
     </div>
   );
 }
@@ -677,6 +769,7 @@ SCSS: centered card with brown subtle bg, brown CTA button. Match the existing `
 ## Task 7: Today page
 
 **Files:**
+
 - Create: `src/app/(app)/today/page.tsx`
 - Create: `src/app/(app)/today/Today.module.scss`
 - Create: `src/app/(app)/today/HeroWorkout.tsx`
@@ -708,13 +801,17 @@ export default async function TodayPage() {
   const userId = session.user.id;
   const today = todayIso();
 
-  const [pref] = await db.select({ preferences: users.preferences }).from(users).where(eq(users.id, userId)).limit(1);
-  const units = ((pref?.preferences as { units?: string } | null)?.units === "km" ? "km" : "mi") as "mi" | "km";
+  const [pref] = await db
+    .select({ preferences: users.preferences })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+  const units = ((pref?.preferences as { units?: string } | null)?.units === "km" ? "km" : "mi") as
+    | "mi"
+    | "km";
 
   const activePlan = await getActivePlan(userId);
-  const todaysWorkouts = activePlan
-    ? await getWorkoutsForDateRange(userId, today, today)
-    : [];
+  const todaysWorkouts = activePlan ? await getWorkoutsForDateRange(userId, today, today) : [];
   const upNext = activePlan ? await getNextWorkouts(userId, today, 2) : [];
   const todaysActivities = await getActivitiesForDateRange(userId, today, today);
 
@@ -722,25 +819,25 @@ export default async function TodayPage() {
     <div className={styles.page}>
       <header className={styles.header}>
         <h1 className={styles.date}>{formatLongDate(today)}</h1>
-        {activePlan && (
-          <p className={styles.subline}>
-            {activePlan.title}
-          </p>
-        )}
+        {activePlan && <p className={styles.subline}>{activePlan.title}</p>}
       </header>
 
       {!activePlan && <NoActivePlan context="today" />}
 
-      {activePlan && (todaysWorkouts.length > 0
-        ? <HeroWorkout workout={todaysWorkouts[0]} units={units} />
-        : <div className={styles.restCard}>Rest day. Easy day, smooth day.</div>
-      )}
+      {activePlan &&
+        (todaysWorkouts.length > 0 ? (
+          <HeroWorkout workout={todaysWorkouts[0]} units={units} />
+        ) : (
+          <div className={styles.restCard}>Rest day. Easy day, smooth day.</div>
+        ))}
 
       {todaysActivities.length > 0 && (
         <section className={styles.activities}>
           <h2 className={styles.h2}>Today&apos;s activities</h2>
           <div className={styles.activityList}>
-            {todaysActivities.map((a) => <ActivityRow key={a.id} activity={a} units={units} />)}
+            {todaysActivities.map((a) => (
+              <ActivityRow key={a.id} activity={a} units={units} />
+            ))}
           </div>
         </section>
       )}
@@ -801,19 +898,47 @@ export function HeroWorkout({ workout, units }: { workout: WorkoutRow; units: "m
       </div>
       <h1 className={styles.headline}>{TYPE_HEADLINE[workout.type] ?? workout.type}</h1>
       <div className={styles.statRow}>
-        <div className={styles.stat}><span className={styles.statValue}>{dist}</span><span className={styles.statUnit}>{units}</span></div>
+        <div className={styles.stat}>
+          <span className={styles.statValue}>{dist}</span>
+          <span className={styles.statUnit}>{units}</span>
+        </div>
         <div className={styles.statDivider} />
-        <div className={styles.stat}><span className={styles.statValue}>{dur}</span><span className={styles.statUnit}>min</span></div>
-        {pace && (<>
-          <div className={styles.statDivider} />
-          <div className={styles.stat}><span className={styles.statValue}>{pace}</span><span className={styles.statUnit}>/{units}</span></div>
-        </>)}
+        <div className={styles.stat}>
+          <span className={styles.statValue}>{dur}</span>
+          <span className={styles.statUnit}>min</span>
+        </div>
+        {pace && (
+          <>
+            <div className={styles.statDivider} />
+            <div className={styles.stat}>
+              <span className={styles.statValue}>{pace}</span>
+              <span className={styles.statUnit}>/{units}</span>
+            </div>
+          </>
+        )}
       </div>
       {(t.pace || t.hr || t.rpe != null) && (
         <div className={styles.intensityRow}>
-          {t.pace && <div className={styles.intensityCell}><span className={styles.lbl}>Pace</span><span className={styles.val}>{`${t.pace.min ?? ""}${t.pace.max ? `–${t.pace.max}` : ""}`}</span></div>}
-          {t.hr?.zone && <div className={styles.intensityCell}><span className={styles.lbl}>HR</span><span className={styles.val}>{t.hr.zone}</span></div>}
-          {t.rpe != null && <div className={styles.intensityCell}><span className={styles.lbl}>RPE</span><span className={styles.val}>{t.rpe}/10</span></div>}
+          {t.pace && (
+            <div className={styles.intensityCell}>
+              <span className={styles.lbl}>Pace</span>
+              <span
+                className={styles.val}
+              >{`${t.pace.min ?? ""}${t.pace.max ? `–${t.pace.max}` : ""}`}</span>
+            </div>
+          )}
+          {t.hr?.zone && (
+            <div className={styles.intensityCell}>
+              <span className={styles.lbl}>HR</span>
+              <span className={styles.val}>{t.hr.zone}</span>
+            </div>
+          )}
+          {t.rpe != null && (
+            <div className={styles.intensityCell}>
+              <span className={styles.lbl}>RPE</span>
+              <span className={styles.val}>{t.rpe}/10</span>
+            </div>
+          )}
         </div>
       )}
       {workout.notes && <p className={styles.description}>{workout.notes}</p>}
@@ -857,6 +982,7 @@ export function UpNext({ workouts }: { workouts: WorkoutRow[] }) {
 ## Task 8: Calendar page + week navigation
 
 **Files:**
+
 - Create: `src/app/(app)/calendar/page.tsx`
 - Create: `src/app/(app)/calendar/CalendarClient.tsx`
 - Create: `src/app/(app)/calendar/Calendar.module.scss`
@@ -877,13 +1003,17 @@ import { CalendarClient } from "./CalendarClient";
 import { NoActivePlan } from "@/components/plans/NoActivePlan";
 import styles from "./Calendar.module.scss";
 
-export default async function CalendarPage({ searchParams }: { searchParams: Promise<{ week?: string }> }) {
+export default async function CalendarPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ week?: string }>;
+}) {
   const session = await auth();
   if (!session?.user?.id) redirect("/");
   const userId = session.user.id;
   const today = todayIso();
   const { week } = await searchParams;
-  const monday = (week && /^\d{4}-\d{2}-\d{2}$/.test(week)) ? mondayOf(week) : mondayOf(today);
+  const monday = week && /^\d{4}-\d{2}-\d{2}$/.test(week) ? mondayOf(week) : mondayOf(today);
   const sunday = addDays(monday, 6);
 
   const activePlan = await getActivePlan(userId);
@@ -926,12 +1056,20 @@ export function CalendarClient({ weekLabel, prevHref, nextHref, canGoPrev, canGo
     <header className={styles.header}>
       <h1 className={styles.weekLabel}>{weekLabel}</h1>
       <div className={styles.nav}>
-        {canGoPrev
-          ? <Link className={styles.navBtn} href={prevHref} aria-label="Previous week">← Prev week</Link>
-          : <span className={`${styles.navBtn} ${styles.navBtnDisabled}`}>← Prev week</span>}
-        {canGoNext
-          ? <Link className={styles.navBtn} href={nextHref} aria-label="Next week">Next week →</Link>
-          : <span className={`${styles.navBtn} ${styles.navBtnDisabled}`}>Next week →</span>}
+        {canGoPrev ? (
+          <Link className={styles.navBtn} href={prevHref} aria-label="Previous week">
+            ← Prev week
+          </Link>
+        ) : (
+          <span className={`${styles.navBtn} ${styles.navBtnDisabled}`}>← Prev week</span>
+        )}
+        {canGoNext ? (
+          <Link className={styles.navBtn} href={nextHref} aria-label="Next week">
+            Next week →
+          </Link>
+        ) : (
+          <span className={`${styles.navBtn} ${styles.navBtnDisabled}`}>Next week →</span>
+        )}
       </div>
     </header>
   );
@@ -982,13 +1120,21 @@ export function WeekAgenda({ monday, today, workouts }: Props) {
           <div key={d} className={`${styles.dayRow} ${isToday ? styles.dayToday : ""}`}>
             <div className={styles.dayHead}>
               <span className={styles.dayLabel}>{formatDayLabel(d)}</span>
-              {isRest ? <span className={styles.restLabel}>Rest day</span> : <WorkoutBadge type={w!.type} size="sm" />}
+              {isRest ? (
+                <span className={styles.restLabel}>Rest day</span>
+              ) : (
+                <WorkoutBadge type={w!.type} size="sm" />
+              )}
               {isToday && <span className={styles.todayPill}>Today</span>}
             </div>
             {!isRest && w && (
               <div className={styles.dayStats}>
-                <span><strong>{fmtDist(w.distance_meters as unknown as number | null)}</strong> mi</span>
-                <span><strong>{fmtDur(w.duration_seconds)}</strong></span>
+                <span>
+                  <strong>{fmtDist(w.distance_meters as unknown as number | null)}</strong> mi
+                </span>
+                <span>
+                  <strong>{fmtDur(w.duration_seconds)}</strong>
+                </span>
               </div>
             )}
           </div>
@@ -997,7 +1143,9 @@ export function WeekAgenda({ monday, today, workouts }: Props) {
       {workouts.length > 0 && (
         <div className={styles.weekTotal}>
           <span className={styles.totalLabel}>Week total</span>
-          <span className={styles.totalValue}>{(totalMeters / 1609.344).toFixed(1)} mi · {fmtDur(totalSeconds)}</span>
+          <span className={styles.totalValue}>
+            {(totalMeters / 1609.344).toFixed(1)} mi · {fmtDur(totalSeconds)}
+          </span>
         </div>
       )}
     </div>

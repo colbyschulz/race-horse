@@ -31,10 +31,7 @@ export async function upsertActivity(row: ActivityInsertRow): Promise<string> {
   return result[0].id;
 }
 
-export async function replaceLaps(
-  activityId: string,
-  laps: LapInsertRow[],
-): Promise<void> {
+export async function replaceLaps(activityId: string, laps: LapInsertRow[]): Promise<void> {
   await db.delete(activityLaps).where(eq(activityLaps.activity_id, activityId));
   if (laps.length > 0) {
     await db.insert(activityLaps).values(laps);

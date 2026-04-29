@@ -33,7 +33,15 @@ vi.mock("@/db/schema", () => ({
   workouts: { id: "id", plan_id: "plan_id", date: "date" },
 }));
 
-import { listPlans, getPlanById, createPlan, setActivePlan, archivePlan, deletePlan, listPlansWithCounts } from "../queries";
+import {
+  listPlans,
+  getPlanById,
+  createPlan,
+  setActivePlan,
+  archivePlan,
+  deletePlan,
+  listPlansWithCounts,
+} from "../queries";
 
 describe("listPlans", () => {
   beforeEach(() => {
@@ -99,7 +107,7 @@ describe("createPlan", () => {
         sport: "run",
         mode: "goal",
         is_active: false,
-      }),
+      })
     );
   });
 
@@ -112,7 +120,7 @@ describe("createPlan", () => {
         mode: "indefinite",
         start_date: "2026-01-01",
         source: "coach_generated",
-      }),
+      })
     ).rejects.toThrow("createPlan: no row returned");
   });
 });
@@ -141,9 +149,7 @@ describe("archivePlan", () => {
 
   it("sets is_active=false scoped to plan + user", async () => {
     await archivePlan("p1", "u1");
-    expect(updateChain.set).toHaveBeenCalledWith(
-      expect.objectContaining({ is_active: false }),
-    );
+    expect(updateChain.set).toHaveBeenCalledWith(expect.objectContaining({ is_active: false }));
     expect(updateChain.where).toHaveBeenCalledOnce();
   });
 });
@@ -169,7 +175,14 @@ describe("listPlansWithCounts", () => {
     // Plans query: where() chains into orderBy() which resolves
     fromChain.where.mockReturnValueOnce(fromChain);
     fromChain.orderBy.mockResolvedValueOnce([
-      { id: "p1", userId: "u1", title: "Boston", is_active: true, start_date: "2026-01-01", end_date: "2026-04-20" },
+      {
+        id: "p1",
+        userId: "u1",
+        title: "Boston",
+        is_active: true,
+        start_date: "2026-01-01",
+        end_date: "2026-04-20",
+      },
     ]);
     // Workouts query: where() is terminal
     fromChain.where.mockResolvedValueOnce([
@@ -186,7 +199,14 @@ describe("listPlansWithCounts", () => {
   it("returns 0 for both metrics when plan has no workouts with distance", async () => {
     fromChain.where.mockReturnValueOnce(fromChain);
     fromChain.orderBy.mockResolvedValueOnce([
-      { id: "p1", userId: "u1", title: "Boston", is_active: true, start_date: "2026-01-01", end_date: null },
+      {
+        id: "p1",
+        userId: "u1",
+        title: "Boston",
+        is_active: true,
+        start_date: "2026-01-01",
+        end_date: null,
+      },
     ]);
     fromChain.where.mockResolvedValueOnce([
       { plan_id: "p1", date: "2026-01-06", distance_meters: null },

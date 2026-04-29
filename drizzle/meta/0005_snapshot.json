@@ -81,12 +81,8 @@
           "name": "account_userId_user_id_fk",
           "tableFrom": "account",
           "tableTo": "user",
-          "columnsFrom": [
-            "userId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["userId"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -94,10 +90,7 @@
       "compositePrimaryKeys": {
         "account_provider_providerAccountId_pk": {
           "name": "account_provider_providerAccountId_pk",
-          "columns": [
-            "provider",
-            "providerAccountId"
-          ]
+          "columns": ["provider", "providerAccountId"]
         }
       },
       "uniqueConstraints": {},
@@ -249,12 +242,8 @@
           "name": "activity_userId_user_id_fk",
           "tableFrom": "activity",
           "tableTo": "user",
-          "columnsFrom": [
-            "userId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["userId"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -262,12 +251,8 @@
           "name": "activity_matched_workout_id_workout_id_fk",
           "tableFrom": "activity",
           "tableTo": "workout",
-          "columnsFrom": [
-            "matched_workout_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["matched_workout_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -277,9 +262,7 @@
         "activity_strava_id_unique": {
           "name": "activity_strava_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "strava_id"
-          ]
+          "columns": ["strava_id"]
         }
       },
       "policies": {},
@@ -398,12 +381,8 @@
           "name": "activity_lap_activity_id_activity_id_fk",
           "tableFrom": "activity_lap",
           "tableTo": "activity",
-          "columnsFrom": [
-            "activity_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["activity_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -480,12 +459,8 @@
           "name": "message_user_id_user_id_fk",
           "tableFrom": "message",
           "tableTo": "user",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -605,12 +580,8 @@
           "name": "plan_file_userId_user_id_fk",
           "tableFrom": "plan_file",
           "tableTo": "user",
-          "columnsFrom": [
-            "userId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["userId"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -618,12 +589,8 @@
           "name": "plan_file_extracted_plan_id_plan_id_fk",
           "tableFrom": "plan_file",
           "tableTo": "plan",
-          "columnsFrom": [
-            "extracted_plan_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["extracted_plan_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -762,12 +729,8 @@
           "name": "plan_userId_user_id_fk",
           "tableFrom": "plan",
           "tableTo": "user",
-          "columnsFrom": [
-            "userId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["userId"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -807,12 +770,8 @@
           "name": "session_userId_user_id_fk",
           "tableFrom": "session",
           "tableTo": "user",
-          "columnsFrom": [
-            "userId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["userId"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -886,9 +845,7 @@
         "user_email_unique": {
           "name": "user_email_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "email"
-          ]
+          "columns": ["email"]
         }
       },
       "policies": {},
@@ -923,10 +880,7 @@
       "compositePrimaryKeys": {
         "verificationToken_identifier_token_pk": {
           "name": "verificationToken_identifier_token_pk",
-          "columns": [
-            "identifier",
-            "token"
-          ]
+          "columns": ["identifier", "token"]
         }
       },
       "uniqueConstraints": {},
@@ -1031,12 +985,8 @@
           "name": "workout_plan_id_plan_id_fk",
           "tableFrom": "workout",
           "tableTo": "plan",
-          "columnsFrom": [
-            "plan_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["plan_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1052,43 +1002,27 @@
     "public.message_role": {
       "name": "message_role",
       "schema": "public",
-      "values": [
-        "user",
-        "assistant"
-      ]
+      "values": ["user", "assistant"]
     },
     "public.plan_file_status": {
       "name": "plan_file_status",
       "schema": "public",
-      "values": [
-        "extracting",
-        "extracted",
-        "failed"
-      ]
+      "values": ["extracting", "extracted", "failed"]
     },
     "public.plan_mode": {
       "name": "plan_mode",
       "schema": "public",
-      "values": [
-        "goal",
-        "indefinite"
-      ]
+      "values": ["goal", "indefinite"]
     },
     "public.plan_source": {
       "name": "plan_source",
       "schema": "public",
-      "values": [
-        "uploaded",
-        "coach_generated"
-      ]
+      "values": ["uploaded", "coach_generated"]
     },
     "public.sport": {
       "name": "sport",
       "schema": "public",
-      "values": [
-        "run",
-        "bike"
-      ]
+      "values": ["run", "bike"]
     },
     "public.workout_type": {
       "name": "workout_type",

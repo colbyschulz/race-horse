@@ -1,8 +1,4 @@
-import type {
-  StravaDetailedActivity,
-  StravaLap,
-  StravaSummaryActivity,
-} from "./types";
+import type { StravaDetailedActivity, StravaLap, StravaSummaryActivity } from "./types";
 
 // Drizzle's `numeric` columns round-trip as strings to preserve precision.
 // We mirror that here so callers can pass the result straight to .insert().
@@ -43,16 +39,14 @@ export interface LapInsertRow {
 const num = (v: number | undefined | null): NumericString | null =>
   v === undefined || v === null ? null : String(v);
 
-const paceFromSpeed = (
-  metersPerSecond: number | undefined,
-): NumericString | null => {
+const paceFromSpeed = (metersPerSecond: number | undefined): NumericString | null => {
   if (!metersPerSecond || metersPerSecond <= 0) return null;
   return (1000 / metersPerSecond).toFixed(2);
 };
 
 export function normalizeActivity(
   a: StravaSummaryActivity | StravaDetailedActivity,
-  userId: string,
+  userId: string
 ): ActivityInsertRow {
   return {
     userId,

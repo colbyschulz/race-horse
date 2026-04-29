@@ -8,7 +8,7 @@ export type ActivityRow = typeof activities.$inferSelect;
 export async function getActivitiesForDateRange(
   userId: string,
   startDate: string,
-  endDate: string,
+  endDate: string
 ): Promise<ActivityRow[]> {
   return db
     .select()
@@ -17,8 +17,8 @@ export async function getActivitiesForDateRange(
       and(
         eq(activities.userId, userId),
         gte(sql`${activities.start_date}::date`, sql`${startDate}::date`),
-        lte(sql`${activities.start_date}::date`, sql`${endDate}::date`),
-      ),
+        lte(sql`${activities.start_date}::date`, sql`${endDate}::date`)
+      )
     )
     .orderBy(asc(activities.start_date));
 }

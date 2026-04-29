@@ -33,10 +33,7 @@ export const DEFAULT_PREFERENCES: UserPreferences = {
 
 export const sportEnum = pgEnum("sport", ["run", "bike"]);
 export const planModeEnum = pgEnum("plan_mode", ["goal", "indefinite"]);
-export const planSourceEnum = pgEnum("plan_source", [
-  "uploaded",
-  "coach_generated",
-]);
+export const planSourceEnum = pgEnum("plan_source", ["uploaded", "coach_generated"]);
 export const planGenerationStatusEnum = pgEnum("plan_generation_status", [
   "generating",
   "complete",
@@ -55,11 +52,7 @@ export const workoutTypeEnum = pgEnum("workout_type", [
 
 export const messageRoleEnum = pgEnum("message_role", ["user", "assistant"]);
 
-export const planFileStatusEnum = pgEnum("plan_file_status", [
-  "extracting",
-  "extracted",
-  "failed",
-]);
+export const planFileStatusEnum = pgEnum("plan_file_status", ["extracting", "extracted", "failed"]);
 
 export type Goal = {
   race_date?: string;
@@ -88,10 +81,7 @@ export const users = pgTable("user", {
   email: text("email").unique(),
   emailVerified: timestamp("emailVerified", { mode: "date" }),
   image: text("image"),
-  preferences: jsonb("preferences")
-    .$type<UserPreferences>()
-    .default(DEFAULT_PREFERENCES)
-    .notNull(),
+  preferences: jsonb("preferences").$type<UserPreferences>().default(DEFAULT_PREFERENCES).notNull(),
   coach_notes: text("coach_notes").notNull().default(""),
   last_synced_at: timestamp("last_synced_at", {
     withTimezone: true,
@@ -120,7 +110,7 @@ export const accounts = pgTable(
     primaryKey({
       columns: [account.provider, account.providerAccountId],
     }),
-  ],
+  ]
 );
 
 export const sessions = pgTable("session", {
@@ -138,7 +128,7 @@ export const verificationTokens = pgTable(
     token: text("token").notNull(),
     expires: timestamp("expires", { mode: "date" }).notNull(),
   },
-  (vt) => [primaryKey({ columns: [vt.identifier, vt.token] })],
+  (vt) => [primaryKey({ columns: [vt.identifier, vt.token] })]
 );
 
 export const activities = pgTable(
@@ -163,18 +153,14 @@ export const activities = pgTable(
     avg_pace_seconds_per_km: numeric("avg_pace_seconds_per_km"),
     avg_power_watts: numeric("avg_power_watts"),
     elevation_gain_m: numeric("elevation_gain_m"),
-    matched_workout_id: uuid("matched_workout_id").references(() => workouts.id, { onDelete: "set null" }),
+    matched_workout_id: uuid("matched_workout_id").references(() => workouts.id, {
+      onDelete: "set null",
+    }),
     raw: jsonb("raw").notNull(),
-    created_at: timestamp("created_at", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-    updated_at: timestamp("updated_at", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
+    created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [
-    index("activity_user_start_idx").on(t.userId, t.start_date),
-  ],
+  (t) => [index("activity_user_start_idx").on(t.userId, t.start_date)]
 );
 
 export const activityLaps = pgTable(
@@ -196,9 +182,7 @@ export const activityLaps = pgTable(
     start_index: integer("start_index"),
     end_index: integer("end_index"),
   },
-  (t) => [
-    index("activity_lap_activity_idx").on(t.activity_id, t.lap_index),
-  ],
+  (t) => [index("activity_lap_activity_idx").on(t.activity_id, t.lap_index)]
 );
 
 export const plans = pgTable(
@@ -217,23 +201,17 @@ export const plans = pgTable(
     is_active: boolean("is_active").notNull().default(false),
     source: planSourceEnum("source").notNull(),
     source_file_id: uuid("source_file_id"),
-    generation_status: planGenerationStatusEnum("generation_status")
-      .notNull()
-      .default("complete"),
+    generation_status: planGenerationStatusEnum("generation_status").notNull().default("complete"),
     coach_notes: text("coach_notes").notNull().default(""),
-    created_at: timestamp("created_at", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-    updated_at: timestamp("updated_at", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
+    created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
     index("plan_user_idx").on(t.userId),
     uniqueIndex("plan_one_active_per_user_idx")
       .on(t.userId)
       .where(sql`${t.is_active}`),
-  ],
+  ]
 );
 
 export const workouts = pgTable(
@@ -252,9 +230,7 @@ export const workouts = pgTable(
     intervals: jsonb("intervals").$type<IntervalSpec[]>(),
     notes: text("notes").notNull().default(""),
   },
-  (t) => [
-    index("workout_plan_date_idx").on(t.plan_id, t.date),
-  ],
+  (t) => [index("workout_plan_date_idx").on(t.plan_id, t.date)]
 );
 
 export const messages = pgTable(
@@ -268,13 +244,9 @@ export const messages = pgTable(
     role: messageRoleEnum("role").notNull(),
     // Anthropic content-block array. Preserves text + tool_use + tool_result + thinking blocks.
     content: jsonb("content").notNull(),
-    created_at: timestamp("created_at", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
+    created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [
-    index("message_user_plan_created_idx").on(t.user_id, t.plan_id, t.created_at),
-  ],
+  (t) => [index("message_user_plan_created_idx").on(t.user_id, t.plan_id, t.created_at)]
 );
 
 export const planFiles = pgTable(
@@ -291,15 +263,11 @@ export const planFiles = pgTable(
     status: planFileStatusEnum("status").notNull(),
     extraction_error: text("extraction_error"),
     extracted_payload: jsonb("extracted_payload"),
-    extracted_plan_id: uuid("extracted_plan_id").references(() => plans.id, { onDelete: "set null" }),
-    created_at: timestamp("created_at", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-    updated_at: timestamp("updated_at", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
+    extracted_plan_id: uuid("extracted_plan_id").references(() => plans.id, {
+      onDelete: "set null",
+    }),
+    created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [
-    index("plan_file_user_idx").on(t.userId, t.created_at),
-  ],
+  (t) => [index("plan_file_user_idx").on(t.userId, t.created_at)]
 );

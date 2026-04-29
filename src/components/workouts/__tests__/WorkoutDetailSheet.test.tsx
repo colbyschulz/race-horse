@@ -18,7 +18,7 @@ const w = {
 describe("WorkoutDetailSheet", () => {
   it("renders nothing when workout is null", () => {
     const { container } = render(
-      <WorkoutDetailSheet workout={null} planId="p1" units="mi" onClose={() => {}} />,
+      <WorkoutDetailSheet workout={null} planId="p1" units="mi" onClose={() => {}} />
     );
     expect(container.firstChild).toBeNull();
   });

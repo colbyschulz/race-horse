@@ -12,7 +12,7 @@ describe("fetchStrava", () => {
 
   it("hits the Strava base URL with bearer token and parses JSON", async () => {
     (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
-      new Response(JSON.stringify({ ok: true }), { status: 200 }),
+      new Response(JSON.stringify({ ok: true }), { status: 200 })
     );
     const result = await fetchStrava<{ ok: boolean }>("/athlete", "tok123");
     expect(result).toEqual({ ok: true });
@@ -22,13 +22,13 @@ describe("fetchStrava", () => {
         headers: expect.objectContaining({
           Authorization: "Bearer tok123",
         }),
-      }),
+      })
     );
   });
 
   it("appends query params correctly", async () => {
     (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
-      new Response("[]", { status: 200 }),
+      new Response("[]", { status: 200 })
     );
     await fetchStrava("/athlete/activities", "tok", {
       params: { per_page: 100, after: 1234567890 },
@@ -44,9 +44,7 @@ describe("fetchStrava", () => {
     fetchMock
       .mockResolvedValueOnce(new Response("rate", { status: 429 }))
       .mockResolvedValueOnce(new Response("rate", { status: 429 }))
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify({ ok: true }), { status: 200 }),
-      );
+      .mockResolvedValueOnce(new Response(JSON.stringify({ ok: true }), { status: 200 }));
     const promise = fetchStrava<{ ok: boolean }>("/x", "tok", {
       maxRetries: 3,
       baseDelayMs: 10,
@@ -58,7 +56,7 @@ describe("fetchStrava", () => {
 
   it("throws StravaApiError on non-retryable status", async () => {
     (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
-      new Response("nope", { status: 404 }),
+      new Response("nope", { status: 404 })
     );
     await expect(fetchStrava("/missing", "tok")).rejects.toMatchObject({
       status: 404,
@@ -67,7 +65,7 @@ describe("fetchStrava", () => {
 
   it("throws StravaApiError when response body is not valid JSON", async () => {
     (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
-      new Response("<html>error</html>", { status: 200 }),
+      new Response("<html>error</html>", { status: 200 })
     );
     await expect(fetchStrava("/athlete", "tok")).rejects.toMatchObject({
       status: 200,

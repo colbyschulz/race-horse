@@ -40,7 +40,7 @@ export function PlanAllWeeks({ allWorkouts, units, today, planStartDate }: Props
     <div className={styles.weeks}>
       {weeks.map((monday) => {
         const byDate = new Map(
-          allWorkouts.filter((w) => mondayOf(w.date) === monday).map((w) => [w.date, w]),
+          allWorkouts.filter((w) => mondayOf(w.date) === monday).map((w) => [w.date, w])
         );
         const title = planStartDate ? `Week ${weekNum(planStartDate, monday)}` : "Week";
         return (

@@ -45,7 +45,9 @@ export function WorkoutDetailSheet({ workout, planId = "", units, onClose }: Pro
   if (!workout) return null;
 
   const hasNotes = !!workout.notes;
-  const t = hasNotes ? ({} as TargetIntensity) : ((workout.target_intensity ?? {}) as TargetIntensity);
+  const t = hasNotes
+    ? ({} as TargetIntensity)
+    : ((workout.target_intensity ?? {}) as TargetIntensity);
   const intervals = hasNotes ? null : ((workout.intervals ?? null) as IntervalSpec[] | null);
   const headline = TYPE_HEADLINE[workout.type] ?? workout.type;
   const coachHref = `/coach?from=${encodeURIComponent(`/plans/${planId}`)}&from_label=${encodeURIComponent(`${headline} — ${workout.date}`)}`;
@@ -54,7 +56,12 @@ export function WorkoutDetailSheet({ workout, planId = "", units, onClose }: Pro
   return (
     <>
       <div data-testid="sheet-backdrop" className={styles.backdrop} onClick={onClose} />
-      <div role="dialog" aria-modal="true" aria-label={`${headline} on ${workout.date}`} className={styles.sheet}>
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={`${headline} on ${workout.date}`}
+        className={styles.sheet}
+      >
         <div className={styles.header}>
           <WorkoutBadge type={workout.type} />
           <h2 className={styles.headline}>{headline}</h2>
@@ -70,7 +77,9 @@ export function WorkoutDetailSheet({ workout, planId = "", units, onClose }: Pro
           </div>
           <div className={styles.statDivider} />
           <div className={styles.stat}>
-            <span className={styles.statValue}>{formatDuration(workout.duration_seconds) ?? "—"}</span>
+            <span className={styles.statValue}>
+              {formatDuration(workout.duration_seconds) ?? "—"}
+            </span>
             <span className={styles.statUnit}>time</span>
           </div>
           {paceText && (
@@ -105,7 +114,9 @@ export function WorkoutDetailSheet({ workout, planId = "", units, onClose }: Pro
             {t.power && (
               <div className={styles.intensityCell}>
                 <span className={styles.lbl}>Power</span>
-                <span className={styles.val}>{`${t.power.min_watts ?? ""}–${t.power.max_watts ?? ""} W`}</span>
+                <span
+                  className={styles.val}
+                >{`${t.power.min_watts ?? ""}–${t.power.max_watts ?? ""} W`}</span>
               </div>
             )}
           </div>
@@ -129,7 +140,9 @@ export function WorkoutDetailSheet({ workout, planId = "", units, onClose }: Pro
                   {iv.target_intensity?.pace
                     ? ` @ ${formatPaceRange(iv.target_intensity.pace, units) ?? ""}`
                     : null}
-                  {iv.rest?.duration_s != null ? ` / ${formatDuration(iv.rest.duration_s) ?? ""} rest` : null}
+                  {iv.rest?.duration_s != null
+                    ? ` / ${formatDuration(iv.rest.duration_s) ?? ""} rest`
+                    : null}
                   {iv.rest?.distance_m != null
                     ? ` / ${metersToUnits(iv.rest.distance_m, units).toFixed(2)} ${units} rest`
                     : null}

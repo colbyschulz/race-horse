@@ -8,8 +8,12 @@ export const maxDuration = 300;
 
 type Ctx = { params: Promise<{ id: string }> };
 
-function unauthorized() { return NextResponse.json({ error: "unauthorized" }, { status: 401 }); }
-function notFound() { return NextResponse.json({ error: "not found" }, { status: 404 }); }
+function unauthorized() {
+  return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+}
+function notFound() {
+  return NextResponse.json({ error: "not found" }, { status: 404 });
+}
 
 export async function POST(req: Request, ctx: Ctx): Promise<NextResponse> {
   const session = await auth();

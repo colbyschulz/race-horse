@@ -58,16 +58,21 @@ export const createPlanTool: Tool = {
   input_schema: {
     type: "object" as const,
     properties: {
-      title: { type: "string", description: "Plan title. Short — e.g. 'Sub-2:30 Chicago Marathon' or 'Spring base'." },
+      title: {
+        type: "string",
+        description: "Plan title. Short — e.g. 'Sub-2:30 Chicago Marathon' or 'Spring base'.",
+      },
       sport: { type: "string", enum: ["run", "bike"], description: "Sport type." },
       mode: { type: "string", enum: ["goal", "indefinite"], description: "Plan mode." },
       goal: {
         type: "object",
-        description: "Structured goal. Required when mode='goal'. Each field is short and label-like, NOT a description.",
+        description:
+          "Structured goal. Required when mode='goal'. Each field is short and label-like, NOT a description.",
         properties: {
           race_distance: {
             type: "string",
-            description: "Short event label only: '5K', '10K', 'Half Marathon', 'Marathon', '70.3', '100mi', etc. NEVER a sentence or paragraph.",
+            description:
+              "Short event label only: '5K', '10K', 'Half Marathon', 'Marathon', '70.3', '100mi', etc. NEVER a sentence or paragraph.",
           },
           race_date: {
             type: "string",
@@ -176,7 +181,7 @@ export const finalizePlanTool: Tool = {
 
 export const get_active_plan_handler: ToolHandler<
   Record<string, never>,
-  { plan: (typeof plans.$inferSelect) | null; workouts: (typeof workouts.$inferSelect)[] }
+  { plan: typeof plans.$inferSelect | null; workouts: (typeof workouts.$inferSelect)[] }
 > = async (_input, { userId }) => {
   const activePlans = await db
     .select()
@@ -189,10 +194,7 @@ export const get_active_plan_handler: ToolHandler<
     return { plan: null, workouts: [] };
   }
 
-  const planWorkouts = await db
-    .select()
-    .from(workouts)
-    .where(eq(workouts.plan_id, plan.id));
+  const planWorkouts = await db.select().from(workouts).where(eq(workouts.plan_id, plan.id));
 
   return { plan, workouts: planWorkouts };
 };
@@ -207,7 +209,19 @@ export const list_plans_handler: ToolHandler<
 
 export const get_plan_handler: ToolHandler<
   { plan_id: string },
-  { plan: typeof plans.$inferSelect; workouts: { id: string; date: string; type: string; distance_meters: string | null; duration_seconds: number | null; notes: string; target_intensity: unknown; intervals: unknown }[] }
+  {
+    plan: typeof plans.$inferSelect;
+    workouts: {
+      id: string;
+      date: string;
+      type: string;
+      distance_meters: string | null;
+      duration_seconds: number | null;
+      notes: string;
+      target_intensity: unknown;
+      intervals: unknown;
+    }[];
+  }
 > = async ({ plan_id }, { userId }) => {
   const plan = await getPlanById(plan_id, userId);
   if (!plan || plan.userId !== userId) {
@@ -308,13 +322,11 @@ export const update_workouts_handler: ToolHandler<
         plan_id,
         date: op.date,
         sport: plan.sport,
-        type: op.workout.type as typeof workouts.$inferInsert["type"],
-        distance_meters: op.workout.distance_km != null
-          ? String(op.workout.distance_km * 1000)
-          : null,
-        duration_seconds: op.workout.duration_minutes != null
-          ? op.workout.duration_minutes * 60
-          : null,
+        type: op.workout.type as (typeof workouts.$inferInsert)["type"],
+        distance_meters:
+          op.workout.distance_km != null ? String(op.workout.distance_km * 1000) : null,
+        duration_seconds:
+          op.workout.duration_minutes != null ? op.workout.duration_minutes * 60 : null,
         notes: op.workout.notes ?? "",
       });
       upserted++;
@@ -324,10 +336,10 @@ export const update_workouts_handler: ToolHandler<
   return { upserted, deleted };
 };
 
-export const set_active_plan_handler: ToolHandler<
-  { plan_id: string },
-  { ok: true }
-> = async ({ plan_id }, { userId }) => {
+export const set_active_plan_handler: ToolHandler<{ plan_id: string }, { ok: true }> = async (
+  { plan_id },
+  { userId }
+) => {
   const plan = await getPlanById(plan_id, userId);
   if (!plan || plan.userId !== userId) {
     throw new Error("plan not found or not owned");
@@ -336,10 +348,10 @@ export const set_active_plan_handler: ToolHandler<
   return { ok: true };
 };
 
-export const archive_plan_handler: ToolHandler<
-  { plan_id: string },
-  { ok: true }
-> = async ({ plan_id }, { userId }) => {
+export const archive_plan_handler: ToolHandler<{ plan_id: string }, { ok: true }> = async (
+  { plan_id },
+  { userId }
+) => {
   const plan = await getPlanById(plan_id, userId);
   if (!plan || plan.userId !== userId) {
     throw new Error("plan not found or not owned");
@@ -348,10 +360,10 @@ export const archive_plan_handler: ToolHandler<
   return { ok: true };
 };
 
-export const finalize_plan_handler: ToolHandler<
-  { plan_id: string },
-  { ok: true }
-> = async ({ plan_id }, { userId }) => {
+export const finalize_plan_handler: ToolHandler<{ plan_id: string }, { ok: true }> = async (
+  { plan_id },
+  { userId }
+) => {
   const plan = await getPlanById(plan_id, userId);
   if (!plan || plan.userId !== userId) {
     throw new Error("plan not found or not owned");

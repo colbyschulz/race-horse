@@ -2,11 +2,7 @@ import type { Anthropic } from "@anthropic-ai/sdk";
 import { eq, and } from "drizzle-orm";
 import { db } from "@/db";
 import { activities, plans, workouts } from "@/db/schema";
-import {
-  listRecentActivities,
-  getActivityWithLaps,
-  getAthleteSummary,
-} from "@/strava/queries";
+import { listRecentActivities, getActivityWithLaps, getAthleteSummary } from "@/strava/queries";
 import type { ToolHandler } from "../types";
 
 type Tool = Anthropic.Messages.Tool;
@@ -17,7 +13,8 @@ type Tool = Anthropic.Messages.Tool;
 
 export const get_recent_activities: Tool = {
   name: "get_recent_activities",
-  description: "Returns recent Strava activities for the user, plus a summary of count, distance, and moving time.",
+  description:
+    "Returns recent Strava activities for the user, plus a summary of count, distance, and moving time.",
   input_schema: {
     type: "object" as const,
     properties: {

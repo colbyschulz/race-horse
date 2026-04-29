@@ -3,7 +3,7 @@ import type { SSEEvent } from "@/coach/types";
 const SSE_HEADERS = {
   "content-type": "text/event-stream",
   "cache-control": "no-cache, no-transform",
-  "connection": "keep-alive",
+  connection: "keep-alive",
   "x-accel-buffering": "no",
 } as const;
 
@@ -30,10 +30,7 @@ export function sseResponse(gen: AsyncIterable<SSEEvent>): Response {
   return new Response(stream, { headers: SSE_HEADERS });
 }
 
-export async function consumeStream(
-  res: Response,
-  onEvent: (ev: SSEEvent) => void,
-): Promise<void> {
+export async function consumeStream(res: Response, onEvent: (ev: SSEEvent) => void): Promise<void> {
   if (!res.ok || !res.body) throw new Error(`stream failed: ${res.status}`);
   const reader = res.body.getReader();
   const dec = new TextDecoder();

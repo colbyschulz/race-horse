@@ -1,8 +1,4 @@
-import type {
-  Goal,
-  TargetIntensity,
-  IntervalSpec,
-} from "@/db/schema";
+import type { Goal, TargetIntensity, IntervalSpec } from "@/db/schema";
 
 export type Sport = "run" | "bike";
 export type PlanMode = "goal" | "indefinite";

@@ -26,7 +26,14 @@ interface Props {
 
 type StreamingState = { text: string; tools: { name: string; summary?: string }[] };
 
-export function CoachPageClient({ initialMessages, fromRoute, fromLabel, planId, planFileId, intent }: Props) {
+export function CoachPageClient({
+  initialMessages,
+  fromRoute,
+  fromLabel,
+  planId,
+  planFileId,
+  intent,
+}: Props) {
   const router = useRouter();
   const [messages, setMessages] = useState<StoredMessage[]>(initialMessages);
   const [streaming, setStreaming] = useState<StreamingState | null>(null);
@@ -35,7 +42,7 @@ export function CoachPageClient({ initialMessages, fromRoute, fromLabel, planId,
   const streamRef = useRef<HTMLDivElement>(null);
 
   const [buildState, setBuildState] = useState<BuildFormCardState | null>(
-    intent === "build" ? { kind: "editable" } : null,
+    intent === "build" ? { kind: "editable" } : null
   );
 
   useEffect(() => {
@@ -55,7 +62,7 @@ export function CoachPageClient({ initialMessages, fromRoute, fromLabel, planId,
 
   function handleSSE(
     ev: SSEEvent,
-    assembled: { text: string; tools: { name: string; summary?: string }[] },
+    assembled: { text: string; tools: { name: string; summary?: string }[] }
   ): void {
     if (ev.type === "text-delta") {
       assembled.text += ev.delta;
@@ -78,14 +85,25 @@ export function CoachPageClient({ initialMessages, fromRoute, fromLabel, planId,
     setSending(true);
     setMessages((prev) => [
       ...prev,
-      { id: `tmp-${Date.now()}`, role: "user", plan_id: planId ?? null, created_at: new Date(), content: [{ type: "text", text }] },
+      {
+        id: `tmp-${Date.now()}`,
+        role: "user",
+        plan_id: planId ?? null,
+        created_at: new Date(),
+        content: [{ type: "text", text }],
+      },
     ]);
     setStreaming({ text: "", tools: [] });
     try {
       const res = await fetch("/api/coach/chat", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ message: text, from_route: fromRoute, plan_file_id: planFileId ?? undefined, plan_id: planId ?? null }),
+        body: JSON.stringify({
+          message: text,
+          from_route: fromRoute,
+          plan_file_id: planFileId ?? undefined,
+          plan_id: planId ?? null,
+        }),
       });
       const assembled = { text: "", tools: [] as { name: string; summary?: string }[] };
       await consumeStream(res, (ev) => handleSSE(ev, assembled));
@@ -145,22 +163,46 @@ export function CoachPageClient({ initialMessages, fromRoute, fromLabel, planId,
       <ContextPill fromRoute={fromRoute} fromLabel={fromLabel} />
       <header className={styles.header}>
         <h1 className={styles.title}>Coach</h1>
-        <Button variant="ghost" size="sm" onClick={() => setClearOpen(true)}>Clear chat</Button>
+        <Button variant="ghost" size="sm" onClick={() => setClearOpen(true)}>
+          Clear chat
+        </Button>
       </header>
       <div className={styles.stream} ref={streamRef}>
-        {messages.map((m) => <MessageBubble key={m.id} message={m} />)}
+        {messages.map((m) => (
+          <MessageBubble key={m.id} message={m} />
+        ))}
         {buildState && (
           <BuildFormCard state={buildState} onSubmit={buildSubmit} onCancel={buildCancel} />
         )}
         {streaming && (
           <>
-            {streaming.tools.map((t, i) => <ToolIndicator key={i} name={t.name} summary={t.summary} />)}
-            {!streaming.text && (streaming.tools.length === 0 || streaming.tools[streaming.tools.length - 1].summary !== undefined) && <ThinkingIndicator />}
-            {streaming.text && <MessageBubble streaming message={{ id: "streaming", role: "assistant", plan_id: planId ?? null, created_at: new Date(), content: [{ type: "text", text: streaming.text }] }} />}
+            {streaming.tools.map((t, i) => (
+              <ToolIndicator key={i} name={t.name} summary={t.summary} />
+            ))}
+            {!streaming.text &&
+              (streaming.tools.length === 0 ||
+                streaming.tools[streaming.tools.length - 1].summary !== undefined) && (
+                <ThinkingIndicator />
+              )}
+            {streaming.text && (
+              <MessageBubble
+                streaming
+                message={{
+                  id: "streaming",
+                  role: "assistant",
+                  plan_id: planId ?? null,
+                  created_at: new Date(),
+                  content: [{ type: "text", text: streaming.text }],
+                }}
+              />
+            )}
           </>
         )}
       </div>
-      <MessageInput disabled={sending || buildState?.kind === "editable" || buildState?.kind === "submitting"} onSend={send} />
+      <MessageInput
+        disabled={sending || buildState?.kind === "editable" || buildState?.kind === "submitting"}
+        onSend={send}
+      />
       <ClearChatDialog open={clearOpen} onClose={() => setClearOpen(false)} onConfirm={clear} />
     </div>
   );

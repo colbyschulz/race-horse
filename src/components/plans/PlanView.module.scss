@@ -47,7 +47,9 @@
   letter-spacing: 0.07em;
   color: var(--color-fg-tertiary);
 
-  &:hover { color: var(--color-fg-secondary); }
+  &:hover {
+    color: var(--color-fg-secondary);
+  }
 }
 
 .chevron {
@@ -60,7 +62,9 @@
   transform: rotate(180deg);
 }
 
-.banner { /* container slot for banners */ }
+.banner {
+  /* container slot for banners */
+}
 
 .scrollSection {
   padding-top: var(--space-3);

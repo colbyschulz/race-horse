@@ -33,8 +33,12 @@
 }
 
 .size_sm {
-  .title { font-size: 1rem; }
-  .body  { max-width: 280px; }
+  .title {
+    font-size: 1rem;
+  }
+  .body {
+    max-width: 280px;
+  }
 }
 
 /* shared text */
@@ -62,5 +66,7 @@
   color: var(--color-brown);
   text-decoration: none;
 
-  &:hover { text-decoration: underline; }
+  &:hover {
+    text-decoration: underline;
+  }
 }

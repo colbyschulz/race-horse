@@ -19,7 +19,14 @@ vi.mock("@/db", () => ({
   },
 }));
 vi.mock("@/db/schema", () => ({
-  messages: { id: "id", user_id: "user_id", plan_id: "plan_id", role: "role", content: "content", created_at: "created_at" },
+  messages: {
+    id: "id",
+    user_id: "user_id",
+    plan_id: "plan_id",
+    role: "role",
+    content: "content",
+    created_at: "created_at",
+  },
 }));
 
 import { loadHistory, appendMessage, clearMessages } from "../messages";
@@ -48,13 +55,15 @@ describe("appendMessage", () => {
     const out = await appendMessage("u1", "user", [{ type: "text", text: "hi" }]);
     expect(out.id).toBe("m-new");
     expect(insertChain.values).toHaveBeenCalledWith(
-      expect.objectContaining({ user_id: "u1", role: "user" }),
+      expect.objectContaining({ user_id: "u1", role: "user" })
     );
   });
 });
 
 describe("clearMessages", () => {
-  beforeEach(() => { deleteChain.where.mockClear().mockResolvedValue(undefined); });
+  beforeEach(() => {
+    deleteChain.where.mockClear().mockResolvedValue(undefined);
+  });
   it("issues DELETE scoped to user", async () => {
     await clearMessages("u1", null);
     expect(deleteChain.where).toHaveBeenCalledOnce();

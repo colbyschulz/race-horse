@@ -28,8 +28,10 @@ function makeSelectChain(rows: unknown[]) {
   (chain.limit as ReturnType<typeof vi.fn>).mockResolvedValue(rows);
   // also allow awaiting the chain itself (for count queries without .limit)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (chain as any).then = (onfulfilled?: ((value: unknown) => unknown) | null, onrejected?: ((reason: unknown) => unknown) | null) =>
-    Promise.resolve(rows).then(onfulfilled ?? undefined, onrejected ?? undefined);
+  (chain as any).then = (
+    onfulfilled?: ((value: unknown) => unknown) | null,
+    onrejected?: ((reason: unknown) => unknown) | null
+  ) => Promise.resolve(rows).then(onfulfilled ?? undefined, onrejected ?? undefined);
   return chain;
 }
 
@@ -52,7 +54,14 @@ vi.mock("@/db", () => ({
 
 vi.mock("@/db/schema", () => ({
   users: { id: "id", preferences: "preferences", coach_notes: "coach_notes" },
-  plans: { id: "id", title: "title", mode: "mode", end_date: "end_date", userId: "userId", is_active: "is_active" },
+  plans: {
+    id: "id",
+    title: "title",
+    mode: "mode",
+    end_date: "end_date",
+    userId: "userId",
+    is_active: "is_active",
+  },
   workouts: { plan_id: "plan_id", date: "date" },
   messages: {},
 }));
@@ -72,7 +81,9 @@ vi.mock("@/coach/messages", () => ({
 // Anthropic mock
 // ---------------------------------------------------------------------------
 // We'll simulate: text delta, then tool_use, then tool_result, then final text
-function makeStreamEvents(events: import("@anthropic-ai/sdk/resources/messages").RawMessageStreamEvent[]) {
+function makeStreamEvents(
+  events: import("@anthropic-ai/sdk/resources/messages").RawMessageStreamEvent[]
+) {
   return {
     [Symbol.asyncIterator]: async function* () {
       for (const e of events) yield e;
@@ -136,7 +147,12 @@ describe("runCoach", () => {
 
     // loadHistory returns a simple user message
     mockLoadHistory.mockResolvedValue([
-      { id: "m1", role: "user", content: [{ type: "text", text: "ctx\n\nHello" }], created_at: new Date() },
+      {
+        id: "m1",
+        role: "user",
+        content: [{ type: "text", text: "ctx\n\nHello" }],
+        created_at: new Date(),
+      },
     ]);
   });
 
@@ -146,7 +162,16 @@ describe("runCoach", () => {
       { type: "content_block_start", index: 0, content_block: { type: "text", text: "" } },
       { type: "content_block_delta", index: 0, delta: { type: "text_delta", text: "Hello!" } },
       { type: "content_block_stop", index: 0 },
-      { type: "message_delta", delta: { stop_reason: "end_turn", stop_sequence: null, container: null, stop_details: null }, usage: { output_tokens: 5 } },
+      {
+        type: "message_delta",
+        delta: {
+          stop_reason: "end_turn",
+          stop_sequence: null,
+          container: null,
+          stop_details: null,
+        },
+        usage: { output_tokens: 5 },
+      },
       { type: "message_stop" },
     ] as import("@anthropic-ai/sdk/resources/messages").RawMessageStreamEvent[];
 
@@ -164,7 +189,7 @@ describe("runCoach", () => {
 
     const { runCoach } = await import("../runner");
     const events = await collectEvents(
-      runCoach({ userId: "u1", message: "Hi coach", fromRoute: "/today", today: "2026-04-26" }),
+      runCoach({ userId: "u1", message: "Hi coach", fromRoute: "/today", today: "2026-04-26" })
     );
 
     // Verify SSE event order
@@ -180,10 +205,27 @@ describe("runCoach", () => {
   it("calls tool handler with correct userId and emits tool-use / tool-result events", async () => {
     // Turn 1: tool_use; Turn 2: text + end_turn
     const turn1StreamEvents = [
-      { type: "content_block_start", index: 0, content_block: { type: "tool_use", id: "tu-1", name: "get_active_plan", input: {} } },
-      { type: "content_block_delta", index: 0, delta: { type: "input_json_delta", partial_json: "{}" } },
+      {
+        type: "content_block_start",
+        index: 0,
+        content_block: { type: "tool_use", id: "tu-1", name: "get_active_plan", input: {} },
+      },
+      {
+        type: "content_block_delta",
+        index: 0,
+        delta: { type: "input_json_delta", partial_json: "{}" },
+      },
       { type: "content_block_stop", index: 0 },
-      { type: "message_delta", delta: { stop_reason: "tool_use", stop_sequence: null, container: null, stop_details: null }, usage: { output_tokens: 10 } },
+      {
+        type: "message_delta",
+        delta: {
+          stop_reason: "tool_use",
+          stop_sequence: null,
+          container: null,
+          stop_details: null,
+        },
+        usage: { output_tokens: 10 },
+      },
       { type: "message_stop" },
     ] as import("@anthropic-ai/sdk/resources/messages").RawMessageStreamEvent[];
 
@@ -191,7 +233,16 @@ describe("runCoach", () => {
       { type: "content_block_start", index: 0, content_block: { type: "text", text: "" } },
       { type: "content_block_delta", index: 0, delta: { type: "text_delta", text: "Plan found." } },
       { type: "content_block_stop", index: 0 },
-      { type: "message_delta", delta: { stop_reason: "end_turn", stop_sequence: null, container: null, stop_details: null }, usage: { output_tokens: 5 } },
+      {
+        type: "message_delta",
+        delta: {
+          stop_reason: "end_turn",
+          stop_sequence: null,
+          container: null,
+          stop_details: null,
+        },
+        usage: { output_tokens: 5 },
+      },
       { type: "message_stop" },
     ] as import("@anthropic-ai/sdk/resources/messages").RawMessageStreamEvent[];
 
@@ -226,7 +277,7 @@ describe("runCoach", () => {
 
     const { runCoach } = await import("../runner");
     const events = await collectEvents(
-      runCoach({ userId: "u1", message: "What's my plan?", today: "2026-04-26" }),
+      runCoach({ userId: "u1", message: "What's my plan?", today: "2026-04-26" })
     );
 
     const types = events.map((e) => e.type);
@@ -239,18 +290,37 @@ describe("runCoach", () => {
     const { HANDLERS } = await import("@/coach/tools/index");
     expect(HANDLERS.get_active_plan).toHaveBeenCalledWith(
       expect.anything(),
-      expect.objectContaining({ userId: "u1" }),
+      expect.objectContaining({ userId: "u1" })
     );
   });
 
   it("passes stravaPreload and coldStartBuild to renderContextPrefix", async () => {
     const preload: StravaPreload = {
       athlete_summary: {
-        four_week: { count: 0, total_distance_meters: 0, total_moving_time_seconds: 0, by_type: {} },
-        twelve_week: { count: 0, total_distance_meters: 0, total_moving_time_seconds: 0, by_type: {} },
-        fifty_two_week: { count: 0, total_distance_meters: 0, total_moving_time_seconds: 0, by_type: {} },
+        four_week: {
+          count: 0,
+          total_distance_meters: 0,
+          total_moving_time_seconds: 0,
+          by_type: {},
+        },
+        twelve_week: {
+          count: 0,
+          total_distance_meters: 0,
+          total_moving_time_seconds: 0,
+          by_type: {},
+        },
+        fifty_two_week: {
+          count: 0,
+          total_distance_meters: 0,
+          total_moving_time_seconds: 0,
+          by_type: {},
+        },
       },
-      recent_activities_summary: { count: 0, total_distance_meters: 0, total_moving_time_seconds: 0 },
+      recent_activities_summary: {
+        count: 0,
+        total_distance_meters: 0,
+        total_moving_time_seconds: 0,
+      },
       minimal: true,
     };
 
@@ -258,7 +328,16 @@ describe("runCoach", () => {
       { type: "content_block_start", index: 0, content_block: { type: "text", text: "" } },
       { type: "content_block_delta", index: 0, delta: { type: "text_delta", text: "Hello!" } },
       { type: "content_block_stop", index: 0 },
-      { type: "message_delta", delta: { stop_reason: "end_turn", stop_sequence: null, container: null, stop_details: null }, usage: { output_tokens: 5 } },
+      {
+        type: "message_delta",
+        delta: {
+          stop_reason: "end_turn",
+          stop_sequence: null,
+          container: null,
+          stop_details: null,
+        },
+        usage: { output_tokens: 5 },
+      },
       { type: "message_stop" },
     ] as import("@anthropic-ai/sdk/resources/messages").RawMessageStreamEvent[];
 
@@ -283,13 +362,15 @@ describe("runCoach", () => {
       coldStartBuild: true,
     });
     // Drain the generator (mocks short-circuit the Anthropic call).
-    for await (const _ of gen) { /* drain */ }
+    for await (const _ of gen) {
+      /* drain */
+    }
 
     // The first appendMessage call (role="user") should contain a context prefix
     // that includes both new sections.
-    const firstUserCall = (mockAppendMessage as unknown as { mock: { calls: unknown[][] } }).mock.calls.find(
-      (c) => c[1] === "user",
-    );
+    const firstUserCall = (
+      mockAppendMessage as unknown as { mock: { calls: unknown[][] } }
+    ).mock.calls.find((c) => c[1] === "user");
     const content = firstUserCall?.[2] as { type: string; text: string }[];
     const text = content[0]?.text ?? "";
     expect(text).toContain("Cold-start plan build: true");

@@ -5,6 +5,7 @@
 **Goal:** Land the `plans` and `workouts` schema, the `/plans` manage page (PlansA "Card list" hi-fi variant), and the RESTful API surface that Phase 4 (coach) and Phase 6 (upload) will reuse to create and mutate plans.
 
 **Architecture:**
+
 - New Drizzle tables `plans` + `workouts` with pg enums for `sport`, `plan_mode`, `plan_source`, `workout_type`. A partial unique index `(user_id) WHERE is_active` enforces "at most one active plan per user" at the DB level.
 - A `src/plans/` module owns DB access and small pure helpers:
   - `queries.ts` — `listPlans`, `getPlanById`, `createPlan`, `setActivePlan`, `archivePlan`, `deletePlan`, `countWorkouts`, `countCompletedSoFar`
@@ -19,11 +20,13 @@
 - The hi-fi's `[✦ Build with coach]` and `[↑ Upload plan]` action-row buttons are rendered as disabled placeholders with a small "coming soon" tooltip — the visual surface lands now so Phase 4/6 only need to wire behavior, not retro-fit chrome.
 
 **Tech Stack:**
+
 - Next.js 16 App Router server components + client components
 - Drizzle ORM with `pgEnum` and partial unique indexes
-- Existing: Neon Postgres (HTTP driver — *no transactions*, so all mutations are single statements), NextAuth v5, Vitest, SCSS Modules
+- Existing: Neon Postgres (HTTP driver — _no transactions_, so all mutations are single statements), NextAuth v5, Vitest, SCSS Modules
 
 **Design tokens used (already defined in `src/styles/tokens.scss`):**
+
 - `--color-brown` / `--color-brown-hover` — active accent + hero ring
 - `--color-bg-base` / `--color-bg-surface` / `--color-bg-subtle` — page + card backgrounds
 - `--color-fg-primary` / `--color-fg-secondary` / `--color-fg-tertiary` — typography hierarchy
@@ -37,6 +40,7 @@
 ## File structure
 
 **Create:**
+
 - `src/plans/queries.ts` — DB access for plans + workouts
 - `src/plans/stats.ts` — pure presentation helpers
 - `src/plans/types.ts` — shared TS types: `Goal`, `TargetIntensity`, `Interval`, `PlanWithCounts`
@@ -54,11 +58,13 @@
 - `src/components/plans/PlansEmptyState.tsx` + `.module.scss`
 
 **Modify:**
+
 - `src/db/schema.ts` — add enums + plans + workouts tables
 - `src/db/__tests__/schema.test.ts` — extend coverage
 - `src/app/(app)/plans/page.tsx` — replace Phase 1 placeholder with real server component
 
 **Generate (via drizzle-kit):**
+
 - `drizzle/0002_<name>.sql` — migration
 
 ---
@@ -72,6 +78,7 @@ None. Phase 3 introduces no new env vars or external services.
 ## Task 1: Schema — `plans` + `workouts` tables + enums
 
 **Files:**
+
 - Modify: `src/db/schema.ts`
 - Modify: `src/db/__tests__/schema.test.ts`
 - Generate: `drizzle/0002_<name>.sql`
@@ -106,10 +113,7 @@ Add these `pgEnum` declarations between `DEFAULT_PREFERENCES` and the `users` ta
 ```ts
 export const sportEnum = pgEnum("sport", ["run", "bike"]);
 export const planModeEnum = pgEnum("plan_mode", ["goal", "indefinite"]);
-export const planSourceEnum = pgEnum("plan_source", [
-  "uploaded",
-  "coach_generated",
-]);
+export const planSourceEnum = pgEnum("plan_source", ["uploaded", "coach_generated"]);
 export const workoutTypeEnum = pgEnum("workout_type", [
   "easy",
   "long",
@@ -123,9 +127,9 @@ export const workoutTypeEnum = pgEnum("workout_type", [
 ]);
 
 export type Goal = {
-  race_date?: string;       // ISO date "YYYY-MM-DD"
-  race_distance?: string;   // free-text e.g. "marathon", "10k", "50k"
-  target_time?: string;     // free-text e.g. "3:05"
+  race_date?: string; // ISO date "YYYY-MM-DD"
+  race_distance?: string; // free-text e.g. "marathon", "10k", "50k"
+  target_time?: string; // free-text e.g. "3:05"
 };
 
 export type TargetIntensity = {
@@ -165,19 +169,15 @@ export const plans = pgTable(
     is_active: boolean("is_active").notNull().default(false),
     source: planSourceEnum("source").notNull(),
     source_file_id: uuid("source_file_id"),
-    created_at: timestamp("created_at", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-    updated_at: timestamp("updated_at", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
+    created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
     index("plan_user_idx").on(t.userId),
     uniqueIndex("plan_one_active_per_user_idx")
       .on(t.userId)
       .where(sql`${t.is_active}`),
-  ],
+  ]
 );
 ```
 
@@ -204,9 +204,7 @@ export const workouts = pgTable(
     intervals: jsonb("intervals").$type<IntervalSpec[]>(),
     notes: text("notes").notNull().default(""),
   },
-  (t) => [
-    index("workout_plan_date_idx").on(t.plan_id, t.date),
-  ],
+  (t) => [index("workout_plan_date_idx").on(t.plan_id, t.date)]
 );
 ```
 
@@ -214,6 +212,7 @@ export const workouts = pgTable(
 
 Run: `npm run db:generate`
 Expected: drizzle-kit emits `drizzle/0002_<adjective_noun>.sql` containing:
+
 - `CREATE TYPE "public"."sport" AS ENUM('run', 'bike');`
 - `CREATE TYPE "public"."plan_mode" AS ENUM('goal', 'indefinite');`
 - `CREATE TYPE "public"."plan_source" AS ENUM('uploaded', 'coach_generated');`
@@ -229,6 +228,7 @@ If drizzle-kit emits any `DROP` statements, **stop and investigate** — Phase 2
 - [ ] **Step 6: Inspect migration**
 
 Open the generated SQL file. Verify:
+
 - `is_active` defaults to `false`
 - The partial unique index uses `WHERE "is_active"` (not just `WHERE "is_active" = true` — both work, but check it actually has a `WHERE` clause)
 - `start_date` / `end_date` / `workout.date` are all `date` columns (not `timestamp`)
@@ -244,9 +244,19 @@ describe("plans table", () => {
   it("declares the expected columns", () => {
     const cols = Object.keys(plans);
     for (const c of [
-      "id", "userId", "title", "sport", "mode", "goal",
-      "start_date", "end_date", "is_active", "source",
-      "source_file_id", "created_at", "updated_at",
+      "id",
+      "userId",
+      "title",
+      "sport",
+      "mode",
+      "goal",
+      "start_date",
+      "end_date",
+      "is_active",
+      "source",
+      "source_file_id",
+      "created_at",
+      "updated_at",
     ]) {
       expect(cols).toContain(c);
     }
@@ -257,9 +267,16 @@ describe("workouts table", () => {
   it("declares the expected columns", () => {
     const cols = Object.keys(workouts);
     for (const c of [
-      "id", "plan_id", "date", "sport", "type",
-      "distance_meters", "duration_seconds",
-      "target_intensity", "intervals", "notes",
+      "id",
+      "plan_id",
+      "date",
+      "sport",
+      "type",
+      "distance_meters",
+      "duration_seconds",
+      "target_intensity",
+      "intervals",
+      "notes",
     ]) {
       expect(cols).toContain(c);
     }
@@ -275,8 +292,15 @@ describe("enums", () => {
   });
   it("workoutTypeEnum declares the 9 types", () => {
     expect(workoutTypeEnum.enumValues).toEqual([
-      "easy", "long", "tempo", "threshold",
-      "intervals", "recovery", "race", "rest", "cross",
+      "easy",
+      "long",
+      "tempo",
+      "threshold",
+      "intervals",
+      "recovery",
+      "race",
+      "rest",
+      "cross",
     ]);
   });
 });
@@ -299,16 +323,13 @@ git commit -m "Add plans and workouts schema with enums and partial unique activ
 ## Task 2: Plans + workouts shared types
 
 **Files:**
+
 - Create: `src/plans/types.ts`
 
 - [ ] **Step 1: Write the types file**
 
 ```ts
-import type {
-  Goal,
-  TargetIntensity,
-  IntervalSpec,
-} from "@/db/schema";
+import type { Goal, TargetIntensity, IntervalSpec } from "@/db/schema";
 
 export type Sport = "run" | "bike";
 export type PlanMode = "goal" | "indefinite";
@@ -361,6 +382,7 @@ git commit -m "Add shared TS types for plans"
 ## Task 3: Plans queries — `listPlans`, `getPlanById`, `createPlan`
 
 **Files:**
+
 - Create: `src/plans/queries.ts`
 - Create: `src/plans/__tests__/queries.test.ts`
 
@@ -449,10 +471,7 @@ export async function listPlans(userId: string): Promise<Plan[]> {
     .orderBy(desc(plans.is_active), desc(plans.start_date)) as Promise<Plan[]>;
 }
 
-export async function getPlanById(
-  planId: string,
-  userId: string,
-): Promise<Plan | null> {
+export async function getPlanById(planId: string, userId: string): Promise<Plan | null> {
   const rows = await db
     .select()
     .from(plans)
@@ -461,10 +480,7 @@ export async function getPlanById(
   return (rows[0] as Plan | undefined) ?? null;
 }
 
-export async function createPlan(
-  userId: string,
-  input: CreatePlanInput,
-): Promise<Plan> {
+export async function createPlan(userId: string, input: CreatePlanInput): Promise<Plan> {
   const result = await db
     .insert(plans)
     .values({
@@ -495,7 +511,10 @@ export async function archivePlan(_planId: string, _userId: string): Promise<voi
 export async function deletePlan(_planId: string, _userId: string): Promise<void> {
   throw new Error("not implemented");
 }
-export async function listPlansWithCounts(_userId: string, _today: string): Promise<PlanWithCounts[]> {
+export async function listPlansWithCounts(
+  _userId: string,
+  _today: string
+): Promise<PlanWithCounts[]> {
   throw new Error("not implemented");
 }
 ```
@@ -557,7 +576,7 @@ describe("createPlan", () => {
         sport: "run",
         mode: "goal",
         is_active: false,
-      }),
+      })
     );
   });
 
@@ -570,7 +589,7 @@ describe("createPlan", () => {
         mode: "indefinite",
         start_date: "2026-01-01",
         source: "coach_generated",
-      }),
+      })
     ).rejects.toThrow("createPlan: no row returned");
   });
 });
@@ -593,6 +612,7 @@ git commit -m "Add listPlans, getPlanById, createPlan with tests"
 ## Task 4: Plans queries — `setActivePlan`, `archivePlan`, `deletePlan`
 
 **Files:**
+
 - Modify: `src/plans/queries.ts`
 - Modify: `src/plans/__tests__/queries.test.ts`
 
@@ -628,9 +648,7 @@ describe("archivePlan", () => {
 
   it("sets is_active=false scoped to plan + user", async () => {
     await archivePlan("p1", "u1");
-    expect(updateChain.set).toHaveBeenCalledWith(
-      expect.objectContaining({ is_active: false }),
-    );
+    expect(updateChain.set).toHaveBeenCalledWith(expect.objectContaining({ is_active: false }));
     expect(updateChain.where).toHaveBeenCalledOnce();
   });
 });
@@ -657,10 +675,7 @@ Expected: 3 fails — placeholder implementations throw `not implemented`.
 Replace the three placeholder exports in `src/plans/queries.ts` with:
 
 ```ts
-export async function setActivePlan(
-  planId: string,
-  userId: string,
-): Promise<void> {
+export async function setActivePlan(planId: string, userId: string): Promise<void> {
   // Single UPDATE so the partial unique index is never violated mid-statement.
   // Postgres evaluates the SET expression per row atomically inside one statement.
   await db
@@ -672,23 +687,15 @@ export async function setActivePlan(
     .where(eq(plans.userId, userId));
 }
 
-export async function archivePlan(
-  planId: string,
-  userId: string,
-): Promise<void> {
+export async function archivePlan(planId: string, userId: string): Promise<void> {
   await db
     .update(plans)
     .set({ is_active: false, updated_at: new Date() })
     .where(and(eq(plans.id, planId), eq(plans.userId, userId)));
 }
 
-export async function deletePlan(
-  planId: string,
-  userId: string,
-): Promise<void> {
-  await db
-    .delete(plans)
-    .where(and(eq(plans.id, planId), eq(plans.userId, userId)));
+export async function deletePlan(planId: string, userId: string): Promise<void> {
+  await db.delete(plans).where(and(eq(plans.id, planId), eq(plans.userId, userId)));
 }
 ```
 
@@ -709,6 +716,7 @@ git commit -m "Implement setActivePlan, archivePlan, deletePlan"
 ## Task 5: `listPlansWithCounts` — counts of total + completed-so-far workouts
 
 **Files:**
+
 - Modify: `src/plans/queries.ts`
 - Modify: `src/plans/__tests__/queries.test.ts`
 
@@ -728,18 +736,25 @@ describe("listPlansWithCounts", () => {
   it("annotates each plan with workout_count + completed_count", async () => {
     fromChain.orderBy.mockResolvedValueOnce([
       {
-        id: "p1", userId: "u1", title: "Boston", is_active: true,
-        start_date: "2026-01-01", end_date: "2026-04-20",
-        workout_count: 84, completed_count: 46,
+        id: "p1",
+        userId: "u1",
+        title: "Boston",
+        is_active: true,
+        start_date: "2026-01-01",
+        end_date: "2026-04-20",
+        workout_count: 84,
+        completed_count: 46,
       },
     ]);
     const out = await listPlansWithCounts("u1", "2026-03-01");
     expect(out).toHaveLength(1);
-    expect(out[0]).toEqual(expect.objectContaining({
-      id: "p1",
-      workout_count: 84,
-      completed_count: 46,
-    }));
+    expect(out[0]).toEqual(
+      expect.objectContaining({
+        id: "p1",
+        workout_count: 84,
+        completed_count: 46,
+      })
+    );
   });
 });
 ```
@@ -756,7 +771,7 @@ Replace the placeholder in `src/plans/queries.ts`:
 ```ts
 export async function listPlansWithCounts(
   userId: string,
-  today: string, // ISO date "YYYY-MM-DD"
+  today: string // ISO date "YYYY-MM-DD"
 ): Promise<PlanWithCounts[]> {
   // Single round-trip: subquery counts joined per row.
   const totalCount = sql<number>`(
@@ -811,6 +826,7 @@ git commit -m "Add listPlansWithCounts with workout + completed counts"
 ## Task 6: Plans stats — pure formatters
 
 **Files:**
+
 - Create: `src/plans/stats.ts`
 - Create: `src/plans/__tests__/stats.test.ts`
 
@@ -820,12 +836,7 @@ git commit -m "Add listPlansWithCounts with workout + completed counts"
 
 ```ts
 import { describe, it, expect } from "vitest";
-import {
-  computeWeeksLeft,
-  formatDuration,
-  formatGoal,
-  formatSport,
-} from "../stats";
+import { computeWeeksLeft, formatDuration, formatGoal, formatSport } from "../stats";
 
 describe("computeWeeksLeft", () => {
   it("returns ceil of (end - today) / 7 days, never negative", () => {
@@ -850,12 +861,12 @@ describe("formatDuration", () => {
 
 describe("formatGoal", () => {
   it("formats target_time + race_date when present", () => {
-    expect(formatGoal({ target_time: "3:05", race_date: "2026-05-05" }))
-      .toBe("Goal: 3:05 · May 5");
+    expect(formatGoal({ target_time: "3:05", race_date: "2026-05-05" })).toBe("Goal: 3:05 · May 5");
   });
   it("falls back to race_distance when no target_time", () => {
-    expect(formatGoal({ race_distance: "marathon", race_date: "2026-05-05" }))
-      .toBe("Goal: marathon · May 5");
+    expect(formatGoal({ race_distance: "marathon", race_date: "2026-05-05" })).toBe(
+      "Goal: marathon · May 5"
+    );
   });
   it("returns null when goal is null or empty", () => {
     expect(formatGoal(null)).toBeNull();
@@ -892,10 +903,7 @@ function parseISODate(d: string): Date {
   return new Date(`${d}T00:00:00Z`);
 }
 
-export function computeWeeksLeft(
-  endDate: string | null,
-  today: string,
-): number | null {
+export function computeWeeksLeft(endDate: string | null, today: string): number | null {
   if (!endDate) return null;
   const end = parseISODate(endDate).getTime();
   const now = parseISODate(today).getTime();
@@ -903,10 +911,7 @@ export function computeWeeksLeft(
   return Math.max(0, Math.ceil(days / 7));
 }
 
-export function formatDuration(
-  startDate: string,
-  endDate: string | null,
-): string {
+export function formatDuration(startDate: string, endDate: string | null): string {
   if (!endDate) return "indefinite";
   const start = parseISODate(startDate).getTime();
   const end = parseISODate(endDate).getTime();
@@ -914,10 +919,7 @@ export function formatDuration(
   return `${weeks} weeks`;
 }
 
-const MONTHS = [
-  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-];
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 function formatRaceDate(iso: string): string {
   const d = parseISODate(iso);
@@ -956,6 +958,7 @@ git commit -m "Add pure plan stat formatters"
 ## Task 7: API `GET /api/plans` + `POST /api/plans`
 
 **Files:**
+
 - Create: `src/app/api/plans/route.ts`
 - Create: `src/app/api/plans/__tests__/route.test.ts`
 
@@ -1014,7 +1017,15 @@ describe("POST /api/plans", () => {
 
   it("returns 401 when unauthenticated", async () => {
     auth.mockResolvedValueOnce(null);
-    const res = await POST(makeReq({ title: "x", sport: "run", mode: "indefinite", start_date: "2026-01-01", source: "coach_generated" }));
+    const res = await POST(
+      makeReq({
+        title: "x",
+        sport: "run",
+        mode: "indefinite",
+        start_date: "2026-01-01",
+        source: "coach_generated",
+      })
+    );
     expect(res.status).toBe(401);
   });
 
@@ -1027,23 +1038,28 @@ describe("POST /api/plans", () => {
   it("creates the plan and returns 201", async () => {
     auth.mockResolvedValueOnce({ user: { id: "u1" } });
     createPlan.mockResolvedValueOnce({ id: "p-new", title: "Boston" });
-    const res = await POST(makeReq({
-      title: "Boston",
-      sport: "run",
-      mode: "goal",
-      start_date: "2026-01-01",
-      end_date: "2026-05-05",
-      goal: { target_time: "3:05", race_date: "2026-05-05" },
-      source: "coach_generated",
-    }));
+    const res = await POST(
+      makeReq({
+        title: "Boston",
+        sport: "run",
+        mode: "goal",
+        start_date: "2026-01-01",
+        end_date: "2026-05-05",
+        goal: { target_time: "3:05", race_date: "2026-05-05" },
+        source: "coach_generated",
+      })
+    );
     expect(res.status).toBe(201);
     const body = await res.json();
     expect(body.plan).toEqual({ id: "p-new", title: "Boston" });
-    expect(createPlan).toHaveBeenCalledWith("u1", expect.objectContaining({
-      title: "Boston",
-      sport: "run",
-      mode: "goal",
-    }));
+    expect(createPlan).toHaveBeenCalledWith(
+      "u1",
+      expect.objectContaining({
+        title: "Boston",
+        sport: "run",
+        mode: "goal",
+      })
+    );
   });
 });
 ```
@@ -1091,7 +1107,8 @@ function validate(body: unknown): CreatePlanInput | null {
   if (typeof b.mode !== "string" || !VALID_MODES.includes(b.mode as PlanMode)) return null;
   if (typeof b.source !== "string" || !VALID_SOURCES.includes(b.source as PlanSource)) return null;
   if (typeof b.start_date !== "string" || !ISO_DATE.test(b.start_date)) return null;
-  if (b.end_date != null && (typeof b.end_date !== "string" || !ISO_DATE.test(b.end_date))) return null;
+  if (b.end_date != null && (typeof b.end_date !== "string" || !ISO_DATE.test(b.end_date)))
+    return null;
   return {
     title: b.title.trim(),
     sport: b.sport as Sport,
@@ -1137,6 +1154,7 @@ git commit -m "Add GET and POST /api/plans"
 ## Task 8: API `GET` / `PATCH` / `DELETE /api/plans/[id]`
 
 **Files:**
+
 - Create: `src/app/api/plans/[id]/route.ts`
 - Create: `src/app/api/plans/[id]/__tests__/route.test.ts`
 
@@ -1155,7 +1173,10 @@ const deletePlan = vi.fn();
 
 vi.mock("@/auth", () => ({ auth }));
 vi.mock("@/plans/queries", () => ({
-  getPlanById, setActivePlan, archivePlan, deletePlan,
+  getPlanById,
+  setActivePlan,
+  archivePlan,
+  deletePlan,
 }));
 
 import { GET, PATCH, DELETE } from "../route";
@@ -1170,7 +1191,10 @@ function makeReq(method: string, body?: unknown): Request {
 const ctx = { params: Promise.resolve({ id: "p1" }) };
 
 describe("GET /api/plans/[id]", () => {
-  beforeEach(() => { auth.mockReset(); getPlanById.mockReset(); });
+  beforeEach(() => {
+    auth.mockReset();
+    getPlanById.mockReset();
+  });
 
   it("returns 401 when unauthenticated", async () => {
     auth.mockResolvedValueOnce(null);
@@ -1196,8 +1220,10 @@ describe("GET /api/plans/[id]", () => {
 
 describe("PATCH /api/plans/[id]", () => {
   beforeEach(() => {
-    auth.mockReset(); getPlanById.mockReset();
-    setActivePlan.mockReset(); archivePlan.mockReset();
+    auth.mockReset();
+    getPlanById.mockReset();
+    setActivePlan.mockReset();
+    archivePlan.mockReset();
   });
 
   it("calls setActivePlan when is_active=true", async () => {
@@ -1233,7 +1259,9 @@ describe("PATCH /api/plans/[id]", () => {
 
 describe("DELETE /api/plans/[id]", () => {
   beforeEach(() => {
-    auth.mockReset(); getPlanById.mockReset(); deletePlan.mockReset();
+    auth.mockReset();
+    getPlanById.mockReset();
+    deletePlan.mockReset();
   });
 
   it("returns 404 when plan not owned", async () => {
@@ -1265,12 +1293,7 @@ Expected: FAIL — module not found.
 ```ts
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
-import {
-  archivePlan,
-  deletePlan,
-  getPlanById,
-  setActivePlan,
-} from "@/plans/queries";
+import { archivePlan, deletePlan, getPlanById, setActivePlan } from "@/plans/queries";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -1343,6 +1366,7 @@ git commit -m "Add GET, PATCH, DELETE /api/plans/[id]"
 ## Task 9: `ActivePlanCard` component
 
 **Files:**
+
 - Create: `src/components/plans/ActivePlanCard.tsx`
 - Create: `src/components/plans/ActivePlanCard.module.scss`
 
@@ -1453,16 +1477,25 @@ git commit -m "Add GET, PATCH, DELETE /api/plans/[id]"
   color: var(--color-fg-tertiary);
   cursor: pointer;
 
-  &:hover { color: var(--color-fg-secondary); }
-  &:disabled { opacity: 0.5; cursor: not-allowed; }
+  &:hover {
+    color: var(--color-fg-secondary);
+  }
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
 }
 
 .actionDanger {
   composes: actionGhost;
-  &:hover { color: #b83232; }
+  &:hover {
+    color: #b83232;
+  }
 }
 
-.spacer { flex: 1; }
+.spacer {
+  flex: 1;
+}
 
 .viewLink {
   font-family: var(--font-body);
@@ -1470,7 +1503,9 @@ git commit -m "Add GET, PATCH, DELETE /api/plans/[id]"
   font-weight: 500;
   color: var(--color-brown);
   text-decoration: none;
-  &:hover { color: var(--color-brown-hover); }
+  &:hover {
+    color: var(--color-brown-hover);
+  }
 }
 ```
 
@@ -1483,12 +1518,7 @@ git commit -m "Add GET, PATCH, DELETE /api/plans/[id]"
 
 import Link from "next/link";
 import styles from "./ActivePlanCard.module.scss";
-import {
-  computeWeeksLeft,
-  formatDuration,
-  formatGoal,
-  formatSport,
-} from "@/plans/stats";
+import { computeWeeksLeft, formatDuration, formatGoal, formatSport } from "@/plans/stats";
 import type { PlanWithCounts } from "@/plans/types";
 
 interface Props {
@@ -1534,20 +1564,10 @@ export function ActivePlanCard({ plan, today, onArchive, onDelete, busy }: Props
       <div className={styles.divider} />
 
       <div className={styles.actionRow}>
-        <button
-          type="button"
-          onClick={onArchive}
-          disabled={busy}
-          className={styles.actionGhost}
-        >
+        <button type="button" onClick={onArchive} disabled={busy} className={styles.actionGhost}>
           Archive
         </button>
-        <button
-          type="button"
-          onClick={onDelete}
-          disabled={busy}
-          className={styles.actionDanger}
-        >
+        <button type="button" onClick={onDelete} disabled={busy} className={styles.actionDanger}>
           Delete
         </button>
         <span className={styles.spacer} />
@@ -1577,6 +1597,7 @@ git commit -m "Add ActivePlanCard component"
 ## Task 10: `ArchivedPlanCard` component
 
 **Files:**
+
 - Create: `src/components/plans/ArchivedPlanCard.tsx`
 - Create: `src/components/plans/ArchivedPlanCard.module.scss`
 
@@ -1624,7 +1645,9 @@ git commit -m "Add ActivePlanCard component"
   color: var(--color-fg-tertiary);
 }
 
-.spacer { flex: 1; }
+.spacer {
+  flex: 1;
+}
 
 .actionGhost {
   background: none;
@@ -1634,13 +1657,20 @@ git commit -m "Add ActivePlanCard component"
   font-size: 0.75rem;
   color: var(--color-fg-tertiary);
   cursor: pointer;
-  &:hover { color: var(--color-brown); }
-  &:disabled { opacity: 0.5; cursor: not-allowed; }
+  &:hover {
+    color: var(--color-brown);
+  }
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
 }
 
 .actionDanger {
   composes: actionGhost;
-  &:hover { color: #b83232; }
+  &:hover {
+    color: #b83232;
+  }
 }
 ```
 
@@ -1660,10 +1690,7 @@ const SOURCE_LABEL: Record<string, string> = {
   coach_generated: "coach-generated",
 };
 
-const MONTHS = [
-  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-];
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 function formatMonthYear(iso: string): string {
   const d = new Date(`${iso}T00:00:00Z`);
@@ -1685,24 +1712,15 @@ export function ArchivedPlanCard({ plan, onRestore, onDelete, busy }: Props) {
       </div>
       <div className={styles.metaRow}>
         <span className={styles.metaItem}>
-          {formatSport(plan.sport)} · {formatDuration(plan.start_date, plan.end_date)} · {SOURCE_LABEL[plan.source] ?? plan.source}
+          {formatSport(plan.sport)} · {formatDuration(plan.start_date, plan.end_date)} ·{" "}
+          {SOURCE_LABEL[plan.source] ?? plan.source}
         </span>
         <span className={styles.metaItem}>{formatMonthYear(plan.start_date)}</span>
         <span className={styles.spacer} />
-        <button
-          type="button"
-          onClick={onRestore}
-          disabled={busy}
-          className={styles.actionGhost}
-        >
+        <button type="button" onClick={onRestore} disabled={busy} className={styles.actionGhost}>
           Restore
         </button>
-        <button
-          type="button"
-          onClick={onDelete}
-          disabled={busy}
-          className={styles.actionDanger}
-        >
+        <button type="button" onClick={onDelete} disabled={busy} className={styles.actionDanger}>
           Delete
         </button>
       </div>
@@ -1728,6 +1746,7 @@ git commit -m "Add ArchivedPlanCard component"
 ## Task 11: `PlanActionRow` (disabled "Build with coach" + "Upload plan")
 
 **Files:**
+
 - Create: `src/components/plans/PlanActionRow.tsx`
 - Create: `src/components/plans/PlanActionRow.module.scss`
 
@@ -1797,26 +1816,14 @@ export function PlanActionRow() {
   return (
     <>
       <div className={styles.row} aria-label="Plan actions">
-        <button
-          type="button"
-          disabled
-          className={styles.btnPrimary}
-          title="Coming in Phase 4"
-        >
+        <button type="button" disabled className={styles.btnPrimary} title="Coming in Phase 4">
           <span className={styles.icon}>✦</span> Build with coach
         </button>
-        <button
-          type="button"
-          disabled
-          className={styles.btnSecondary}
-          title="Coming in Phase 6"
-        >
+        <button type="button" disabled className={styles.btnSecondary} title="Coming in Phase 6">
           <span className={styles.icon}>↑</span> Upload plan
         </button>
       </div>
-      <span className={styles.comingSoon}>
-        Coach &amp; upload coming soon
-      </span>
+      <span className={styles.comingSoon}>Coach &amp; upload coming soon</span>
     </>
   );
 }
@@ -1834,6 +1841,7 @@ git commit -m "Add disabled PlanActionRow placeholders for coach/upload"
 ## Task 12: `PlansEmptyState` component
 
 **Files:**
+
 - Create: `src/components/plans/PlansEmptyState.tsx`
 - Create: `src/components/plans/PlansEmptyState.module.scss`
 
@@ -1901,6 +1909,7 @@ git commit -m "Add PlansEmptyState component"
 ## Task 13: `/plans` page (server component) + `PlansPageClient`
 
 **Files:**
+
 - Create: `src/app/(app)/plans/page.tsx`
 - Create: `src/app/(app)/plans/PlansPageClient.tsx`
 - Create: `src/app/(app)/plans/Plans.module.scss`
@@ -2014,9 +2023,7 @@ export function PlansPageClient({ plans, today }: Props) {
           plan={active}
           today={today}
           busy={busyId === active.id}
-          onArchive={() =>
-            withBusy(active.id, () => patchPlan(active.id, { is_active: false }))
-          }
+          onArchive={() => withBusy(active.id, () => patchPlan(active.id, { is_active: false }))}
           onDelete={() => {
             if (!confirm(`Delete "${active.title}"? This cannot be undone.`)) return;
             void withBusy(active.id, () => deletePlanReq(active.id));
@@ -2033,9 +2040,7 @@ export function PlansPageClient({ plans, today }: Props) {
                 key={p.id}
                 plan={p}
                 busy={busyId === p.id}
-                onRestore={() =>
-                  withBusy(p.id, () => patchPlan(p.id, { is_active: true }))
-                }
+                onRestore={() => withBusy(p.id, () => patchPlan(p.id, { is_active: true }))}
                 onDelete={() => {
                   if (!confirm(`Delete "${p.title}"? This cannot be undone.`)) return;
                   void withBusy(p.id, () => deletePlanReq(p.id));
@@ -2083,6 +2088,7 @@ Expected: all tests passing.
 - [ ] **Step 5: Manual check (skip if no dev server access)**
 
 Start: `npm run dev` and visit `http://localhost:3000/plans`
+
 - Empty state shows when there are no plans
 - Action row shows two disabled buttons + "coming soon" caption
 
@@ -2123,7 +2129,7 @@ await fetch("/api/plans", {
     goal: { target_time: "3:05", race_date: "2026-05-05", race_distance: "marathon" },
     source: "coach_generated",
   }),
-}).then(r => r.json());
+}).then((r) => r.json());
 ```
 
 Expected: `{ plan: { id, title: "Boston Marathon Build", is_active: false, ... } }`.

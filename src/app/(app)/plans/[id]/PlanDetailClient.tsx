@@ -56,9 +56,7 @@ export function PlanDetailClient({
   }, [weekActivities]);
 
   const [openDate, setOpenDate] = useState<string | null>(null);
-  const openWorkout = openDate
-    ? allWorkouts.find((w) => w.date === openDate) ?? null
-    : null;
+  const openWorkout = openDate ? (allWorkouts.find((w) => w.date === openDate) ?? null) : null;
 
   return (
     <>

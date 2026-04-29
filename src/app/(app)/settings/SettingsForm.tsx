@@ -9,12 +9,8 @@ import styles from "./SettingsForm.module.scss";
 
 export function SettingsForm({ initial }: { initial: UserPreferences }) {
   const [units, setUnits] = useState<UserPreferences["units"]>(initial.units);
-  const [paceFormat, setPaceFormat] = useState<UserPreferences["pace_format"]>(
-    initial.pace_format,
-  );
-  const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">(
-    "idle",
-  );
+  const [paceFormat, setPaceFormat] = useState<UserPreferences["pace_format"]>(initial.pace_format);
+  const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -49,23 +45,24 @@ export function SettingsForm({ initial }: { initial: UserPreferences }) {
         <Select
           id="pace"
           value={paceFormat}
-          onChange={(e) =>
-            setPaceFormat(e.target.value as UserPreferences["pace_format"])
-          }
+          onChange={(e) => setPaceFormat(e.target.value as UserPreferences["pace_format"])}
         >
           <option value="min_per_mi">Min/mile</option>
           <option value="min_per_km">Min/km</option>
         </Select>
       </FormField>
 
-      <Button type="submit" variant="primary" loading={status === "saving"} className={styles.submit}>
+      <Button
+        type="submit"
+        variant="primary"
+        loading={status === "saving"}
+        className={styles.submit}
+      >
         Save
       </Button>
       {status === "saving" && <span className={styles.status}>Saving…</span>}
       {status === "saved" && <span className={styles.status}>Saved.</span>}
-      {status === "error" && (
-        <span className={styles.status}>Error saving — try again.</span>
-      )}
+      {status === "error" && <span className={styles.status}>Error saving — try again.</span>}
     </form>
   );
 }

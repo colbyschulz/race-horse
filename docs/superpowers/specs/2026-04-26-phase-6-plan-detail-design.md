@@ -8,7 +8,7 @@
 
 ## 1. Goal
 
-Give the user a way to explore a *whole* training plan — past, present, or future — at a higher level than the week-by-week Training view. Today there is no surface for inspecting an archived plan or scanning the structure of an upcoming plan; the Training tab and Today page are scoped to the active plan and the current moment.
+Give the user a way to explore a _whole_ training plan — past, present, or future — at a higher level than the week-by-week Training view. Today there is no surface for inspecting an archived plan or scanning the structure of an upcoming plan; the Training tab and Today page are scoped to the active plan and the current moment.
 
 The plan-detail page lives at `/plans/[id]` and is reachable by clicking any plan card on the `/plans` list. It works for any plan: active, archived, or freshly-uploaded (this is the page the Phase 7 upload review flow lands on after extraction).
 
@@ -39,6 +39,7 @@ The plan-detail page lives at `/plans/[id]` and is reachable by clicking any pla
 Top to bottom:
 
 ### 4.1 Plan header
+
 - Plan title (display font, large)
 - Subline: sport · date range · mode ("goal" with end_date or "indefinite")
 - Status badge: `Active` (brown), `Archived` (muted), or `Upcoming` (terra). Computed: `is_active=true` → Active; else if `start_date > today` → Upcoming; else → Archived.
@@ -49,20 +50,22 @@ Top to bottom:
 - Existing AskCoachButton FAB handles plan-level coach questions; the per-turn context module recognizes `/plans/[id]` paths and pre-loads the plan via `get_plan`.
 
 ### 4.2 Plan stats card
+
 A single card with 4 numbers, separated by vertical dividers (same `HeroWorkout` stat-row pattern):
 
-| Stat | Format |
-|---|---|
-| Total | `"183 mi"` |
-| Peak week | `"47.3 mi · Apr 21"` (the Monday of the peak week) |
-| Longest run | `"20 mi · May 9"` |
-| Weeks | `"12"` |
+| Stat        | Format                                             |
+| ----------- | -------------------------------------------------- |
+| Total       | `"183 mi"`                                         |
+| Peak week   | `"47.3 mi · Apr 21"` (the Monday of the peak week) |
+| Longest run | `"20 mi · May 9"`                                  |
+| Weeks       | `"12"`                                             |
 
 All distances honor the user's units preference (mi/km).
 
 **Excluded:** race-day countdown. The user's plan is meant to be reviewable for archived plans too, so a countdown would make no sense for plans whose end date has passed.
 
 ### 4.3 Mileage chart
+
 - Compact horizontal bar chart, one bar per week.
 - Bar height = weekly mileage. Bar color tinted by relative mileage: `color-mix(in srgb, var(--color-brown) X%, var(--color-bg-subtle))` where X scales 20–100 from min to max week.
 - No axes, no week labels under bars (kept clean as a visual at-a-glance).
@@ -70,6 +73,7 @@ All distances honor the user's units preference (mi/km).
 - Gradient communicates the plan's arc (build → peak → taper) without phase labels — this is the lightweight version of "block structure" we settled on.
 
 ### 4.4 Stacked weeks
+
 For each week from `start_date` (Monday-aligned) to `end_date` (or last workout date), render:
 
 - **Week header row** — `"Apr 21 – 27 · 47.3 mi · 6h 20m"`. Smaller display font, muted secondary color.
@@ -84,6 +88,7 @@ For each week from `start_date` (Monday-aligned) to `end_date` (or last workout 
 Plan with weeks beyond the schema's `end_date` (rare for goal plans, common for indefinite plans): render only weeks containing workouts.
 
 ### 4.5 Workout detail sheet (shared)
+
 A bottom sheet that slides up from the bottom of the screen, dimmed overlay behind. Contains the same vocabulary as `HeroWorkout`:
 
 - Header: type badge + headline (e.g. "Tempo Run") + day label (e.g. "Friday, April 25")
@@ -159,6 +164,7 @@ Follows `docs/design/project/Race Horse Hi-Fi.html` (CalendarWeekA pattern for t
 ## 10. File structure
 
 **Create:**
+
 - `src/app/(app)/plans/[id]/page.tsx`
 - `src/app/(app)/plans/[id]/PlanDetailClient.tsx`
 - `src/app/(app)/plans/[id]/PlanHeader.tsx`
@@ -171,6 +177,7 @@ Follows `docs/design/project/Race Horse Hi-Fi.html` (CalendarWeekA pattern for t
 - `src/plans/getWorkoutsForPlan.ts` (or extend `dateQueries.ts`) + tests
 
 **Modify:**
+
 - `src/app/(app)/plans/PlansPageClient.tsx` (or equivalent) — make plan cards full-card links, remove inline action buttons
 - `src/coach/context.ts` (or wherever per-turn context is composed) — add plan-route awareness
 - `src/components/layout/NavLinks.tsx` — rename "Calendar" → "Training", update href to `/training`
@@ -192,6 +199,7 @@ Follows `docs/design/project/Race Horse Hi-Fi.html` (CalendarWeekA pattern for t
 ## 12. Phase boundary checklist
 
 This phase **does**:
+
 - ✅ Create the plan-detail page at `/plans/[id]`
 - ✅ Build the shared `WorkoutDetailSheet` component
 - ✅ Move plan-level actions to the detail page
@@ -200,6 +208,7 @@ This phase **does**:
 - ✅ Make the coach plan-route aware
 
 This phase **does not**:
+
 - ❌ Wire `WorkoutDetailSheet` into Training or Today's Up Next (component is built and ready, but page wiring is deferred)
 - ❌ Add multi-zoom (4-week / block / full)
 - ❌ Add phase metadata to plans or workouts

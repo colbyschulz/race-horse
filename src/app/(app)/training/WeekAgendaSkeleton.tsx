@@ -2,7 +2,14 @@ import { Skeleton } from "@/components/skeletons/Skeleton";
 
 export function WeekAgendaSkeleton() {
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)", padding: "var(--space-4) 0" }}>
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: "var(--space-4)",
+        padding: "var(--space-4) 0",
+      }}
+    >
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <Skeleton width={140} height={20} />
         <div style={{ display: "flex", gap: "var(--space-2)" }}>

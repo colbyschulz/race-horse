@@ -20,11 +20,7 @@ interface Props {
   onSaved: (planId: string) => void;
 }
 
-function toWorkoutRow(
-  w: ExtractedPlan["workouts"][number],
-  date: string,
-  idx: number,
-): WorkoutRow {
+function toWorkoutRow(w: ExtractedPlan["workouts"][number], date: string, idx: number): WorkoutRow {
   return {
     id: `preview-${idx}`,
     plan_id: "preview",
@@ -70,7 +66,7 @@ export function ReviewForm({
 
   const weekNav = usePlanWeekNav(startDate, planEndDate);
   const [openDate, setOpenDate] = useState<string | null>(null);
-  const openWorkout = openDate ? allWorkoutRows.find((w) => w.date === openDate) ?? null : null;
+  const openWorkout = openDate ? (allWorkoutRows.find((w) => w.date === openDate) ?? null) : null;
 
   async function handleSave() {
     setSaving(true);
@@ -128,56 +124,57 @@ export function ReviewForm({
   return (
     <>
       <PlanView
-      plan={planLike}
-      today={today}
-      units={units}
-      allWorkouts={allWorkoutRows}
-      actionsBar={
-        <>
-          <label className={styles.toggle}>
-            <input
-              type="checkbox"
-              className={styles.checkbox}
-              checked={setActive}
-              onChange={(e) => setSetActive(e.target.checked)}
-            />
-            Set active
-          </label>
-          {confirmDiscard ? (
-            <>
-              <span className={styles.confirmLabel}>Discard?</span>
-              <Button variant="danger" disabled={busy} loading={discarding} onClick={handleDiscard}>
-                {discarding ? "Discarding…" : "Yes"}
-              </Button>
-              <Button variant="ghost" disabled={busy} onClick={() => setConfirmDiscard(false)}>
-                No
-              </Button>
-            </>
-          ) : (
-            <Button variant="ghost" disabled={busy} onClick={() => setConfirmDiscard(true)}>
-              Discard
-            </Button>
-          )}
-          <Button variant="primary" disabled={busy} loading={saving} onClick={handleSave}>
-            {saving ? "Saving…" : "Save"}
-          </Button>
-        </>
-      }
-      banner={error ? <p className={styles.errorBanner}>{error}</p> : undefined}
-      currentWeek={{
-        monday: weekNav.monday,
-        prev: weekNav.prevDisabled ? { disabled: true } : { onClick: weekNav.goToPrev },
-        next: weekNav.nextDisabled ? { disabled: true } : { onClick: weekNav.goToNext },
-        showToday: false,
-        isActivePlan: false,
-        onWorkoutClick: setOpenDate,
-      }}
-      />
-      <WorkoutDetailSheet
-        workout={openWorkout}
+        plan={planLike}
+        today={today}
         units={units}
-        onClose={() => setOpenDate(null)}
+        allWorkouts={allWorkoutRows}
+        actionsBar={
+          <>
+            <label className={styles.toggle}>
+              <input
+                type="checkbox"
+                className={styles.checkbox}
+                checked={setActive}
+                onChange={(e) => setSetActive(e.target.checked)}
+              />
+              Set active
+            </label>
+            {confirmDiscard ? (
+              <>
+                <span className={styles.confirmLabel}>Discard?</span>
+                <Button
+                  variant="danger"
+                  disabled={busy}
+                  loading={discarding}
+                  onClick={handleDiscard}
+                >
+                  {discarding ? "Discarding…" : "Yes"}
+                </Button>
+                <Button variant="ghost" disabled={busy} onClick={() => setConfirmDiscard(false)}>
+                  No
+                </Button>
+              </>
+            ) : (
+              <Button variant="ghost" disabled={busy} onClick={() => setConfirmDiscard(true)}>
+                Discard
+              </Button>
+            )}
+            <Button variant="primary" disabled={busy} loading={saving} onClick={handleSave}>
+              {saving ? "Saving…" : "Save"}
+            </Button>
+          </>
+        }
+        banner={error ? <p className={styles.errorBanner}>{error}</p> : undefined}
+        currentWeek={{
+          monday: weekNav.monday,
+          prev: weekNav.prevDisabled ? { disabled: true } : { onClick: weekNav.goToPrev },
+          next: weekNav.nextDisabled ? { disabled: true } : { onClick: weekNav.goToNext },
+          showToday: false,
+          isActivePlan: false,
+          onWorkoutClick: setOpenDate,
+        }}
       />
+      <WorkoutDetailSheet workout={openWorkout} units={units} onClose={() => setOpenDate(null)} />
     </>
   );
 }

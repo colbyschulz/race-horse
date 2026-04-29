@@ -11,18 +11,34 @@ import type { Anthropic } from "@anthropic-ai/sdk";
 import type { StravaPreload } from "./stravaPreload";
 
 const KNOWN_TOOLS = new Set([
-  "get_active_plan","list_plans","get_plan","create_plan","update_workouts",
-  "set_active_plan","archive_plan","finalize_plan","get_recent_activities",
-  "get_activity_laps","update_activity_match","get_athlete_summary",
-  "update_coach_notes","update_plan_notes","read_uploaded_file",
+  "get_active_plan",
+  "list_plans",
+  "get_plan",
+  "create_plan",
+  "update_workouts",
+  "set_active_plan",
+  "archive_plan",
+  "finalize_plan",
+  "get_recent_activities",
+  "get_activity_laps",
+  "update_activity_match",
+  "get_athlete_summary",
+  "update_coach_notes",
+  "update_plan_notes",
+  "read_uploaded_file",
 ]);
 
 // Block types the Anthropic API accepts from us. Built-in/server tools like
 // code_execution use non-standard types (e.g. "server_tool_use" with IDs
 // prefixed "srvtoolu_") that we must strip before sending history back.
 const ALLOWED_BLOCK_TYPES = new Set([
-  "text", "tool_use", "tool_result", "image", "document",
-  "thinking", "redacted_thinking",
+  "text",
+  "tool_use",
+  "tool_result",
+  "image",
+  "document",
+  "thinking",
+  "redacted_thinking",
 ]);
 
 /**
@@ -49,21 +65,24 @@ function stripUnknownToolBlocks(msgs: Anthropic.MessageParam[]): Anthropic.Messa
     }
   }
 
-  return msgs.map((m) => {
-    if (!Array.isArray(m.content)) return m;
-    const content = m.content.filter((b) => {
-      const block = b as { type: string; id?: string; tool_use_id?: string };
-      // Drop any non-standard block type entirely
-      if (!ALLOWED_BLOCK_TYPES.has(block.type)) return false;
-      // Drop standard tool_use blocks whose name isn't in KNOWN_TOOLS
-      if (block.type === "tool_use" && block.id && unknownIds.has(block.id)) return false;
-      // Drop tool_result blocks that reference a stripped tool_use
-      if (block.type === "tool_result" && block.tool_use_id && unknownIds.has(block.tool_use_id)) return false;
-      return true;
-    });
-    if (content.length === m.content.length) return m;
-    return { ...m, content };
-  }).filter((m) => !Array.isArray(m.content) || m.content.length > 0);
+  return msgs
+    .map((m) => {
+      if (!Array.isArray(m.content)) return m;
+      const content = m.content.filter((b) => {
+        const block = b as { type: string; id?: string; tool_use_id?: string };
+        // Drop any non-standard block type entirely
+        if (!ALLOWED_BLOCK_TYPES.has(block.type)) return false;
+        // Drop standard tool_use blocks whose name isn't in KNOWN_TOOLS
+        if (block.type === "tool_use" && block.id && unknownIds.has(block.id)) return false;
+        // Drop tool_result blocks that reference a stripped tool_use
+        if (block.type === "tool_result" && block.tool_use_id && unknownIds.has(block.tool_use_id))
+          return false;
+        return true;
+      });
+      if (content.length === m.content.length) return m;
+      return { ...m, content };
+    })
+    .filter((m) => !Array.isArray(m.content) || m.content.length > 0);
 }
 
 /**
@@ -90,7 +109,7 @@ function sanitizeMessages(msgs: Anthropic.MessageParam[]): Anthropic.MessagePara
         const resultIds = new Set(
           nextContent
             .filter((b) => (b as { type: string }).type === "tool_result")
-            .map((b) => (b as { type: string; tool_use_id: string }).tool_use_id),
+            .map((b) => (b as { type: string; tool_use_id: string }).tool_use_id)
         );
         const allAccountedFor = toolUseIds.every((id) => resultIds.has(id));
 
@@ -98,8 +117,12 @@ function sanitizeMessages(msgs: Anthropic.MessageParam[]): Anthropic.MessagePara
           // Drop this broken assistant turn and skip the next user turn too
           // if it consists only of tool_results (it's the orphaned result side).
           i++;
-          if (next && next.role === "user" && nextContent.length > 0 &&
-              nextContent.every((b) => (b as { type: string }).type === "tool_result")) {
+          if (
+            next &&
+            next.role === "user" &&
+            nextContent.length > 0 &&
+            nextContent.every((b) => (b as { type: string }).type === "tool_result")
+          ) {
             i++;
           }
           continue;
@@ -144,7 +167,8 @@ function trimOldToolContent(messages: Anthropic.MessageParam[]): Anthropic.Messa
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const content = m.content.map((block: any) => {
       if (block.type === "tool_result") {
-        const text = typeof block.content === "string" ? block.content : JSON.stringify(block.content);
+        const text =
+          typeof block.content === "string" ? block.content : JSON.stringify(block.content);
         if (text.length <= TOOL_CONTENT_LIMIT) return block;
         return { ...block, content: text.slice(0, TOOL_CONTENT_LIMIT) + "…[truncated]" };
       }
@@ -249,8 +273,8 @@ export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
               0,
               Math.round(
                 (new Date(activePlan.end_date).getTime() - new Date(today).getTime()) /
-                  (7 * 24 * 60 * 60 * 1000),
-              ),
+                  (7 * 24 * 60 * 60 * 1000)
+              )
             )
           : null;
 
@@ -273,7 +297,12 @@ export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
       planCoachNotes = planRow?.coach_notes ?? "";
     }
 
-    let planFileSummary: { id: string; original_filename: string; status: "extracting" | "extracted" | "failed"; extraction_error: string | null } | null = null;
+    let planFileSummary: {
+      id: string;
+      original_filename: string;
+      status: "extracting" | "extracted" | "failed";
+      extraction_error: string | null;
+    } | null = null;
     if (planFileId) {
       const { getPlanFileById } = await import("@/plans/files");
       const f = await getPlanFileById(planFileId, userId);
@@ -301,9 +330,12 @@ export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
     });
 
     // 3. Persist user message
-    await appendMessage(userId, "user", [
-      { type: "text", text: `${contextPrefix}\n\n${message}` },
-    ], planId);
+    await appendMessage(
+      userId,
+      "user",
+      [{ type: "text", text: `${contextPrefix}\n\n${message}` }],
+      planId
+    );
 
     // 4. Reload full history
     const history = await loadHistory(userId, planId);
@@ -314,7 +346,9 @@ export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
       role: m.role,
       content: m.content as Anthropic.ContentBlockParam[],
     }));
-    const anthropicMessages = trimOldToolContent(sanitizeMessages(stripUnknownToolBlocks(rawMessages)));
+    const anthropicMessages = trimOldToolContent(
+      sanitizeMessages(stripUnknownToolBlocks(rawMessages))
+    );
 
     // 5. Call Anthropic SDK with streaming
     const client = getAnthropic();
@@ -347,10 +381,7 @@ export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
       // Accumulate content blocks for this turn
       const turnBlocks: ContentBlock[] = [];
       // Track tool use blocks being built: index -> partial block
-      const toolUseMap = new Map<
-        number,
-        { id: string; name: string; inputJson: string }
-      >();
+      const toolUseMap = new Map<number, { id: string; name: string; inputJson: string }>();
 
       let stopReason: string | null = null;
 
@@ -417,7 +448,9 @@ export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
       const effectiveStopReason = stopReason ?? finalMsg.stop_reason;
 
       if (effectiveStopReason === "max_tokens") {
-        throw new Error("Response was too long to complete. Try asking for a smaller change (e.g. one week at a time).");
+        throw new Error(
+          "Response was too long to complete. Try asking for a smaller change (e.g. one week at a time)."
+        );
       }
 
       if (effectiveStopReason !== "tool_use") {
@@ -469,9 +502,10 @@ export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
         }
         resultText = JSON.stringify(resultValue);
 
-        const summary = handler != null
-          ? summarizeToolResult(toolName, resultValue)
-          : `Unknown tool: ${toolName}`;
+        const summary =
+          handler != null
+            ? summarizeToolResult(toolName, resultValue)
+            : `Unknown tool: ${toolName}`;
 
         yield { type: "tool-result", name: toolName, result_summary: summary };
 
@@ -486,10 +520,7 @@ export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
       await appendMessage(userId, "user", toolResultContent as ContentBlock[], planId);
 
       // Add tool results as user message in-memory
-      currentMessages = [
-        ...currentMessages,
-        { role: "user" as const, content: toolResultContent },
-      ];
+      currentMessages = [...currentMessages, { role: "user" as const, content: toolResultContent }];
     }
 
     yield { type: "done", message_id: assistantMessageId };

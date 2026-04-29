@@ -47,9 +47,7 @@ describe("POST /api/strava/sync", () => {
     expect(afterMock).toHaveBeenCalledOnce();
     // wait for the deferred work
     await new Promise((r) => setImmediate(r));
-    expect(syncActivitiesMock).toHaveBeenCalledWith(
-      expect.objectContaining({ userId: "u1" }),
-    );
+    expect(syncActivitiesMock).toHaveBeenCalledWith(expect.objectContaining({ userId: "u1" }));
     expect(updateMock).toHaveBeenCalled();
   });
 });

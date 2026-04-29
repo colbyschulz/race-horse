@@ -11,6 +11,7 @@
 **Spec:** `docs/superpowers/specs/2026-04-27-build-with-coach-design.md`
 
 **Project conventions** (apply to every task):
+
 - **Commits:** the user drives commits manually. Each task ends at "Verify all tests pass." Do **not** run `git commit` or `git push` from inside a task.
 - **Test runner:** Vitest. Run a single file with `npx vitest run <path>`. Run a single test by name with `npx vitest run <path> -t "<test name>"`.
 - **TDD:** every task that changes behavior writes the failing test first, runs it to confirm failure, then implements, then runs to confirm pass.
@@ -21,6 +22,7 @@
 ## File Structure
 
 **New files:**
+
 - `src/coach/buildForm.ts` — `formatBuildForm()` + `parseBuildForm()` + sentinel constant (shared between server formatter and client renderer)
 - `src/coach/__tests__/buildForm.test.ts`
 - `src/coach/stravaPreload.ts` — `fetchStravaPreload(userId)` returns `{ athlete_summary, recent_activities_summary, minimal }`
@@ -32,6 +34,7 @@
 - `src/components/coach/__tests__/BuildFormCard.test.tsx`
 
 **Modified files:**
+
 - `src/coach/context.ts` — add `stravaPreload` + `coldStartBuild` params to `renderContextPrefix`
 - `src/coach/__tests__/context.test.ts` — add tests for the new sections
 - `src/coach/runner.ts` — extend `RunInput` to accept `stravaPreload` + `coldStartBuild`; pass through to `renderContextPrefix`
@@ -49,6 +52,7 @@
 ## Task 1: Build form formatter + parser + sentinel constant
 
 **Files:**
+
 - Create: `src/coach/buildForm.ts`
 - Create: `src/coach/__tests__/buildForm.test.ts`
 
@@ -60,11 +64,7 @@ Create `src/coach/__tests__/buildForm.test.ts`:
 
 ```ts
 import { describe, it, expect } from "vitest";
-import {
-  BUILD_FORM_SENTINEL,
-  formatBuildForm,
-  parseBuildForm,
-} from "../buildForm";
+import { BUILD_FORM_SENTINEL, formatBuildForm, parseBuildForm } from "../buildForm";
 
 describe("BUILD_FORM_SENTINEL", () => {
   it("is the documented HTML comment sentinel", () => {
@@ -139,13 +139,13 @@ describe("parseBuildForm", () => {
   it("returns null when sentinel is missing", () => {
     expect(parseBuildForm("just some text")).toBeNull();
     expect(
-      parseBuildForm("**Build a plan**\n- **Sport:** Run\n- **Goal:** Indefinite build"),
+      parseBuildForm("**Build a plan**\n- **Sport:** Run\n- **Goal:** Indefinite build")
     ).toBeNull();
   });
 
   it("returns null when required fields are missing", () => {
     expect(
-      parseBuildForm("<!-- build_form_request -->\n**Build a plan**\n- **Sport:** Run\n"),
+      parseBuildForm("<!-- build_form_request -->\n**Build a plan**\n- **Sport:** Run\n")
     ).toBeNull();
   });
 
@@ -233,7 +233,10 @@ export function parseBuildForm(text: string): BuildFormInput | null {
   if (out.goal_type === "race") {
     const tail = goalMatch[2] ?? "";
     // tail is "<event>, <date>" or just "<event>" or just "<date>"
-    const parts = tail.split(",").map((p) => p.trim()).filter((p) => p.length > 0);
+    const parts = tail
+      .split(",")
+      .map((p) => p.trim())
+      .filter((p) => p.length > 0);
     const dateIdx = parts.findIndex((p) => /^\d{4}-\d{2}-\d{2}$/.test(p));
     if (dateIdx !== -1) {
       out.race_date = parts[dateIdx];
@@ -266,6 +269,7 @@ Expected: PASS, 8 tests passing.
 ## Task 2: Strava preload helper
 
 **Files:**
+
 - Create: `src/coach/stravaPreload.ts`
 - Create: `src/coach/__tests__/stravaPreload.test.ts`
 
@@ -293,12 +297,36 @@ beforeEach(() => {
 describe("fetchStravaPreload", () => {
   it("returns athlete_summary, recent_activities_summary, and minimal=false when 12-week count is healthy", async () => {
     vi.mocked(getAthleteSummary).mockResolvedValue({
-      four_week: { count: 12, total_distance_meters: 100_000, total_moving_time_seconds: 30_000, by_type: {} },
-      twelve_week: { count: 36, total_distance_meters: 300_000, total_moving_time_seconds: 90_000, by_type: {} },
-      fifty_two_week: { count: 150, total_distance_meters: 1_200_000, total_moving_time_seconds: 360_000, by_type: {} },
+      four_week: {
+        count: 12,
+        total_distance_meters: 100_000,
+        total_moving_time_seconds: 30_000,
+        by_type: {},
+      },
+      twelve_week: {
+        count: 36,
+        total_distance_meters: 300_000,
+        total_moving_time_seconds: 90_000,
+        by_type: {},
+      },
+      fifty_two_week: {
+        count: 150,
+        total_distance_meters: 1_200_000,
+        total_moving_time_seconds: 360_000,
+        by_type: {},
+      },
     });
     vi.mocked(listRecentActivities).mockResolvedValue([
-      { id: "a1", start_date: new Date("2026-04-20"), type: "Run", distance_meters: 10000, moving_time_seconds: 3000, avg_hr: 150, avg_pace_seconds_per_km: 300, avg_power_watts: null },
+      {
+        id: "a1",
+        start_date: new Date("2026-04-20"),
+        type: "Run",
+        distance_meters: 10000,
+        moving_time_seconds: 3000,
+        avg_hr: 150,
+        avg_pace_seconds_per_km: 300,
+        avg_power_watts: null,
+      },
     ]);
 
     const out = await fetchStravaPreload("u1");
@@ -311,9 +339,24 @@ describe("fetchStravaPreload", () => {
 
   it("flags minimal=true when 12-week count is below 4", async () => {
     vi.mocked(getAthleteSummary).mockResolvedValue({
-      four_week: { count: 1, total_distance_meters: 5000, total_moving_time_seconds: 1500, by_type: {} },
-      twelve_week: { count: 3, total_distance_meters: 15000, total_moving_time_seconds: 4500, by_type: {} },
-      fifty_two_week: { count: 3, total_distance_meters: 15000, total_moving_time_seconds: 4500, by_type: {} },
+      four_week: {
+        count: 1,
+        total_distance_meters: 5000,
+        total_moving_time_seconds: 1500,
+        by_type: {},
+      },
+      twelve_week: {
+        count: 3,
+        total_distance_meters: 15000,
+        total_moving_time_seconds: 4500,
+        by_type: {},
+      },
+      fifty_two_week: {
+        count: 3,
+        total_distance_meters: 15000,
+        total_moving_time_seconds: 4500,
+        by_type: {},
+      },
     });
     vi.mocked(listRecentActivities).mockResolvedValue([]);
 
@@ -354,7 +397,10 @@ export async function fetchStravaPreload(userId: string): Promise<StravaPreload>
   const recent_activities_summary = {
     count: recentActivities.length,
     total_distance_meters: recentActivities.reduce((acc, r) => acc + (r.distance_meters ?? 0), 0),
-    total_moving_time_seconds: recentActivities.reduce((acc, r) => acc + (r.moving_time_seconds ?? 0), 0),
+    total_moving_time_seconds: recentActivities.reduce(
+      (acc, r) => acc + (r.moving_time_seconds ?? 0),
+      0
+    ),
   };
 
   const minimal = athlete_summary.twelve_week.count < MINIMAL_THRESHOLD_12W;
@@ -375,6 +421,7 @@ Expected: PASS, 2 tests.
 ## Task 3: Extend `renderContextPrefix` with Strava preload + cold-start flag
 
 **Files:**
+
 - Modify: `src/coach/context.ts`
 - Modify: `src/coach/__tests__/context.test.ts`
 
@@ -419,11 +466,30 @@ describe("renderContextPrefix build branch", () => {
       coldStartBuild: true,
       stravaPreload: {
         athlete_summary: {
-          four_week: { count: 1, total_distance_meters: 1, total_moving_time_seconds: 1, by_type: {} },
-          twelve_week: { count: 5, total_distance_meters: 5, total_moving_time_seconds: 5, by_type: {} },
-          fifty_two_week: { count: 10, total_distance_meters: 10, total_moving_time_seconds: 10, by_type: {} },
+          four_week: {
+            count: 1,
+            total_distance_meters: 1,
+            total_moving_time_seconds: 1,
+            by_type: {},
+          },
+          twelve_week: {
+            count: 5,
+            total_distance_meters: 5,
+            total_moving_time_seconds: 5,
+            by_type: {},
+          },
+          fifty_two_week: {
+            count: 10,
+            total_distance_meters: 10,
+            total_moving_time_seconds: 10,
+            by_type: {},
+          },
         },
-        recent_activities_summary: { count: 5, total_distance_meters: 5, total_moving_time_seconds: 5 },
+        recent_activities_summary: {
+          count: 5,
+          total_distance_meters: 5,
+          total_moving_time_seconds: 5,
+        },
         minimal: false,
       },
     });
@@ -443,11 +509,30 @@ describe("renderContextPrefix build branch", () => {
       coldStartBuild: true,
       stravaPreload: {
         athlete_summary: {
-          four_week: { count: 0, total_distance_meters: 0, total_moving_time_seconds: 0, by_type: {} },
-          twelve_week: { count: 0, total_distance_meters: 0, total_moving_time_seconds: 0, by_type: {} },
-          fifty_two_week: { count: 0, total_distance_meters: 0, total_moving_time_seconds: 0, by_type: {} },
+          four_week: {
+            count: 0,
+            total_distance_meters: 0,
+            total_moving_time_seconds: 0,
+            by_type: {},
+          },
+          twelve_week: {
+            count: 0,
+            total_distance_meters: 0,
+            total_moving_time_seconds: 0,
+            by_type: {},
+          },
+          fifty_two_week: {
+            count: 0,
+            total_distance_meters: 0,
+            total_moving_time_seconds: 0,
+            by_type: {},
+          },
         },
-        recent_activities_summary: { count: 0, total_distance_meters: 0, total_moving_time_seconds: 0 },
+        recent_activities_summary: {
+          count: 0,
+          total_distance_meters: 0,
+          total_moving_time_seconds: 0,
+        },
         minimal: true,
       },
     });
@@ -525,7 +610,7 @@ export function renderContextPrefix(params: {
     const a = params.activePlan;
     const wks = a.weeks_left == null ? "indefinite" : `${a.weeks_left} weeks left`;
     lines.push(
-      `Active plan: ${a.title} — ${wks}, ${a.completed} / ${a.workout_count} workouts done`,
+      `Active plan: ${a.title} — ${wks}, ${a.completed} / ${a.workout_count} workouts done`
     );
   }
   if (params.coachNotes.trim()) {
@@ -542,7 +627,9 @@ export function renderContextPrefix(params: {
     lines.push(`The user wants help with an unprocessed plan file.`);
     lines.push(`File id: ${params.planFile.id}`);
     lines.push(`Filename: ${params.planFile.original_filename}`);
-    lines.push(`Status: ${params.planFile.status}${params.planFile.extraction_error ? ` (error: ${params.planFile.extraction_error.slice(0, 256)})` : ""}`);
+    lines.push(
+      `Status: ${params.planFile.status}${params.planFile.extraction_error ? ` (error: ${params.planFile.extraction_error.slice(0, 256)})` : ""}`
+    );
     lines.push(`Call \`read_uploaded_file({ plan_file_id })\` to read it and help build a plan.`);
   }
   if (params.coldStartBuild) {
@@ -552,14 +639,16 @@ export function renderContextPrefix(params: {
   if (params.stravaPreload) {
     lines.push(``);
     lines.push(`Strava preload (last 12 weeks + 4/12/52 rollups):`);
-    lines.push(JSON.stringify(
-      {
-        athlete_summary: params.stravaPreload.athlete_summary,
-        recent_activities_summary: params.stravaPreload.recent_activities_summary,
-      },
-      null,
-      2,
-    ));
+    lines.push(
+      JSON.stringify(
+        {
+          athlete_summary: params.stravaPreload.athlete_summary,
+          recent_activities_summary: params.stravaPreload.recent_activities_summary,
+        },
+        null,
+        2
+      )
+    );
     if (params.stravaPreload.minimal) {
       lines.push(``);
       lines.push(`Strava history: minimal`);
@@ -582,6 +671,7 @@ Expected: PASS — all original + 4 new tests pass.
 ## Task 4: System prompt revision
 
 **Files:**
+
 - Modify: `src/coach/systemPrompt.ts`
 
 Replace the `**Act first, explain after.**` paragraph with the new "act first when you have enough; ask once when you don't" carve-out. The system prompt remains frozen across requests — caching is preserved.
@@ -622,6 +712,7 @@ Expected: PASS — all existing tests still pass.
 ## Task 5: Extend `RunInput` and `runCoach` to accept Strava preload + cold-start flag
 
 **Files:**
+
 - Modify: `src/coach/runner.ts`
 - Modify: `src/coach/__tests__/runner.test.ts`
 
@@ -642,8 +733,18 @@ it("passes stravaPreload and coldStartBuild to renderContextPrefix", async () =>
   const preload: StravaPreload = {
     athlete_summary: {
       four_week: { count: 0, total_distance_meters: 0, total_moving_time_seconds: 0, by_type: {} },
-      twelve_week: { count: 0, total_distance_meters: 0, total_moving_time_seconds: 0, by_type: {} },
-      fifty_two_week: { count: 0, total_distance_meters: 0, total_moving_time_seconds: 0, by_type: {} },
+      twelve_week: {
+        count: 0,
+        total_distance_meters: 0,
+        total_moving_time_seconds: 0,
+        by_type: {},
+      },
+      fifty_two_week: {
+        count: 0,
+        total_distance_meters: 0,
+        total_moving_time_seconds: 0,
+        by_type: {},
+      },
     },
     recent_activities_summary: { count: 0, total_distance_meters: 0, total_moving_time_seconds: 0 },
     minimal: true,
@@ -657,13 +758,15 @@ it("passes stravaPreload and coldStartBuild to renderContextPrefix", async () =>
     coldStartBuild: true,
   });
   // Drain the generator (mocks short-circuit the Anthropic call).
-  for await (const _ of gen) { /* drain */ }
+  for await (const _ of gen) {
+    /* drain */
+  }
 
   // The first appendMessage call should contain a context prefix that includes
   // both new sections.
-  const firstUserCall = (appendMessage as unknown as { mock: { calls: unknown[][] } }).mock.calls.find(
-    (c) => c[1] === "user",
-  );
+  const firstUserCall = (
+    appendMessage as unknown as { mock: { calls: unknown[][] } }
+  ).mock.calls.find((c) => c[1] === "user");
   const content = firstUserCall?.[2] as { type: string; text: string }[];
   const text = content[0]?.text ?? "";
   expect(text).toContain("Cold-start plan build: true");
@@ -725,6 +828,7 @@ Expected: PASS — new test plus all pre-existing tests pass.
 ## Task 6: `BuildRequestBody` type
 
 **Files:**
+
 - Modify: `src/coach/types.ts`
 
 Add the request body shape for the new `/api/coach/build` endpoint. Co-locating the type with the existing `ChatRequestBody` keeps the API contract types in one place.
@@ -737,10 +841,10 @@ Append at the end of the file:
 export type BuildRequestBody = {
   sport: "run" | "bike";
   goal_type: "race" | "indefinite";
-  race_date?: string;       // YYYY-MM-DD, required when goal_type === "race"
-  race_event?: string;      // required when goal_type === "race"
-  target_time?: string;     // optional
-  context?: string;         // optional free-text "Goals & context"
+  race_date?: string; // YYYY-MM-DD, required when goal_type === "race"
+  race_event?: string; // required when goal_type === "race"
+  target_time?: string; // optional
+  context?: string; // optional free-text "Goals & context"
 };
 ```
 
@@ -756,6 +860,7 @@ Expected: no errors related to `types.ts`.
 ## Task 7: `POST /api/coach/build` endpoint
 
 **Files:**
+
 - Create: `src/app/api/coach/build/route.ts`
 - Create: `src/app/api/coach/build/__tests__/route.test.ts`
 
@@ -791,8 +896,18 @@ beforeEach(() => {
   mockFetchPreload.mockResolvedValue({
     athlete_summary: {
       four_week: { count: 1, total_distance_meters: 1, total_moving_time_seconds: 1, by_type: {} },
-      twelve_week: { count: 1, total_distance_meters: 1, total_moving_time_seconds: 1, by_type: {} },
-      fifty_two_week: { count: 1, total_distance_meters: 1, total_moving_time_seconds: 1, by_type: {} },
+      twelve_week: {
+        count: 1,
+        total_distance_meters: 1,
+        total_moving_time_seconds: 1,
+        by_type: {},
+      },
+      fifty_two_week: {
+        count: 1,
+        total_distance_meters: 1,
+        total_moving_time_seconds: 1,
+        by_type: {},
+      },
     },
     recent_activities_summary: { count: 0, total_distance_meters: 0, total_moving_time_seconds: 0 },
     minimal: false,
@@ -900,11 +1015,14 @@ function isoToday(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-function validate(body: unknown): { ok: true; value: BuildRequestBody } | { ok: false; error: string } {
+function validate(
+  body: unknown
+): { ok: true; value: BuildRequestBody } | { ok: false; error: string } {
   if (!body || typeof body !== "object") return { ok: false, error: "body required" };
   const b = body as Record<string, unknown>;
 
-  if (b.sport !== "run" && b.sport !== "bike") return { ok: false, error: "sport must be 'run' or 'bike'" };
+  if (b.sport !== "run" && b.sport !== "bike")
+    return { ok: false, error: "sport must be 'run' or 'bike'" };
   if (b.goal_type !== "race" && b.goal_type !== "indefinite") {
     return { ok: false, error: "goal_type must be 'race' or 'indefinite'" };
   }
@@ -999,7 +1117,7 @@ export async function POST(req: Request): Promise<Response> {
     headers: {
       "content-type": "text/event-stream",
       "cache-control": "no-cache, no-transform",
-      "connection": "keep-alive",
+      connection: "keep-alive",
       "x-accel-buffering": "no",
     },
   });
@@ -1018,6 +1136,7 @@ Expected: PASS — 5 tests.
 ## Task 8: `BuildFormCard` component (Editable / Submitting / Locked)
 
 **Files:**
+
 - Create: `src/components/coach/BuildFormCard.tsx`
 - Create: `src/components/coach/BuildFormCard.module.scss`
 - Create: `src/components/coach/__tests__/BuildFormCard.test.tsx`
@@ -1089,7 +1208,7 @@ describe("BuildFormCard", () => {
         }}
         onSubmit={vi.fn()}
         onCancel={vi.fn()}
-      />,
+      />
     );
     expect(screen.getByText(/loading your training history/i)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /build plan/i })).toBeNull();
@@ -1111,7 +1230,7 @@ describe("BuildFormCard", () => {
         }}
         onSubmit={vi.fn()}
         onCancel={vi.fn()}
-      />,
+      />
     );
     expect(screen.queryByText(/loading your training history/i)).toBeNull();
     expect(screen.getByText("Boston Marathon")).toBeInTheDocument();
@@ -1190,29 +1309,77 @@ function EditableForm({
 
       <fieldset className={styles.fieldset}>
         <legend>Sport</legend>
-        <label><input type="radio" name="sport" checked={sport === "run"} onChange={() => setSport("run")} /> Run</label>
-        <label><input type="radio" name="sport" checked={sport === "bike"} onChange={() => setSport("bike")} /> Bike</label>
+        <label>
+          <input
+            type="radio"
+            name="sport"
+            checked={sport === "run"}
+            onChange={() => setSport("run")}
+          />{" "}
+          Run
+        </label>
+        <label>
+          <input
+            type="radio"
+            name="sport"
+            checked={sport === "bike"}
+            onChange={() => setSport("bike")}
+          />{" "}
+          Bike
+        </label>
       </fieldset>
 
       <fieldset className={styles.fieldset}>
         <legend>Goal type</legend>
-        <label><input type="radio" name="goalType" checked={goalType === "race"} onChange={() => setGoalType("race")} /> Race-targeted</label>
-        <label><input type="radio" name="goalType" checked={goalType === "indefinite"} onChange={() => setGoalType("indefinite")} /> Indefinite build</label>
+        <label>
+          <input
+            type="radio"
+            name="goalType"
+            checked={goalType === "race"}
+            onChange={() => setGoalType("race")}
+          />{" "}
+          Race-targeted
+        </label>
+        <label>
+          <input
+            type="radio"
+            name="goalType"
+            checked={goalType === "indefinite"}
+            onChange={() => setGoalType("indefinite")}
+          />{" "}
+          Indefinite build
+        </label>
       </fieldset>
 
       {goalType === "race" && (
         <div className={styles.raceRow}>
           <label>
             Race date
-            <input type="date" value={raceDate} onChange={(e) => setRaceDate(e.target.value)} required />
+            <input
+              type="date"
+              value={raceDate}
+              onChange={(e) => setRaceDate(e.target.value)}
+              required
+            />
           </label>
           <label>
             Race distance / event
-            <input type="text" value={raceEvent} onChange={(e) => setRaceEvent(e.target.value)} placeholder="Boston Marathon" required />
+            <input
+              type="text"
+              value={raceEvent}
+              onChange={(e) => setRaceEvent(e.target.value)}
+              placeholder="Boston Marathon"
+              required
+            />
           </label>
           <label>
             Target time
-            <input type="text" value={targetTime} onChange={(e) => setTargetTime(e.target.value)} placeholder="sub-3:00" />
+            <input
+              type="text"
+              value={targetTime}
+              onChange={(e) => setTargetTime(e.target.value)}
+              placeholder="sub-3:00"
+            />
           </label>
         </div>
       )}
@@ -1228,8 +1395,12 @@ function EditableForm({
       </label>
 
       <div className={styles.actions}>
-        <button type="submit" className={styles.btnPrimary}>Build plan</button>
-        <button type="button" className={styles.btnText} onClick={onCancel}>Cancel</button>
+        <button type="submit" className={styles.btnPrimary}>
+          Build plan
+        </button>
+        <button type="button" className={styles.btnText} onClick={onCancel}>
+          Cancel
+        </button>
       </div>
     </form>
   );
@@ -1240,16 +1411,29 @@ function LockedView({ values, showSpinner }: { values: BuildFormInput; showSpinn
     <div className={styles.card} aria-label="Plan request">
       <h2 className={styles.heading}>Plan request</h2>
       <ul className={styles.summary}>
-        <li><strong>Sport:</strong> {SPORT_LABEL[values.sport]}</li>
+        <li>
+          <strong>Sport:</strong> {SPORT_LABEL[values.sport]}
+        </li>
         {values.goal_type === "race" ? (
           <li>
-            <strong>Goal:</strong> Race — {values.race_event ?? ""}{values.race_date ? `, ${values.race_date}` : ""}
+            <strong>Goal:</strong> Race — {values.race_event ?? ""}
+            {values.race_date ? `, ${values.race_date}` : ""}
           </li>
         ) : (
-          <li><strong>Goal:</strong> Indefinite build</li>
+          <li>
+            <strong>Goal:</strong> Indefinite build
+          </li>
         )}
-        {values.target_time && <li><strong>Target time:</strong> {values.target_time}</li>}
-        {values.context && <li><strong>Goals & context:</strong> {values.context}</li>}
+        {values.target_time && (
+          <li>
+            <strong>Target time:</strong> {values.target_time}
+          </li>
+        )}
+        {values.context && (
+          <li>
+            <strong>Goals & context:</strong> {values.context}
+          </li>
+        )}
       </ul>
       {showSpinner && (
         <div className={styles.spinnerRow} role="status">
@@ -1387,7 +1571,9 @@ function LockedView({ values, showSpinner }: { values: BuildFormInput; showSpinn
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 ```
 
@@ -1403,6 +1589,7 @@ Expected: PASS — 6 tests.
 ## Task 9: Sentinel detection in `MessageBubble` → render locked `BuildFormCard`
 
 **Files:**
+
 - Modify: `src/components/coach/MessageBubble.tsx`
 - Create or extend: `src/components/coach/__tests__/MessageBubble.test.tsx`
 
@@ -1510,10 +1697,11 @@ export function MessageBubble({ message }: { message: StoredMessage }) {
   return (
     <div className={message.role === "user" ? styles.user : styles.assistant}>
       <div className={styles.bubble}>
-        {message.role === "assistant"
-          ? <ReactMarkdown remarkPlugins={[remarkGfm]}>{displayText}</ReactMarkdown>
-          : <p className={styles.userText}>{displayText}</p>
-        }
+        {message.role === "assistant" ? (
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>{displayText}</ReactMarkdown>
+        ) : (
+          <p className={styles.userText}>{displayText}</p>
+        )}
       </div>
     </div>
   );
@@ -1532,6 +1720,7 @@ Expected: PASS — 4 tests.
 ## Task 10: Wire `intent=build` into `CoachPageClient`
 
 **Files:**
+
 - Modify: `src/app/(app)/coach/CoachPageClient.tsx`
 
 When `intent === "build"`, render the `BuildFormCard` above the message input and disable the input. On submit, POST to `/api/coach/build` with the form values, transition the card to the `submitting` state, then to `locked` once the first stream delta arrives. After `done`, replace the URL to `/coach` (no query params) so a refresh doesn't re-show the form.
@@ -1566,10 +1755,7 @@ interface Props {
 
 type StreamingState = { text: string; tools: { name: string; summary?: string }[] };
 
-async function consumeStream(
-  res: Response,
-  onEvent: (ev: SSEEvent) => void,
-): Promise<void> {
+async function consumeStream(res: Response, onEvent: (ev: SSEEvent) => void): Promise<void> {
   if (!res.ok || !res.body) throw new Error(`stream failed: ${res.status}`);
   const reader = res.body.getReader();
   const dec = new TextDecoder();
@@ -1598,7 +1784,7 @@ export function CoachPageClient({ initialMessages, fromRoute, planFileId, intent
   const streamRef = useRef<HTMLDivElement>(null);
 
   const [buildState, setBuildState] = useState<BuildFormCardState | null>(
-    intent === "build" ? { kind: "editable" } : null,
+    intent === "build" ? { kind: "editable" } : null
   );
 
   useEffect(() => {
@@ -1617,7 +1803,7 @@ export function CoachPageClient({ initialMessages, fromRoute, planFileId, intent
 
   function handleSSE(
     ev: SSEEvent,
-    assembled: { text: string; tools: { name: string; summary?: string }[] },
+    assembled: { text: string; tools: { name: string; summary?: string }[] }
   ): { stop: boolean } {
     if (ev.type === "text-delta") {
       assembled.text += ev.delta;
@@ -1645,7 +1831,11 @@ export function CoachPageClient({ initialMessages, fromRoute, planFileId, intent
       const res = await fetch("/api/coach/chat", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ message: text, from_route: fromRoute, plan_file_id: planFileId ?? undefined }),
+        body: JSON.stringify({
+          message: text,
+          from_route: fromRoute,
+          plan_file_id: planFileId ?? undefined,
+        }),
       });
       const assembled = { text: "", tools: [] as { name: string; summary?: string }[] };
       await consumeStream(res, (ev) => handleSSE(ev, assembled));
@@ -1704,21 +1894,37 @@ export function CoachPageClient({ initialMessages, fromRoute, planFileId, intent
       <ContextPill fromRoute={fromRoute} />
       <header className={styles.header}>
         <h1 className={styles.title}>Coach</h1>
-        <button className={styles.clearBtn} onClick={() => setClearOpen(true)}>Clear chat</button>
+        <button className={styles.clearBtn} onClick={() => setClearOpen(true)}>
+          Clear chat
+        </button>
       </header>
       <div className={styles.stream} ref={streamRef}>
-        {messages.map((m) => <MessageBubble key={m.id} message={m} />)}
+        {messages.map((m) => (
+          <MessageBubble key={m.id} message={m} />
+        ))}
         {buildState && (
           <BuildFormCard state={buildState} onSubmit={buildSubmit} onCancel={buildCancel} />
         )}
         {streaming && (
           <>
-            {streaming.tools.map((t, i) => <ToolIndicator key={i} name={t.name} summary={t.summary} />)}
-            <MessageBubble message={{ id: "streaming", role: "assistant", created_at: new Date(), content: [{ type: "text", text: streaming.text }] }} />
+            {streaming.tools.map((t, i) => (
+              <ToolIndicator key={i} name={t.name} summary={t.summary} />
+            ))}
+            <MessageBubble
+              message={{
+                id: "streaming",
+                role: "assistant",
+                created_at: new Date(),
+                content: [{ type: "text", text: streaming.text }],
+              }}
+            />
           </>
         )}
       </div>
-      <MessageInput disabled={sending || buildState?.kind === "editable" || buildState?.kind === "submitting"} onSend={send} />
+      <MessageInput
+        disabled={sending || buildState?.kind === "editable" || buildState?.kind === "submitting"}
+        onSend={send}
+      />
       <ClearChatDialog open={clearOpen} onClose={() => setClearOpen(false)} onConfirm={clear} />
     </div>
   );
@@ -1742,6 +1948,7 @@ Expected: no errors.
 ## Task 11: Pass `intent` through `CoachPage` server component
 
 **Files:**
+
 - Modify: `src/app/(app)/coach/page.tsx`
 
 Forward the `intent` query param to `CoachPageClient`.
@@ -1786,6 +1993,7 @@ Expected: no errors.
 ## Task 12: Update "Build with coach" link
 
 **Files:**
+
 - Modify: `src/components/plans/PlanActionRow.tsx`
 
 Change the link's `href` from `/coach?from=/plans` to `/coach?intent=build`.
@@ -1830,6 +2038,7 @@ Expected: URL becomes `/coach?intent=build`. The `BuildFormCard` renders above t
 - [ ] **Step 3: Submit the form (race-targeted, with a real future date)**
 
 Expected:
+
 - Form transitions to "submitting" state with the spinner and "Loading your training history…" text.
 - After Strava preload completes (~1-3s on a real account), the spinner disappears once the coach starts streaming text.
 - A "Plan request" card stays in the scroll area, locked.
@@ -1848,6 +2057,7 @@ Expected: a fresh editable form renders above the prior history. Submitting it a
 - [ ] **Step 6: Try the indefinite path and the empty-Strava path (test account if available)**
 
 Expected:
+
 - Indefinite build: form omits race fields. Coach builds an indefinite plan.
 - Empty/sparse Strava: coach asks one focused clarifying question (e.g., "what's your typical weekly volume right now?") instead of writing the plan immediately.
 

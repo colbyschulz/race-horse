@@ -4,7 +4,10 @@ import type { WorkoutRow } from "@/plans/dateQueries";
 import styles from "./PlanDetail.module.scss";
 
 function fmtDate(iso: string): string {
-  return new Date(iso + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  return new Date(iso + "T00:00:00").toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  });
 }
 
 function calendarWeeks(startIso: string, endIso: string | null): number {
@@ -46,7 +49,17 @@ export function PlanStats({ workouts, units, planStartDate, planEndDate, today }
   );
 }
 
-function Stat({ label, value, unit, sub }: { label: string; value: string; unit?: string; sub?: string }) {
+function Stat({
+  label,
+  value,
+  unit,
+  sub,
+}: {
+  label: string;
+  value: string;
+  unit?: string;
+  sub?: string;
+}) {
   return (
     <div className={styles.statBlock}>
       <span className={styles.statLabel}>{label}</span>

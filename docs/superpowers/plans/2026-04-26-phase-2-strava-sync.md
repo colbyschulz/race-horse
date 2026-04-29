@@ -5,6 +5,7 @@
 **Goal:** Land Strava activity sync — `getStravaToken` with auto-refresh, `activities`/`activity_laps` schema, 90-day initial backfill on first sign-in, manual sync endpoint, and a webhook receiver that processes activity create/update/delete and athlete deauth events. Phase 3 (Plans) builds the workout schema; Phase 5 wires up activity-to-workout matching using the data this phase ingests.
 
 **Architecture:** A `src/strava/` module owns all Strava API interactions:
+
 - `client.ts` — fetch wrapper with rate-limit-aware backoff (handles 429 + 5xx)
 - `token.ts` — `getStravaToken(userId)` reads `accounts`, refreshes if `expires_at` is within 60s of now, persists the new tokens
 - `types.ts` — TS shapes for the bits of Strava's response we care about
@@ -18,6 +19,7 @@ API routes: `/api/strava/sync` (POST — authed, manual user-triggered 7-day bac
 Initial backfill is triggered from the `(app)` layout when `users.last_synced_at` is null, kicked off via Vercel `after()` so the layout responds immediately. A small client banner polls `last_synced_at` until it flips non-null and then disappears.
 
 **Tech Stack:**
+
 - Strava API v3 (`https://www.strava.com/api/v3`)
 - Vercel `after()` from `next/server` for fire-and-forget background work
 - Existing: Next.js 16 + Drizzle + Neon + NextAuth v5 + Vitest
@@ -27,6 +29,7 @@ Initial backfill is triggered from the `(app)` layout when `users.last_synced_at
 ## File structure
 
 **Create:**
+
 - `src/strava/client.ts` — fetch wrapper
 - `src/strava/token.ts` — `getStravaToken(userId)`
 - `src/strava/types.ts` — Strava API response types
@@ -44,6 +47,7 @@ Initial backfill is triggered from the `(app)` layout when `users.last_synced_at
 - `src/app/api/strava/sync-status/route.ts` — small GET endpoint the banner polls
 
 **Modify:**
+
 - `src/db/schema.ts` — add `activities`, `activity_laps` tables, add `last_synced_at` column to `users`
 - `src/db/__tests__/schema.test.ts` — extend to cover new schema
 - `src/app/(app)/layout.tsx` — wire up `SyncStatusBanner` + initial backfill kickoff
@@ -68,6 +72,7 @@ Initial backfill is triggered from the `(app)` layout when `users.last_synced_at
    - You can finish Phase 2 without this — backfill + manual sync work without a live webhook.
 
 Add to `.env.local`:
+
 ```
 STRAVA_VERIFY_TOKEN=<output of openssl rand -hex 16>
 ADMIN_API_TOKEN=<output of openssl rand -hex 32>
@@ -78,6 +83,7 @@ ADMIN_API_TOKEN=<output of openssl rand -hex 32>
 ## Task 1: Schema — activities, activity_laps, users.last_synced_at
 
 **Files:**
+
 - Modify: `src/db/schema.ts`
 - Modify: `src/db/__tests__/schema.test.ts`
 - Generate: `drizzle/<timestamp>_phase2_strava_sync.sql`
@@ -88,14 +94,7 @@ Add to `src/db/__tests__/schema.test.ts` (preserve existing tests):
 
 ```ts
 import { describe, it, expect } from "vitest";
-import {
-  users,
-  accounts,
-  sessions,
-  verificationTokens,
-  activities,
-  activityLaps,
-} from "../schema";
+import { users, accounts, sessions, verificationTokens, activities, activityLaps } from "../schema";
 import { getTableConfig } from "drizzle-orm/pg-core";
 
 // ...keep existing describe block...
@@ -202,10 +201,7 @@ export const users = pgTable("user", {
   email: text("email").unique(),
   emailVerified: timestamp("emailVerified", { mode: "date" }),
   image: text("image"),
-  preferences: jsonb("preferences")
-    .$type<UserPreferences>()
-    .default(DEFAULT_PREFERENCES)
-    .notNull(),
+  preferences: jsonb("preferences").$type<UserPreferences>().default(DEFAULT_PREFERENCES).notNull(),
   coach_notes: text("coach_notes").notNull().default(""),
   last_synced_at: timestamp("last_synced_at", {
     withTimezone: true,
@@ -240,16 +236,10 @@ export const activities = pgTable(
     avg_power_watts: numeric("avg_power_watts"),
     elevation_gain_m: numeric("elevation_gain_m"),
     raw: jsonb("raw").notNull(),
-    created_at: timestamp("created_at", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-    updated_at: timestamp("updated_at", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
+    created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [
-    index("activity_user_start_idx").on(t.userId, t.start_date),
-  ],
+  (t) => [index("activity_user_start_idx").on(t.userId, t.start_date)]
 );
 
 export const activityLaps = pgTable(
@@ -271,9 +261,7 @@ export const activityLaps = pgTable(
     start_index: integer("start_index"),
     end_index: integer("end_index"),
   },
-  (t) => [
-    index("activity_lap_activity_idx").on(t.activity_id, t.lap_index),
-  ],
+  (t) => [index("activity_lap_activity_idx").on(t.activity_id, t.lap_index)]
 );
 ```
 
@@ -313,6 +301,7 @@ git commit -m "Add activities, activity_laps, last_synced_at schema for Phase 2 
 ## Task 2: Strava API types
 
 **Files:**
+
 - Create: `src/strava/types.ts`
 
 This is types-only; no test needed. The shape is exercised by Tasks 3–5.
@@ -413,6 +402,7 @@ git commit -m "Add Strava API response types"
 ## Task 3: Strava fetch wrapper with rate-limit handling
 
 **Files:**
+
 - Create: `src/strava/client.ts`
 - Create: `src/strava/__tests__/client.test.ts`
 
@@ -437,7 +427,7 @@ describe("fetchStrava", () => {
 
   it("hits the Strava base URL with bearer token and parses JSON", async () => {
     (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
-      new Response(JSON.stringify({ ok: true }), { status: 200 }),
+      new Response(JSON.stringify({ ok: true }), { status: 200 })
     );
     const result = await fetchStrava<{ ok: boolean }>("/athlete", "tok123");
     expect(result).toEqual({ ok: true });
@@ -447,13 +437,13 @@ describe("fetchStrava", () => {
         headers: expect.objectContaining({
           Authorization: "Bearer tok123",
         }),
-      }),
+      })
     );
   });
 
   it("appends query params correctly", async () => {
     (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
-      new Response("[]", { status: 200 }),
+      new Response("[]", { status: 200 })
     );
     await fetchStrava("/athlete/activities", "tok", {
       params: { per_page: 100, after: 1234567890 },
@@ -469,9 +459,7 @@ describe("fetchStrava", () => {
     fetchMock
       .mockResolvedValueOnce(new Response("rate", { status: 429 }))
       .mockResolvedValueOnce(new Response("rate", { status: 429 }))
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify({ ok: true }), { status: 200 }),
-      );
+      .mockResolvedValueOnce(new Response(JSON.stringify({ ok: true }), { status: 200 }));
     const promise = fetchStrava<{ ok: boolean }>("/x", "tok", {
       maxRetries: 3,
       baseDelayMs: 10,
@@ -483,7 +471,7 @@ describe("fetchStrava", () => {
 
   it("throws StravaApiError on non-retryable status", async () => {
     (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
-      new Response("nope", { status: 404 }),
+      new Response("nope", { status: 404 })
     );
     await expect(fetchStrava("/missing", "tok")).rejects.toMatchObject({
       status: 404,
@@ -511,7 +499,7 @@ export class StravaApiError extends Error {
   constructor(
     public status: number,
     public body: string,
-    public url: string,
+    public url: string
   ) {
     super(`Strava API ${status} on ${url}: ${body.slice(0, 200)}`);
   }
@@ -531,16 +519,9 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 export async function fetchStrava<T>(
   path: string,
   token: string,
-  opts: FetchStravaOptions = {},
+  opts: FetchStravaOptions = {}
 ): Promise<T> {
-  const {
-    params,
-    method = "GET",
-    body,
-    maxRetries = 4,
-    baseDelayMs = 500,
-    signal,
-  } = opts;
+  const { params, method = "GET", body, maxRetries = 4, baseDelayMs = 500, signal } = opts;
 
   let url = STRAVA_BASE + path;
   if (params) {
@@ -614,6 +595,7 @@ git commit -m "Add Strava fetch wrapper with rate-limit-aware backoff"
 ## Task 4: getStravaToken with auto-refresh
 
 **Files:**
+
 - Create: `src/strava/token.ts`
 - Create: `src/strava/__tests__/token.test.ts`
 
@@ -684,8 +666,8 @@ describe("getStravaToken", () => {
           expires_at: Math.floor(Date.now() / 1000) + 21600,
           expires_in: 21600,
         }),
-        { status: 200 },
-      ),
+        { status: 200 }
+      )
     );
     updateMock.mockResolvedValueOnce(undefined);
 
@@ -693,7 +675,7 @@ describe("getStravaToken", () => {
     expect(tok).toBe("new");
     expect(globalThis.fetch).toHaveBeenCalledWith(
       "https://www.strava.com/api/v3/oauth/token",
-      expect.objectContaining({ method: "POST" }),
+      expect.objectContaining({ method: "POST" })
     );
     expect(updateMock).toHaveBeenCalledOnce();
   });
@@ -800,6 +782,7 @@ git commit -m "Add getStravaToken with auto-refresh"
 ## Task 5: Normalize Strava activity + lap responses to schema rows
 
 **Files:**
+
 - Create: `src/strava/normalize.ts`
 - Create: `src/strava/__tests__/normalize.test.ts`
 
@@ -812,11 +795,7 @@ Create `src/strava/__tests__/normalize.test.ts`:
 ```ts
 import { describe, it, expect } from "vitest";
 import { normalizeActivity, normalizeLap } from "../normalize";
-import type {
-  StravaSummaryActivity,
-  StravaDetailedActivity,
-  StravaLap,
-} from "../types";
+import type { StravaSummaryActivity, StravaDetailedActivity, StravaLap } from "../types";
 
 const sample: StravaSummaryActivity = {
   id: 9999,
@@ -920,11 +899,7 @@ pnpm test -- src/strava/__tests__/normalize.test.ts
 Create `src/strava/normalize.ts`:
 
 ```ts
-import type {
-  StravaDetailedActivity,
-  StravaLap,
-  StravaSummaryActivity,
-} from "./types";
+import type { StravaDetailedActivity, StravaLap, StravaSummaryActivity } from "./types";
 
 // Drizzle's `numeric` columns round-trip as strings to preserve precision.
 // We mirror that here so callers can pass the result straight to .insert().
@@ -965,16 +940,14 @@ export interface LapInsertRow {
 const num = (v: number | undefined | null): NumericString | null =>
   v === undefined || v === null ? null : String(v);
 
-const paceFromSpeed = (
-  metersPerSecond: number | undefined,
-): NumericString | null => {
+const paceFromSpeed = (metersPerSecond: number | undefined): NumericString | null => {
   if (!metersPerSecond || metersPerSecond <= 0) return null;
   return (1000 / metersPerSecond).toFixed(2);
 };
 
 export function normalizeActivity(
   a: StravaSummaryActivity | StravaDetailedActivity,
-  userId: string,
+  userId: string
 ): ActivityInsertRow {
   return {
     userId,
@@ -1032,6 +1005,7 @@ git commit -m "Add normalizers for Strava activities + laps"
 ## Task 6: Activity + lap upsert
 
 **Files:**
+
 - Create: `src/strava/upsert.ts`
 - Create: `src/strava/__tests__/upsert.test.ts`
 
@@ -1187,10 +1161,7 @@ export async function upsertActivity(row: ActivityInsertRow): Promise<string> {
   return result[0].id;
 }
 
-export async function replaceLaps(
-  activityId: string,
-  laps: LapInsertRow[],
-): Promise<void> {
+export async function replaceLaps(activityId: string, laps: LapInsertRow[]): Promise<void> {
   await db.transaction(async (tx) => {
     await tx.delete(activityLaps).where(eq(activityLaps.activity_id, activityId));
     if (laps.length > 0) {
@@ -1224,6 +1195,7 @@ git commit -m "Add idempotent activity + lap upsert"
 ## Task 7: Sync orchestrator (paginate + fetch detail + write)
 
 **Files:**
+
 - Create: `src/strava/sync.ts`
 - Create: `src/strava/__tests__/sync.test.ts`
 
@@ -1270,7 +1242,10 @@ describe("syncActivities", () => {
 
   it("paginates until an empty page is returned", async () => {
     fetchStravaMock
-      .mockResolvedValueOnce([{ ...baseSummary, id: 1 }, { ...baseSummary, id: 2 }])
+      .mockResolvedValueOnce([
+        { ...baseSummary, id: 1 },
+        { ...baseSummary, id: 2 },
+      ])
       .mockResolvedValueOnce({ ...baseSummary, id: 1, laps: [] }) // detail for id 1
       .mockResolvedValueOnce({ ...baseSummary, id: 2, laps: [] }) // detail for id 2
       .mockResolvedValueOnce([]); // second list page empty
@@ -1343,10 +1318,7 @@ import { fetchStrava } from "./client";
 import { getStravaToken } from "./token";
 import { normalizeActivity, normalizeLap } from "./normalize";
 import { replaceLaps, upsertActivity } from "./upsert";
-import type {
-  StravaDetailedActivity,
-  StravaSummaryActivity,
-} from "./types";
+import type { StravaDetailedActivity, StravaSummaryActivity } from "./types";
 
 export const LIST_PAGE_SIZE = 200;
 
@@ -1370,17 +1342,13 @@ export async function syncActivities(opts: {
   let detailFailures = 0;
 
   while (true) {
-    const summaries = await fetchStrava<StravaSummaryActivity[]>(
-      "/athlete/activities",
-      token,
-      { params: { per_page: LIST_PAGE_SIZE, page, after } },
-    );
+    const summaries = await fetchStrava<StravaSummaryActivity[]>("/athlete/activities", token, {
+      params: { per_page: LIST_PAGE_SIZE, page, after },
+    });
     if (!summaries.length) break;
 
     for (const summary of summaries) {
-      const activityId = await upsertActivity(
-        normalizeActivity(summary, opts.userId),
-      );
+      const activityId = await upsertActivity(normalizeActivity(summary, opts.userId));
       upserted += 1;
 
       if (!TYPES_WITH_LAPS.has(summary.type)) continue;
@@ -1389,7 +1357,7 @@ export async function syncActivities(opts: {
         const detail = await fetchStrava<StravaDetailedActivity>(
           `/activities/${summary.id}`,
           token,
-          { params: { include_all_efforts: "true" } },
+          { params: { include_all_efforts: "true" } }
         );
         // upsert again with the richer detail (overwrites raw + any newly-present fields)
         await upsertActivity(normalizeActivity(detail, opts.userId));
@@ -1429,6 +1397,7 @@ git commit -m "Add Strava sync orchestrator with pagination and detail fetch"
 ## Task 8: Manual sync endpoint POST /api/strava/sync
 
 **Files:**
+
 - Create: `src/app/api/strava/sync/route.ts`
 - Create: `src/app/api/strava/sync/__tests__/route.test.ts`
 
@@ -1488,9 +1457,7 @@ describe("POST /api/strava/sync", () => {
     expect(afterMock).toHaveBeenCalledOnce();
     // wait for the deferred work
     await new Promise((r) => setImmediate(r));
-    expect(syncActivitiesMock).toHaveBeenCalledWith(
-      expect.objectContaining({ userId: "u1" }),
-    );
+    expect(syncActivitiesMock).toHaveBeenCalledWith(expect.objectContaining({ userId: "u1" }));
     expect(updateMock).toHaveBeenCalled();
   });
 });
@@ -1522,28 +1489,20 @@ export async function POST(_req: Request) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
   const userId = session.user.id;
-  const sinceDate = new Date(
-    Date.now() - MANUAL_WINDOW_DAYS * 24 * 60 * 60 * 1000,
-  );
+  const sinceDate = new Date(Date.now() - MANUAL_WINDOW_DAYS * 24 * 60 * 60 * 1000);
   const startedAt = new Date();
 
   after(async () => {
     try {
       const r = await syncActivities({ userId, sinceDate });
-      await db
-        .update(users)
-        .set({ last_synced_at: startedAt })
-        .where(eq(users.id, userId));
+      await db.update(users).set({ last_synced_at: startedAt }).where(eq(users.id, userId));
       console.log("manual sync done", { userId, ...r });
     } catch (err) {
       console.error("manual sync failed", userId, err);
     }
   });
 
-  return NextResponse.json(
-    { ok: true, scheduled: true, mode: "manual" },
-    { status: 202 },
-  );
+  return NextResponse.json({ ok: true, scheduled: true, mode: "manual" }, { status: 202 });
 }
 ```
 
@@ -1567,6 +1526,7 @@ git commit -m "Add manual sync endpoint POST /api/strava/sync"
 ## Task 9: Initial backfill trigger + sync-status endpoint + banner
 
 **Files:**
+
 - Create: `src/app/api/strava/sync-status/route.ts`
 - Create: `src/components/SyncStatusBanner.tsx`
 - Create: `src/components/SyncStatusBanner.module.scss`
@@ -1628,7 +1588,9 @@ Create `src/components/SyncStatusBanner.module.scss`:
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 ```
 
@@ -1699,11 +1661,7 @@ import { PreferencesCapture } from "@/components/PreferencesCapture";
 
 const INITIAL_BACKFILL_DAYS = 90;
 
-export default async function AppLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
   if (!session?.user?.id) redirect("/");
 
@@ -1720,16 +1678,11 @@ export default async function AppLayout({
 
   if (userRow && userRow.last_synced_at === null) {
     const startedAt = new Date();
-    const sinceDate = new Date(
-      Date.now() - INITIAL_BACKFILL_DAYS * 24 * 60 * 60 * 1000,
-    );
+    const sinceDate = new Date(Date.now() - INITIAL_BACKFILL_DAYS * 24 * 60 * 60 * 1000);
     after(async () => {
       try {
         await syncActivities({ userId, sinceDate });
-        await db
-          .update(users)
-          .set({ last_synced_at: startedAt })
-          .where(eq(users.id, userId));
+        await db.update(users).set({ last_synced_at: startedAt }).where(eq(users.id, userId));
       } catch (err) {
         console.error("initial backfill failed", userId, err);
       }
@@ -1781,6 +1734,7 @@ git commit -m "Trigger 90-day initial backfill on first sign-in with status bann
 ## Task 10: Webhook event-handling logic (pure, testable)
 
 **Files:**
+
 - Create: `src/strava/webhook.ts`
 - Create: `src/strava/__tests__/webhook.test.ts`
 
@@ -1857,7 +1811,7 @@ describe("handleWebhookEvent", () => {
     expect(fetchStravaMock).toHaveBeenCalledWith(
       "/activities/100",
       "tok",
-      expect.objectContaining({ params: { include_all_efforts: "true" } }),
+      expect.objectContaining({ params: { include_all_efforts: "true" } })
     );
     expect(upsertActivityMock).toHaveBeenCalledOnce();
     expect(replaceLapsMock).toHaveBeenCalledOnce();
@@ -1908,32 +1862,19 @@ import { and, eq } from "drizzle-orm";
 import { fetchStrava } from "./client";
 import { getStravaToken } from "./token";
 import { normalizeActivity, normalizeLap } from "./normalize";
-import {
-  deleteActivityByStravaId,
-  replaceLaps,
-  upsertActivity,
-} from "./upsert";
+import { deleteActivityByStravaId, replaceLaps, upsertActivity } from "./upsert";
 import type { StravaDetailedActivity, StravaWebhookEvent } from "./types";
 
-async function userIdForStravaAthlete(
-  athleteId: number,
-): Promise<string | null> {
+async function userIdForStravaAthlete(athleteId: number): Promise<string | null> {
   const rows = await db
     .select({ userId: accounts.userId })
     .from(accounts)
-    .where(
-      and(
-        eq(accounts.provider, "strava"),
-        eq(accounts.providerAccountId, String(athleteId)),
-      ),
-    )
+    .where(and(eq(accounts.provider, "strava"), eq(accounts.providerAccountId, String(athleteId))))
     .limit(1);
   return rows[0]?.userId ?? null;
 }
 
-export async function handleWebhookEvent(
-  event: StravaWebhookEvent,
-): Promise<void> {
+export async function handleWebhookEvent(event: StravaWebhookEvent): Promise<void> {
   const userId = await userIdForStravaAthlete(event.owner_id);
   if (!userId) {
     console.warn("strava webhook: unknown owner", event.owner_id);
@@ -1952,8 +1893,8 @@ export async function handleWebhookEvent(
         .where(
           and(
             eq(accounts.provider, "strava"),
-            eq(accounts.providerAccountId, String(event.owner_id)),
-          ),
+            eq(accounts.providerAccountId, String(event.owner_id))
+          )
         );
     }
     return;
@@ -1970,7 +1911,7 @@ export async function handleWebhookEvent(
   const detail = await fetchStrava<StravaDetailedActivity>(
     `/activities/${event.object_id}`,
     token,
-    { params: { include_all_efforts: "true" } },
+    { params: { include_all_efforts: "true" } }
   );
   const activityId = await upsertActivity(normalizeActivity(detail, userId));
   const laps = (detail.laps ?? []).map((l) => normalizeLap(l, activityId));
@@ -1998,6 +1939,7 @@ git commit -m "Add Strava webhook event-handling logic"
 ## Task 11: Webhook route — GET (verification) + POST (event delivery)
 
 **Files:**
+
 - Create: `src/app/api/strava/webhook/route.ts`
 - Create: `src/app/api/strava/webhook/__tests__/route.test.ts`
 
@@ -2059,7 +2001,7 @@ describe("Strava webhook route", () => {
       new Request("http://test/api/strava/webhook", {
         method: "POST",
         body: JSON.stringify(event),
-      }),
+      })
     );
     expect(res.status).toBe(200);
     await new Promise((r) => setImmediate(r));
@@ -2071,7 +2013,7 @@ describe("Strava webhook route", () => {
       new Request("http://test/api/strava/webhook", {
         method: "POST",
         body: "{ not json",
-      }),
+      })
     );
     expect(res.status).toBe(400);
   });
@@ -2146,6 +2088,7 @@ git commit -m "Add Strava webhook route — verification + event delivery"
 ## Task 12: Subscription admin endpoint POST/GET/DELETE /api/strava/subscribe
 
 **Files:**
+
 - Create: `src/app/api/strava/subscribe/route.ts`
 
 One Strava push subscription per Strava app. This endpoint lets the deployment owner create / inspect / delete it. Gated by `Authorization: Bearer ${ADMIN_API_TOKEN}` so a public visitor can't manipulate it.
@@ -2228,10 +2171,9 @@ export async function DELETE(req: Request) {
   url.searchParams.set("client_secret", clientSecret);
 
   const res = await fetch(url, { method: "DELETE" });
-  return NextResponse.json(
-    res.status === 204 ? { ok: true } : await res.json().catch(() => ({})),
-    { status: res.status },
-  );
+  return NextResponse.json(res.status === 204 ? { ok: true } : await res.json().catch(() => ({})), {
+    status: res.status,
+  });
 }
 ```
 

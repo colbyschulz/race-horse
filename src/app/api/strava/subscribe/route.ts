@@ -83,8 +83,7 @@ export async function DELETE(req: Request) {
   url.searchParams.set("client_secret", clientSecret);
 
   const res = await fetch(url, { method: "DELETE" });
-  return NextResponse.json(
-    res.status === 204 ? { ok: true } : await res.json().catch(() => ({})),
-    { status: res.status },
-  );
+  return NextResponse.json(res.status === 204 ? { ok: true } : await res.json().catch(() => ({})), {
+    status: res.status,
+  });
 }

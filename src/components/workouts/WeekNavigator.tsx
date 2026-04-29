@@ -18,7 +18,17 @@ interface Props {
   stickyTop?: number;
 }
 
-function NavBtn({ target, ariaLabel, children, className }: { target: NavTarget; ariaLabel: string; children: React.ReactNode; className: string }) {
+function NavBtn({
+  target,
+  ariaLabel,
+  children,
+  className,
+}: {
+  target: NavTarget;
+  ariaLabel: string;
+  children: React.ReactNode;
+  className: string;
+}) {
   if (target.href && !target.disabled) {
     return (
       <Link href={target.href} className={className} aria-label={ariaLabel}>
@@ -39,17 +49,29 @@ function NavBtn({ target, ariaLabel, children, className }: { target: NavTarget;
   );
 }
 
-export function WeekNavigator({ weekTitle, weekRange, prev, next, today, showToday, stickyTop }: Props) {
+export function WeekNavigator({
+  weekTitle,
+  weekRange,
+  prev,
+  next,
+  today,
+  showToday,
+  stickyTop,
+}: Props) {
   return (
     <div
       className={styles.nav}
       style={stickyTop !== undefined ? { position: "sticky", top: stickyTop } : undefined}
     >
       <div className={styles.left}>
-        <NavBtn target={prev} ariaLabel="Previous week" className={styles.arrowBtn}>←</NavBtn>
+        <NavBtn target={prev} ariaLabel="Previous week" className={styles.arrowBtn}>
+          ←
+        </NavBtn>
         <div className={styles.todaySlot}>
           {showToday && today && (
-            <NavBtn target={today} ariaLabel="Jump to current week" className={styles.todayIcon}>Today</NavBtn>
+            <NavBtn target={today} ariaLabel="Jump to current week" className={styles.todayIcon}>
+              Today
+            </NavBtn>
           )}
         </div>
       </div>
@@ -58,7 +80,9 @@ export function WeekNavigator({ weekTitle, weekRange, prev, next, today, showTod
         <span className={styles.range}>{weekRange}</span>
       </div>
       <div className={styles.right}>
-        <NavBtn target={next} ariaLabel="Next week" className={styles.arrowBtn}>→</NavBtn>
+        <NavBtn target={next} ariaLabel="Next week" className={styles.arrowBtn}>
+          →
+        </NavBtn>
       </div>
     </div>
   );

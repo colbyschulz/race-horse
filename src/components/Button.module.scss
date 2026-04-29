@@ -12,7 +12,10 @@
   cursor: pointer;
   text-decoration: none;
   white-space: nowrap;
-  transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
+  transition:
+    background 120ms ease,
+    border-color 120ms ease,
+    color 120ms ease;
 
   &:disabled,
   &[aria-disabled="true"] {
@@ -104,4 +107,3 @@
     color: var(--color-fg-primary);
   }
 }
-

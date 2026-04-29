@@ -74,7 +74,13 @@ export function getTools(planId: string | null): Anthropic.Messages.Tool[] {
 // During a cold-start build the coach has Strava preloaded and only needs to
 // create + populate a new plan. Strip plan-read and plan-management tools so
 // the model can't accidentally read or modify the existing active plan.
-const COLD_START_EXCLUDED = new Set(["get_active_plan", "list_plans", "get_plan", "set_active_plan", "archive_plan"]);
+const COLD_START_EXCLUDED = new Set([
+  "get_active_plan",
+  "list_plans",
+  "get_plan",
+  "set_active_plan",
+  "archive_plan",
+]);
 export function getColdStartTools(planId: string | null): Anthropic.Messages.Tool[] {
   return getTools(planId).filter((t) => !COLD_START_EXCLUDED.has(t.name));
 }

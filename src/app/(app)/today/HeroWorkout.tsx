@@ -18,7 +18,9 @@ const TYPE_HEADLINE: Record<string, string> = {
 
 export function HeroWorkout({ workout, units }: { workout: WorkoutRow; units: "mi" | "km" }) {
   const hasNotes = !!workout.notes;
-  const t = hasNotes ? ({} as TargetIntensity) : ((workout.target_intensity ?? {}) as TargetIntensity);
+  const t = hasNotes
+    ? ({} as TargetIntensity)
+    : ((workout.target_intensity ?? {}) as TargetIntensity);
   const intervals = hasNotes ? null : ((workout.intervals ?? null) as IntervalSpec[] | null);
   const pace = t.pace ? formatPaceRange(t.pace, units) : null;
 
@@ -30,12 +32,16 @@ export function HeroWorkout({ workout, units }: { workout: WorkoutRow; units: "m
       <h2 className={styles.headline}>{TYPE_HEADLINE[workout.type] ?? workout.type}</h2>
       <div className={styles.statRow}>
         <div className={styles.stat}>
-          <span className={styles.statValue}>{formatDistance(workout.distance_meters as string | null, units) ?? "—"}</span>
+          <span className={styles.statValue}>
+            {formatDistance(workout.distance_meters as string | null, units) ?? "—"}
+          </span>
           <span className={styles.statUnit}>{units}</span>
         </div>
         <div className={styles.statDivider} />
         <div className={styles.stat}>
-          <span className={styles.statValue}>{formatDuration(workout.duration_seconds) ?? "—"}</span>
+          <span className={styles.statValue}>
+            {formatDuration(workout.duration_seconds) ?? "—"}
+          </span>
           <span className={styles.statUnit}>time</span>
         </div>
         {pace && (
@@ -54,7 +60,9 @@ export function HeroWorkout({ workout, units }: { workout: WorkoutRow; units: "m
             <div className={styles.intensityCell}>
               <span className={styles.lbl}>HR</span>
               <span className={styles.val}>
-                {"zone" in t.hr ? t.hr.zone : `${(t.hr as { min_bpm?: number }).min_bpm ?? ""}–${(t.hr as { max_bpm?: number }).max_bpm ?? ""}`}
+                {"zone" in t.hr
+                  ? t.hr.zone
+                  : `${(t.hr as { min_bpm?: number }).min_bpm ?? ""}–${(t.hr as { max_bpm?: number }).max_bpm ?? ""}`}
               </span>
             </div>
           )}
@@ -67,7 +75,9 @@ export function HeroWorkout({ workout, units }: { workout: WorkoutRow; units: "m
           {t.power && (
             <div className={styles.intensityCell}>
               <span className={styles.lbl}>Power</span>
-              <span className={styles.val}>{`${t.power.min_watts ?? ""}–${t.power.max_watts ?? ""} W`}</span>
+              <span
+                className={styles.val}
+              >{`${t.power.min_watts ?? ""}–${t.power.max_watts ?? ""} W`}</span>
             </div>
           )}
         </div>
@@ -90,7 +100,9 @@ export function HeroWorkout({ workout, units }: { workout: WorkoutRow; units: "m
                 {iv.target_intensity?.pace
                   ? ` @ ${formatPaceRange(iv.target_intensity.pace, units) ?? ""}`
                   : null}
-                {iv.rest?.duration_s != null ? ` / ${formatDuration(iv.rest.duration_s) ?? ""} rest` : null}
+                {iv.rest?.duration_s != null
+                  ? ` / ${formatDuration(iv.rest.duration_s) ?? ""} rest`
+                  : null}
                 {iv.rest?.distance_m != null
                   ? ` / ${metersToUnits(iv.rest.distance_m, units).toFixed(2)} ${units} rest`
                   : null}

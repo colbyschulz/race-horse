@@ -65,7 +65,10 @@ export function parseBuildForm(text: string): BuildFormInput | null {
 
   if (out.goal_type === "race") {
     const tail = goalMatch[2] ?? "";
-    const parts = tail.split(",").map((p) => p.trim()).filter((p) => p.length > 0);
+    const parts = tail
+      .split(",")
+      .map((p) => p.trim())
+      .filter((p) => p.length > 0);
     const dateIdx = parts.findIndex((p) => /^\d{4}-\d{2}-\d{2}$/.test(p));
     if (dateIdx !== -1) {
       out.race_date = parts[dateIdx];

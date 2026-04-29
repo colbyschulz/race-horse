@@ -8,10 +8,5 @@ type Props<T extends ElementType = "div"> = {
 
 export function Card<T extends ElementType = "div">({ as, className, ...props }: Props<T>) {
   const Tag = as ?? "div";
-  return (
-    <Tag
-      className={`${styles.card}${className ? ` ${className}` : ""}`}
-      {...props}
-    />
-  );
+  return <Tag className={`${styles.card}${className ? ` ${className}` : ""}`} {...props} />;
 }

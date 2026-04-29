@@ -26,7 +26,10 @@ function makeReq(method: string, body?: unknown): Request {
 const ctx = { params: Promise.resolve({ id: "p1" }) };
 
 describe("GET /api/plans/[id]", () => {
-  beforeEach(() => { auth.mockReset(); getPlanById.mockReset(); });
+  beforeEach(() => {
+    auth.mockReset();
+    getPlanById.mockReset();
+  });
 
   it("returns 401 when unauthenticated", async () => {
     auth.mockResolvedValueOnce(null);
@@ -52,8 +55,10 @@ describe("GET /api/plans/[id]", () => {
 
 describe("PATCH /api/plans/[id]", () => {
   beforeEach(() => {
-    auth.mockReset(); getPlanById.mockReset();
-    setActivePlan.mockReset(); archivePlan.mockReset();
+    auth.mockReset();
+    getPlanById.mockReset();
+    setActivePlan.mockReset();
+    archivePlan.mockReset();
   });
 
   it("calls setActivePlan when is_active=true", async () => {
@@ -89,7 +94,9 @@ describe("PATCH /api/plans/[id]", () => {
 
 describe("DELETE /api/plans/[id]", () => {
   beforeEach(() => {
-    auth.mockReset(); getPlanById.mockReset(); deletePlan.mockReset();
+    auth.mockReset();
+    getPlanById.mockReset();
+    deletePlan.mockReset();
   });
 
   it("returns 404 when plan not owned", async () => {

@@ -22,14 +22,11 @@ export async function POST(req: Request) {
   if (!parsed.success) {
     return NextResponse.json(
       { error: "invalid payload", details: parsed.error.flatten() },
-      { status: 400 },
+      { status: 400 }
     );
   }
 
-  await db
-    .update(users)
-    .set({ preferences: parsed.data })
-    .where(eq(users.id, session.user.id));
+  await db.update(users).set({ preferences: parsed.data }).where(eq(users.id, session.user.id));
 
   return NextResponse.json({ ok: true });
 }

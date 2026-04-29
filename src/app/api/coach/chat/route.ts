@@ -31,16 +31,22 @@ export async function POST(req: Request): Promise<Response> {
     });
   }
 
-  const [userRow] = await db.select({ preferences: users.preferences }).from(users).where(eq(users.id, session.user.id!)).limit(1);
+  const [userRow] = await db
+    .select({ preferences: users.preferences })
+    .from(users)
+    .where(eq(users.id, session.user.id!))
+    .limit(1);
   const tz = (userRow?.preferences as { timezone?: string } | null)?.timezone;
   const today = todayIso(tz);
 
-  return sseResponse(runCoach({
-    userId: session.user.id!,
-    message: body.message,
-    planId: body.plan_id ?? null,
-    fromRoute: body.from_route,
-    planFileId: body.plan_file_id,
-    today,
-  }));
+  return sseResponse(
+    runCoach({
+      userId: session.user.id!,
+      message: body.message,
+      planId: body.plan_id ?? null,
+      fromRoute: body.from_route,
+      planFileId: body.plan_file_id,
+      today,
+    })
+  );
 }

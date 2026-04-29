@@ -95,12 +95,16 @@
   border: 0;
   padding: 0;
   border-radius: 2px;
-  transition: opacity 120ms ease, outline-offset 120ms ease;
+  transition:
+    opacity 120ms ease,
+    outline-offset 120ms ease;
   cursor: pointer;
   text-decoration: none;
   outline: 0 solid transparent;
 
-  &:hover { opacity: 0.85; }
+  &:hover {
+    opacity: 0.85;
+  }
 
   &:focus-visible {
     outline: 2px solid var(--color-brown);
@@ -130,7 +134,9 @@
   white-space: nowrap;
   pointer-events: none;
   opacity: 0;
-  transition: opacity 100ms ease, left 120ms ease;
+  transition:
+    opacity 100ms ease,
+    left 120ms ease;
 
   &::after {
     content: "";

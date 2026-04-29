@@ -150,9 +150,7 @@ describe("get_active_plan_handler", () => {
       where: vi.fn().mockResolvedValue(workoutRows),
     };
 
-    mockSelect
-      .mockReturnValueOnce(plansChain)
-      .mockReturnValueOnce(workoutsChain);
+    mockSelect.mockReturnValueOnce(plansChain).mockReturnValueOnce(workoutsChain);
 
     const result = await get_active_plan_handler({} as never, ctx);
     expect(result.plan).toEqual(plan);
@@ -204,7 +202,7 @@ describe("get_plan_handler", () => {
     vi.mocked(getPlanById).mockResolvedValue(null);
 
     await expect(get_plan_handler({ plan_id: PLAN_ID }, ctx)).rejects.toThrow(
-      "plan not found or not owned",
+      "plan not found or not owned"
     );
   });
 
@@ -213,7 +211,7 @@ describe("get_plan_handler", () => {
     vi.mocked(getPlanById).mockResolvedValue(plan as never);
 
     await expect(get_plan_handler({ plan_id: PLAN_ID }, ctx)).rejects.toThrow(
-      "plan not found or not owned",
+      "plan not found or not owned"
     );
   });
 });
@@ -229,12 +227,12 @@ describe("create_plan_handler", () => {
 
     const result = await create_plan_handler(
       { title: "Test Plan", sport: "run", mode: "goal", start_date: "2026-01-01" },
-      ctx,
+      ctx
     );
 
     expect(createPlan).toHaveBeenCalledWith(
       USER_ID,
-      expect.objectContaining({ title: "Test Plan", sport: "run", source: "coach_generated" }),
+      expect.objectContaining({ title: "Test Plan", sport: "run", source: "coach_generated" })
     );
     expect(result).toEqual({ plan_id: PLAN_ID });
     expect(setActivePlan).not.toHaveBeenCalled();
@@ -246,8 +244,14 @@ describe("create_plan_handler", () => {
     vi.mocked(setActivePlan).mockResolvedValue(undefined);
 
     await create_plan_handler(
-      { title: "Test", sport: "bike", mode: "indefinite", start_date: "2026-01-01", set_active: true },
-      ctx,
+      {
+        title: "Test",
+        sport: "bike",
+        mode: "indefinite",
+        start_date: "2026-01-01",
+        set_active: true,
+      },
+      ctx
     );
 
     expect(setActivePlan).toHaveBeenCalledWith(PLAN_ID, USER_ID);
@@ -263,7 +267,7 @@ describe("update_workouts_handler", () => {
     vi.mocked(getPlanById).mockResolvedValue(null);
 
     await expect(
-      update_workouts_handler({ plan_id: PLAN_ID, operations: [] }, ctx),
+      update_workouts_handler({ plan_id: PLAN_ID, operations: [] }, ctx)
     ).rejects.toThrow("plan not found or not owned");
   });
 
@@ -286,10 +290,14 @@ describe("update_workouts_handler", () => {
       {
         plan_id: PLAN_ID,
         operations: [
-          { op: "upsert", date: "2026-03-01", workout: { type: "easy", distance_km: 10, duration_minutes: 60, notes: "easy run" } },
+          {
+            op: "upsert",
+            date: "2026-03-01",
+            workout: { type: "easy", distance_km: 10, duration_minutes: 60, notes: "easy run" },
+          },
         ],
       },
-      ctx,
+      ctx
     );
 
     expect(mockDelete).toHaveBeenCalled();
@@ -309,7 +317,7 @@ describe("update_workouts_handler", () => {
         plan_id: PLAN_ID,
         operations: [{ op: "delete", date: "2026-03-01" }],
       },
-      ctx,
+      ctx
     );
 
     expect(mockDelete).toHaveBeenCalledTimes(1);
@@ -338,7 +346,7 @@ describe("set_active_plan_handler", () => {
     vi.mocked(getPlanById).mockResolvedValue(null);
 
     await expect(set_active_plan_handler({ plan_id: PLAN_ID }, ctx)).rejects.toThrow(
-      "plan not found or not owned",
+      "plan not found or not owned"
     );
   });
 });
@@ -364,7 +372,7 @@ describe("archive_plan_handler", () => {
     vi.mocked(getPlanById).mockResolvedValue(null);
 
     await expect(archive_plan_handler({ plan_id: PLAN_ID }, ctx)).rejects.toThrow(
-      "plan not found or not owned",
+      "plan not found or not owned"
     );
   });
 });

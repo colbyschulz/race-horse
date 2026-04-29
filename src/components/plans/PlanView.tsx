@@ -59,14 +59,13 @@ export function PlanView({
     setMetaOpen(window.innerWidth >= 768);
   }, []);
 
-
   const weekData = useMemo(() => {
     if (!currentWeek) return null;
     const sunday = addDays(currentWeek.monday, 6);
     const byDate = new Map<string, WorkoutRow>(
       allWorkouts
         .filter((w) => w.date >= currentWeek.monday && w.date <= sunday)
-        .map((w) => [w.date, w]),
+        .map((w) => [w.date, w])
     );
     const planFirstMonday = mondayOf(plan.start_date);
     const planLastMonday = plan.end_date ? mondayOf(addDays(plan.end_date, -1)) : null;
@@ -139,7 +138,6 @@ export function PlanView({
           />
         </div>
       )}
-
     </>
   );
 }

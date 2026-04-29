@@ -55,7 +55,9 @@
   text-decoration: none;
   opacity: 0.9;
 
-  &:hover { opacity: 1; }
+  &:hover {
+    opacity: 1;
+  }
 }
 
 // ── Main content ──
@@ -114,7 +116,9 @@
   font-size: 0.875rem;
   color: var(--color-fg-secondary);
   border-radius: var(--radius-md);
-  transition: background 80ms ease, color 80ms ease;
+  transition:
+    background 80ms ease,
+    color 80ms ease;
 }
 
 // Sidebar variant

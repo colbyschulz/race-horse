@@ -51,7 +51,15 @@ describe("POST /api/plans", () => {
 
   it("returns 401 when unauthenticated", async () => {
     auth.mockResolvedValueOnce(null);
-    const res = await POST(makeReq({ title: "x", sport: "run", mode: "indefinite", start_date: "2026-01-01", source: "coach_generated" }));
+    const res = await POST(
+      makeReq({
+        title: "x",
+        sport: "run",
+        mode: "indefinite",
+        start_date: "2026-01-01",
+        source: "coach_generated",
+      })
+    );
     expect(res.status).toBe(401);
   });
 
@@ -64,22 +72,27 @@ describe("POST /api/plans", () => {
   it("creates the plan and returns 201", async () => {
     auth.mockResolvedValueOnce({ user: { id: "u1" } });
     createPlan.mockResolvedValueOnce({ id: "p-new", title: "Boston" });
-    const res = await POST(makeReq({
-      title: "Boston",
-      sport: "run",
-      mode: "goal",
-      start_date: "2026-01-01",
-      end_date: "2026-05-05",
-      goal: { target_time: "3:05", race_date: "2026-05-05" },
-      source: "coach_generated",
-    }));
+    const res = await POST(
+      makeReq({
+        title: "Boston",
+        sport: "run",
+        mode: "goal",
+        start_date: "2026-01-01",
+        end_date: "2026-05-05",
+        goal: { target_time: "3:05", race_date: "2026-05-05" },
+        source: "coach_generated",
+      })
+    );
     expect(res.status).toBe(201);
     const body = await res.json();
     expect(body.plan).toEqual({ id: "p-new", title: "Boston" });
-    expect(createPlan).toHaveBeenCalledWith("u1", expect.objectContaining({
-      title: "Boston",
-      sport: "run",
-      mode: "goal",
-    }));
+    expect(createPlan).toHaveBeenCalledWith(
+      "u1",
+      expect.objectContaining({
+        title: "Boston",
+        sport: "run",
+        mode: "goal",
+      })
+    );
   });
 });

@@ -60,8 +60,8 @@ describe("getStravaToken", () => {
           expires_at: Math.floor(Date.now() / 1000) + 21600,
           expires_in: 21600,
         }),
-        { status: 200 },
-      ),
+        { status: 200 }
+      )
     );
     updateMock.mockResolvedValueOnce(undefined);
 

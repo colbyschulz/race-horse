@@ -17,15 +17,12 @@ type VolumeRollup = {
   count: number;
   total_distance_meters: number;
   total_moving_time_seconds: number;
-  by_type: Record<
-    string,
-    { count: number; distance_meters: number; moving_time_seconds: number }
-  >;
+  by_type: Record<string, { count: number; distance_meters: number; moving_time_seconds: number }>;
 };
 
 export async function listRecentActivities(
   userId: string,
-  days: number,
+  days: number
 ): Promise<ActivitySummary[]> {
   const rows = await db
     .select({
@@ -42,11 +39,8 @@ export async function listRecentActivities(
     .where(
       and(
         eq(activities.userId, userId),
-        gte(
-          activities.start_date,
-          sql`now() - ${days} * interval '1 day'`,
-        ),
-      ),
+        gte(activities.start_date, sql`now() - ${days} * interval '1 day'`)
+      )
     )
     .orderBy(desc(activities.start_date));
 
@@ -65,7 +59,7 @@ export async function listRecentActivities(
 
 export async function getActivityWithLaps(
   userId: string,
-  activityId: string,
+  activityId: string
 ): Promise<{
   activity: Omit<typeof activities.$inferSelect, "raw">;
   laps: (typeof activityLaps.$inferSelect)[];
@@ -110,7 +104,7 @@ export async function getActivityWithLaps(
 type AggRow = { type: string; count: number; distance: number; moving_time: number };
 
 async function fetchVolumeWindow(userId: string, days: number): Promise<VolumeRollup> {
-  const rows = await db
+  const rows = (await db
     .select({
       type: activities.type,
       count: sql<number>`cast(count(*) as int)`,
@@ -121,13 +115,10 @@ async function fetchVolumeWindow(userId: string, days: number): Promise<VolumeRo
     .where(
       and(
         eq(activities.userId, userId),
-        gte(
-          activities.start_date,
-          sql`now() - ${days} * interval '1 day'`,
-        ),
-      ),
+        gte(activities.start_date, sql`now() - ${days} * interval '1 day'`)
+      )
     )
-    .groupBy(activities.type) as AggRow[];
+    .groupBy(activities.type)) as AggRow[];
 
   let count = 0;
   let total_distance_meters = 0;

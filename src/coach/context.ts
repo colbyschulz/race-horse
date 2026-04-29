@@ -52,14 +52,16 @@ export function renderContextPrefix(params: {
 }): string {
   const lines: string[] = [];
   lines.push(`<context>`);
-  const dayName = new Date(`${params.today}T12:00:00`).toLocaleDateString("en-US", { weekday: "long" });
+  const dayName = new Date(`${params.today}T12:00:00`).toLocaleDateString("en-US", {
+    weekday: "long",
+  });
   lines.push(`Today: ${params.today} (${dayName})`);
   lines.push(`User units: ${params.units}`);
   if (params.activePlan && !params.coldStartBuild) {
     const a = params.activePlan;
     const wks = a.weeks_left == null ? "indefinite" : `${a.weeks_left} weeks left`;
     lines.push(
-      `Active plan: ${a.title} — ${wks}, ${a.completed} / ${a.workout_count} workouts done`,
+      `Active plan: ${a.title} — ${wks}, ${a.completed} / ${a.workout_count} workouts done`
     );
   }
   if (params.coachNotes.trim()) {
@@ -81,7 +83,9 @@ export function renderContextPrefix(params: {
     lines.push(`The user wants help with an unprocessed plan file.`);
     lines.push(`File id: ${params.planFile.id}`);
     lines.push(`Filename: ${params.planFile.original_filename}`);
-    lines.push(`Status: ${params.planFile.status}${params.planFile.extraction_error ? ` (error: ${params.planFile.extraction_error.slice(0, 256)})` : ""}`);
+    lines.push(
+      `Status: ${params.planFile.status}${params.planFile.extraction_error ? ` (error: ${params.planFile.extraction_error.slice(0, 256)})` : ""}`
+    );
     lines.push(`Call \`read_uploaded_file({ plan_file_id })\` to read it and help build a plan.`);
   }
   if (params.coldStartBuild) {
@@ -91,14 +95,16 @@ export function renderContextPrefix(params: {
   if (params.stravaPreload) {
     lines.push(``);
     lines.push(`Strava preload (last 12 weeks + 4/12/52 rollups):`);
-    lines.push(JSON.stringify(
-      {
-        athlete_summary: params.stravaPreload.athlete_summary,
-        recent_activities_summary: params.stravaPreload.recent_activities_summary,
-      },
-      null,
-      2,
-    ));
+    lines.push(
+      JSON.stringify(
+        {
+          athlete_summary: params.stravaPreload.athlete_summary,
+          recent_activities_summary: params.stravaPreload.recent_activities_summary,
+        },
+        null,
+        2
+      )
+    );
     if (params.stravaPreload.minimal) {
       lines.push(``);
       lines.push(`Strava history: minimal`);

@@ -33,11 +33,7 @@ import {
   get_athlete_summary_handler,
 } from "../activities";
 
-import {
-  listRecentActivities,
-  getActivityWithLaps,
-  getAthleteSummary,
-} from "@/strava/queries";
+import { listRecentActivities, getActivityWithLaps, getAthleteSummary } from "@/strava/queries";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -110,7 +106,10 @@ describe("get_recent_activities_handler", () => {
   beforeEach(() => vi.clearAllMocks());
 
   it("returns activities and summary with default 14 days", async () => {
-    const rows = [makeActivity(), makeActivity({ id: "a2", distance_meters: 5000, moving_time_seconds: 1800 })];
+    const rows = [
+      makeActivity(),
+      makeActivity({ id: "a2", distance_meters: 5000, moving_time_seconds: 1800 }),
+    ];
     vi.mocked(listRecentActivities).mockResolvedValue(rows as never);
 
     const result = await get_recent_activities_handler({}, ctx);
@@ -160,7 +159,7 @@ describe("get_activity_laps_handler", () => {
     vi.mocked(getActivityWithLaps).mockResolvedValue(null);
 
     await expect(get_activity_laps_handler({ activity_id: ACTIVITY_ID }, ctx)).rejects.toThrow(
-      `activity not found: ${ACTIVITY_ID}`,
+      `activity not found: ${ACTIVITY_ID}`
     );
   });
 });
@@ -183,15 +182,13 @@ describe("update_activity_match_handler", () => {
       innerJoin: vi.fn().mockReturnThis(),
       limit: vi.fn().mockResolvedValue([{ id: WORKOUT_ID }]),
     };
-    mockSelect
-      .mockReturnValueOnce(activityChain)
-      .mockReturnValueOnce(workoutChain);
+    mockSelect.mockReturnValueOnce(activityChain).mockReturnValueOnce(workoutChain);
 
     buildUpdateChain();
 
     const result = await update_activity_match_handler(
       { activity_id: ACTIVITY_ID, workout_id: WORKOUT_ID },
-      ctx,
+      ctx
     );
 
     expect(mockUpdate).toHaveBeenCalled();
@@ -210,7 +207,7 @@ describe("update_activity_match_handler", () => {
 
     const result = await update_activity_match_handler(
       { activity_id: ACTIVITY_ID, workout_id: null },
-      ctx,
+      ctx
     );
 
     // select should only be called once (no workout check)
@@ -228,7 +225,7 @@ describe("update_activity_match_handler", () => {
     mockSelect.mockReturnValueOnce(activityChain);
 
     await expect(
-      update_activity_match_handler({ activity_id: ACTIVITY_ID, workout_id: WORKOUT_ID }, ctx),
+      update_activity_match_handler({ activity_id: ACTIVITY_ID, workout_id: WORKOUT_ID }, ctx)
     ).rejects.toThrow("activity not found or not owned");
   });
 
@@ -245,12 +242,10 @@ describe("update_activity_match_handler", () => {
       innerJoin: vi.fn().mockReturnThis(),
       limit: vi.fn().mockResolvedValue([]),
     };
-    mockSelect
-      .mockReturnValueOnce(activityChain)
-      .mockReturnValueOnce(workoutChain);
+    mockSelect.mockReturnValueOnce(activityChain).mockReturnValueOnce(workoutChain);
 
     await expect(
-      update_activity_match_handler({ activity_id: ACTIVITY_ID, workout_id: WORKOUT_ID }, ctx),
+      update_activity_match_handler({ activity_id: ACTIVITY_ID, workout_id: WORKOUT_ID }, ctx)
     ).rejects.toThrow("workout not found or not owned");
   });
 });
@@ -260,9 +255,24 @@ describe("get_athlete_summary_handler", () => {
 
   it("returns rollup from getAthleteSummary", async () => {
     const summary = {
-      four_week: { count: 5, total_distance_meters: 50000, total_moving_time_seconds: 18000, by_type: { run: { count: 5, distance_meters: 50000, moving_time_seconds: 18000 } } },
-      twelve_week: { count: 15, total_distance_meters: 150000, total_moving_time_seconds: 54000, by_type: {} },
-      fifty_two_week: { count: 52, total_distance_meters: 520000, total_moving_time_seconds: 187200, by_type: {} },
+      four_week: {
+        count: 5,
+        total_distance_meters: 50000,
+        total_moving_time_seconds: 18000,
+        by_type: { run: { count: 5, distance_meters: 50000, moving_time_seconds: 18000 } },
+      },
+      twelve_week: {
+        count: 15,
+        total_distance_meters: 150000,
+        total_moving_time_seconds: 54000,
+        by_type: {},
+      },
+      fifty_two_week: {
+        count: 52,
+        total_distance_meters: 520000,
+        total_moving_time_seconds: 187200,
+        by_type: {},
+      },
     };
     vi.mocked(getAthleteSummary).mockResolvedValue(summary);
 

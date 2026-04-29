@@ -13,10 +13,12 @@
 ## File Map
 
 **New files — skeleton primitive:**
+
 - `src/components/skeletons/Skeleton.tsx` — pulsing gray block, sized via props
 - `src/components/skeletons/Skeleton.module.scss` — pulse animation
 
 **New files — Today page sections:**
+
 - `src/app/(app)/today/HeroSection.tsx` — async SC: fetches today's workouts, renders HeroWorkout or rest card
 - `src/app/(app)/today/HeroSkeleton.tsx` — skeleton for hero card
 - `src/app/(app)/today/ActivitiesSection.tsx` — async SC: fetches today's activities
@@ -25,25 +27,31 @@
 - `src/app/(app)/today/UpNextSkeleton.tsx` — skeleton for up-next rows
 
 **New files — Training page:**
+
 - `src/app/(app)/training/WeekAgendaSection.tsx` — async SC: fetches workouts + activities, renders TrainingClient
 - `src/app/(app)/training/WeekAgendaSkeleton.tsx` — skeleton for week view
 
 **New files — Plans page:**
+
 - `src/app/(app)/plans/PlansListSection.tsx` — async SC: fetches plans + in-flight files, renders PlansPageClient
 - `src/app/(app)/plans/PlansListSkeleton.tsx` — skeleton for plans list
 
 **New files — Plan Detail page:**
+
 - `src/app/(app)/plans/[id]/PlanWeekSection.tsx` — async SC: fetches workouts + activities, renders PlanDetailClient
 
 **New files — Settings page:**
+
 - `src/app/(app)/settings/CoachNotesSection.tsx` — async SC: fetches coach_notes, renders CoachNotesEditor
 - `src/app/(app)/settings/CoachNotesSkeleton.tsx` — skeleton for textarea-shaped block
 
 **New files — Coach page:**
+
 - `src/app/(app)/coach/MessagesSection.tsx` — async SC: loads message history, renders CoachPageClient
 - `src/app/(app)/coach/MessagesSkeleton.tsx` — skeleton for chat bubbles
 
 **Modified files:**
+
 - `src/app/(app)/today/page.tsx` — remove data queries, add Suspense sections
 - `src/app/(app)/training/page.tsx` — remove slow queries, add Suspense section
 - `src/app/(app)/plans/page.tsx` — remove data queries, add Suspense section
@@ -52,6 +60,7 @@
 - `src/app/(app)/coach/page.tsx` — remove loadHistory, add Suspense section
 
 **Deleted files:**
+
 - `src/app/(app)/loading.tsx`
 
 ---
@@ -59,6 +68,7 @@
 ## Task 1: Skeleton Primitive
 
 **Files:**
+
 - Create: `src/components/skeletons/Skeleton.module.scss`
 - Create: `src/components/skeletons/Skeleton.tsx`
 
@@ -71,8 +81,13 @@
 }
 
 @keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
 }
 ```
 
@@ -126,6 +141,7 @@ git commit -m "Add Skeleton primitive with pulse animation"
 ## Task 2: Today Page — Streaming Sections
 
 **Files:**
+
 - Create: `src/app/(app)/today/HeroSkeleton.tsx`
 - Create: `src/app/(app)/today/HeroSection.tsx`
 - Create: `src/app/(app)/today/ActivitiesSkeleton.tsx`
@@ -162,13 +178,7 @@ import { todayIso } from "@/lib/dates";
 import { HeroWorkout } from "./HeroWorkout";
 import styles from "./Today.module.scss";
 
-export async function HeroSection({
-  userId,
-  units,
-}: {
-  userId: string;
-  units: "mi" | "km";
-}) {
+export async function HeroSection({ userId, units }: { userId: string; units: "mi" | "km" }) {
   const today = todayIso();
   const workouts = await getWorkoutsForDateRange(userId, today, today);
   if (workouts.length === 0) {
@@ -205,13 +215,7 @@ import { todayIso } from "@/lib/dates";
 import { ActivityRow } from "@/components/activities/ActivityRow";
 import styles from "./Today.module.scss";
 
-export async function ActivitiesSection({
-  userId,
-  units,
-}: {
-  userId: string;
-  units: "mi" | "km";
-}) {
+export async function ActivitiesSection({ userId, units }: { userId: string; units: "mi" | "km" }) {
   const today = todayIso();
   const activities = await getActivitiesForDateRange(userId, today, today);
   if (activities.length === 0) return null;
@@ -239,8 +243,12 @@ export function UpNextSkeleton() {
     <section className={styles.upNextSection}>
       <Skeleton width={60} height={11} />
       <ul className={styles.upNextList}>
-        <li><Skeleton height={56} borderRadius="var(--radius-md)" /></li>
-        <li><Skeleton height={56} borderRadius="var(--radius-md)" /></li>
+        <li>
+          <Skeleton height={56} borderRadius="var(--radius-md)" />
+        </li>
+        <li>
+          <Skeleton height={56} borderRadius="var(--radius-md)" />
+        </li>
       </ul>
     </section>
   );
@@ -254,13 +262,7 @@ import { getNextWorkouts } from "@/plans/dateQueries";
 import { todayIso } from "@/lib/dates";
 import { UpNext } from "./UpNext";
 
-export async function UpNextSection({
-  userId,
-  units,
-}: {
-  userId: string;
-  units: "mi" | "km";
-}) {
+export async function UpNextSection({ userId, units }: { userId: string; units: "mi" | "km" }) {
   const today = todayIso();
   const workouts = await getNextWorkouts(userId, today, 2);
   if (workouts.length === 0) return null;
@@ -355,6 +357,7 @@ git commit -m "Stream Today page sections with Suspense"
 ## Task 3: Training Page — Streaming Section
 
 **Files:**
+
 - Create: `src/app/(app)/training/WeekAgendaSkeleton.tsx`
 - Create: `src/app/(app)/training/WeekAgendaSection.tsx`
 - Modify: `src/app/(app)/training/page.tsx`
@@ -366,7 +369,14 @@ import { Skeleton } from "@/components/skeletons/Skeleton";
 
 export function WeekAgendaSkeleton() {
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)", padding: "var(--space-4) 0" }}>
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: "var(--space-4)",
+        padding: "var(--space-4) 0",
+      }}
+    >
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <Skeleton width={140} height={20} />
         <div style={{ display: "flex", gap: "var(--space-2)" }}>
@@ -462,7 +472,10 @@ import { NoActivePlan } from "@/components/plans/NoActivePlan";
 import styles from "./Calendar.module.scss";
 
 function fmtShortDate(iso: string): string {
-  return new Date(iso + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  return new Date(iso + "T00:00:00").toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  });
 }
 
 function weekIndexFromStart(planStart: string, monday: string): number {
@@ -506,10 +519,9 @@ export default async function CalendarPage({
     monday >= planFirstMonday && (planLastMonday == null || monday <= planLastMonday);
   const prevDisabled = monday <= planFirstMonday;
 
-  const weekTitle =
-    insidePlan
-      ? `Week ${weekIndexFromStart(activePlan.start_date, monday)}`
-      : fmtShortDate(monday);
+  const weekTitle = insidePlan
+    ? `Week ${weekIndexFromStart(activePlan.start_date, monday)}`
+    : fmtShortDate(monday);
   const weekRange = `${fmtShortDate(monday)} – ${fmtShortDate(sunday)}`;
 
   return (
@@ -556,6 +568,7 @@ git commit -m "Stream Training page week agenda with Suspense"
 ## Task 4: Plans Page — Streaming Section
 
 **Files:**
+
 - Create: `src/app/(app)/plans/PlansListSkeleton.tsx`
 - Create: `src/app/(app)/plans/PlansListSection.tsx`
 - Modify: `src/app/(app)/plans/page.tsx`
@@ -583,13 +596,7 @@ import { listPlansWithCounts } from "@/plans/queries";
 import { listInFlightPlanFiles } from "@/plans/files";
 import { PlansPageClient } from "./PlansPageClient";
 
-export async function PlansListSection({
-  userId,
-  today,
-}: {
-  userId: string;
-  today: string;
-}) {
+export async function PlansListSection({ userId, today }: { userId: string; today: string }) {
   const [plans, planFiles] = await Promise.all([
     listPlansWithCounts(userId, today),
     listInFlightPlanFiles(userId),
@@ -644,6 +651,7 @@ git commit -m "Stream Plans page list with Suspense"
 ## Task 5: Plan Detail Page — Streaming Section
 
 **Files:**
+
 - Create: `src/app/(app)/plans/[id]/PlanWeekSection.tsx`
 - Modify: `src/app/(app)/plans/[id]/page.tsx`
 
@@ -797,6 +805,7 @@ git commit -m "Stream Plan Detail page week section with Suspense"
 ## Task 6: Settings Page — Streaming Section
 
 **Files:**
+
 - Create: `src/app/(app)/settings/CoachNotesSkeleton.tsx`
 - Create: `src/app/(app)/settings/CoachNotesSection.tsx`
 - Modify: `src/app/(app)/settings/page.tsx`
@@ -877,6 +886,7 @@ git commit -m "Stream Settings page coach notes with Suspense"
 ## Task 7: Coach Page — Streaming Section
 
 **Files:**
+
 - Create: `src/app/(app)/coach/MessagesSkeleton.tsx`
 - Create: `src/app/(app)/coach/MessagesSection.tsx`
 - Modify: `src/app/(app)/coach/page.tsx`
@@ -888,7 +898,14 @@ import { Skeleton } from "@/components/skeletons/Skeleton";
 
 export function MessagesSkeleton() {
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-3)", padding: "var(--space-4)" }}>
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: "var(--space-3)",
+        padding: "var(--space-4)",
+      }}
+    >
       <div style={{ display: "flex", justifyContent: "flex-end" }}>
         <Skeleton width="60%" height={44} borderRadius="var(--radius-lg)" />
       </div>
@@ -959,7 +976,13 @@ const PLAN_FROM_RE = new RegExp(`^/plans/(${UUID_RE})$`);
 export default async function CoachPage({
   searchParams,
 }: {
-  searchParams: Promise<{ from?: string; from_label?: string; plan_file_id?: string; intent?: string; plan_id?: string }>;
+  searchParams: Promise<{
+    from?: string;
+    from_label?: string;
+    plan_file_id?: string;
+    intent?: string;
+    plan_id?: string;
+  }>;
 }) {
   const session = await auth();
   if (!session?.user?.id) redirect("/");
@@ -1018,6 +1041,7 @@ git commit -m "Stream Coach page message history with Suspense"
 ## Task 8: Delete `loading.tsx` + Final Verification
 
 **Files:**
+
 - Delete: `src/app/(app)/loading.tsx`
 
 - [ ] **Step 1: Delete `loading.tsx`**
@@ -1045,6 +1069,7 @@ Expected: all tests pass (no test files touch the deleted file or modified pages
 - [ ] **Step 4: Manual verification**
 
 Start the dev server (`npm run dev`) and verify each page:
+
 - Navigate Today → Training → Plans → Plan Detail → Coach → Settings
 - Confirm: previous page stays visible briefly, shell appears, skeletons flash in then real content arrives
 - Confirm: hard-refresh on each page renders correctly (no blank screen issues)

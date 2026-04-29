@@ -64,7 +64,7 @@ describe("handleWebhookEvent", () => {
     expect(fetchStravaMock).toHaveBeenCalledWith(
       "/activities/100",
       "tok",
-      expect.objectContaining({ params: { include_all_efforts: "true" } }),
+      expect.objectContaining({ params: { include_all_efforts: "true" } })
     );
     expect(upsertActivityMock).toHaveBeenCalledOnce();
     expect(replaceLapsMock).toHaveBeenCalledOnce();

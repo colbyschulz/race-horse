@@ -1,8 +1,13 @@
-.agenda { display: flex; flex-direction: column; }
+.agenda {
+  display: flex;
+  flex-direction: column;
+}
 
 .row {
   border-bottom: 1px solid var(--color-border-subtle);
-  &:last-of-type { border-bottom: none; }
+  &:last-of-type {
+    border-bottom: none;
+  }
 }
 
 .rowToday {
@@ -22,8 +27,13 @@
   gap: var(--space-3);
   padding: 13px 0;
   cursor: pointer;
-  &:disabled { cursor: default; opacity: 1; }
-  &:not(:disabled):hover { opacity: 0.75; }
+  &:disabled {
+    cursor: default;
+    opacity: 1;
+  }
+  &:not(:disabled):hover {
+    opacity: 0.75;
+  }
 }
 
 .dayLabel {
@@ -89,7 +99,9 @@
   cursor: pointer;
 
   &:hover {
-    .activityName { text-decoration: underline; }
+    .activityName {
+      text-decoration: underline;
+    }
   }
 }
 

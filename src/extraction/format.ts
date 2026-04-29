@@ -22,7 +22,7 @@ function bufferToText(buf: ArrayBuffer): string {
 export async function formatForClaude(
   buf: ArrayBuffer,
   mime: string,
-  filename: string,
+  filename: string
 ): Promise<ContentBlock[]> {
   if (mime === "application/pdf") {
     return [

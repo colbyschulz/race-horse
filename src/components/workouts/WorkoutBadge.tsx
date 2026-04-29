@@ -1,8 +1,15 @@
 import styles from "./WorkoutBadge.module.scss";
 
 export type WorkoutType =
-  | "easy" | "long" | "tempo" | "threshold" | "intervals"
-  | "recovery" | "race" | "rest" | "cross";
+  | "easy"
+  | "long"
+  | "tempo"
+  | "threshold"
+  | "intervals"
+  | "recovery"
+  | "race"
+  | "rest"
+  | "cross";
 
 const LABELS: Record<WorkoutType, string> = {
   easy: "Easy",
@@ -22,9 +29,5 @@ interface Props {
 }
 
 export function WorkoutBadge({ type, size = "md" }: Props) {
-  return (
-    <span className={`${styles.badge} ${styles[type]} ${styles[size]}`}>
-      {LABELS[type]}
-    </span>
-  );
+  return <span className={`${styles.badge} ${styles[type]} ${styles[size]}`}>{LABELS[type]}</span>;
 }

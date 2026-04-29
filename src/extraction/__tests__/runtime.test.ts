@@ -65,8 +65,12 @@ describe("runExtraction", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     getPlanFileById.mockResolvedValue({
-      id: "f1", userId: "u1", status: "extracting",
-      blob_url: "https://blob/x", original_filename: "plan.pdf", mime_type: "application/pdf",
+      id: "f1",
+      userId: "u1",
+      status: "extracting",
+      blob_url: "https://blob/x",
+      original_filename: "plan.pdf",
+      mime_type: "application/pdf",
     });
     fetchPlanFileBytes.mockResolvedValue(new ArrayBuffer(8));
     formatForClaude.mockResolvedValue([{ type: "text", text: "x" }]);
@@ -79,10 +83,15 @@ describe("runExtraction", () => {
   });
 
   it("marks failed when is_training_plan=false", async () => {
-    messagesParse.mockResolvedValue({ parsed_output: { ...validPayload, is_training_plan: false } });
+    messagesParse.mockResolvedValue({
+      parsed_output: { ...validPayload, is_training_plan: false },
+    });
     await runExtraction("f1", "u1");
     expect(updatePlanFileStatus).toHaveBeenCalledWith(
-      "f1", "u1", "failed", expect.stringMatching(/training plan/i),
+      "f1",
+      "u1",
+      "failed",
+      expect.stringMatching(/training plan/i)
     );
   });
 
@@ -90,16 +99,19 @@ describe("runExtraction", () => {
     messagesParse.mockRejectedValue(new Error("network"));
     await runExtraction("f1", "u1");
     expect(updatePlanFileStatus).toHaveBeenCalledWith(
-      "f1", "u1", "failed", expect.stringContaining("network"),
+      "f1",
+      "u1",
+      "failed",
+      expect.stringContaining("network")
     );
   });
 
   it("marks failed on schema mismatch", async () => {
-    messagesParse.mockResolvedValue({ parsed_output: { is_training_plan: true /* missing fields */ } });
+    messagesParse.mockResolvedValue({
+      parsed_output: { is_training_plan: true /* missing fields */ },
+    });
     await runExtraction("f1", "u1");
-    expect(updatePlanFileStatus).toHaveBeenCalledWith(
-      "f1", "u1", "failed", expect.any(String),
-    );
+    expect(updatePlanFileStatus).toHaveBeenCalledWith("f1", "u1", "failed", expect.any(String));
   });
 
   it("returns silently if row is missing or already terminal", async () => {

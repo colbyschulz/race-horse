@@ -21,7 +21,7 @@ export async function appendMessage(
   userId: string,
   role: Role,
   content: ContentBlock[],
-  planId: string | null = null,
+  planId: string | null = null
 ): Promise<StoredMessage> {
   const result = await db
     .insert(messages)

@@ -21,7 +21,10 @@ export async function fetchStravaPreload(userId: string): Promise<StravaPreload>
   const recent_activities_summary = {
     count: recentActivities.length,
     total_distance_meters: recentActivities.reduce((acc, r) => acc + (r.distance_meters ?? 0), 0),
-    total_moving_time_seconds: recentActivities.reduce((acc, r) => acc + (r.moving_time_seconds ?? 0), 0),
+    total_moving_time_seconds: recentActivities.reduce(
+      (acc, r) => acc + (r.moving_time_seconds ?? 0),
+      0
+    ),
   };
 
   const minimal = athlete_summary.twelve_week.count < MINIMAL_THRESHOLD_12W;

@@ -1,10 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { normalizeActivity, normalizeLap } from "../normalize";
-import type {
-  StravaSummaryActivity,
-  StravaDetailedActivity,
-  StravaLap,
-} from "../types";
+import type { StravaSummaryActivity, StravaDetailedActivity, StravaLap } from "../types";
 
 const sample: StravaSummaryActivity = {
   id: 9999,

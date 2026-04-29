@@ -52,14 +52,14 @@ describe("update_coach_notes_handler", () => {
   it("throws when content exceeds 4096 chars", async () => {
     const content = "x".repeat(4097);
     await expect(update_coach_notes_handler({ content }, CTX)).rejects.toThrow(
-      "content exceeds 4096 chars",
+      "content exceeds 4096 chars"
     );
   });
 
   it("throws when content is not a string", async () => {
     // Cast to bypass TS type checking for test purposes
     await expect(
-      update_coach_notes_handler({ content: 42 as unknown as string }, CTX),
+      update_coach_notes_handler({ content: 42 as unknown as string }, CTX)
     ).rejects.toThrow("content must be string");
   });
 

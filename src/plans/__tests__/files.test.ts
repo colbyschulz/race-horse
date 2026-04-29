@@ -57,7 +57,7 @@ describe("createPlanFile", () => {
     });
     expect(result).toEqual(row);
     expect(insertChain.values).toHaveBeenCalledWith(
-      expect.objectContaining({ id: "f1", userId: "u1", status: "extracting" }),
+      expect.objectContaining({ id: "f1", userId: "u1", status: "extracting" })
     );
   });
 });
@@ -98,7 +98,7 @@ describe("updatePlanFileStatus", () => {
   it("updates status + optional error", async () => {
     await updatePlanFileStatus("f1", "u1", "failed", "boom");
     expect(updateChain.set).toHaveBeenCalledWith(
-      expect.objectContaining({ status: "failed", extraction_error: "boom" }),
+      expect.objectContaining({ status: "failed", extraction_error: "boom" })
     );
   });
 });
@@ -107,7 +107,10 @@ describe("setExtractedPayload", () => {
   it("writes payload + status=extracted", async () => {
     await setExtractedPayload("f1", "u1", { is_training_plan: true });
     expect(updateChain.set).toHaveBeenCalledWith(
-      expect.objectContaining({ status: "extracted", extracted_payload: { is_training_plan: true } }),
+      expect.objectContaining({
+        status: "extracted",
+        extracted_payload: { is_training_plan: true },
+      })
     );
   });
 });
@@ -116,7 +119,7 @@ describe("setExtractedPlanId", () => {
   it("links plan id", async () => {
     await setExtractedPlanId("f1", "u1", "p1");
     expect(updateChain.set).toHaveBeenCalledWith(
-      expect.objectContaining({ extracted_plan_id: "p1" }),
+      expect.objectContaining({ extracted_plan_id: "p1" })
     );
   });
 });

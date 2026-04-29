@@ -14,12 +14,21 @@
   gap: var(--space-3);
   transition: box-shadow 120ms ease;
 
-  &:hover { box-shadow: var(--shadow-sm); }
+  &:hover {
+    box-shadow: var(--shadow-sm);
+  }
 }
 
-.card_active  { border: 2px solid var(--color-brown); }
-.card_upcoming { border-color: var(--color-terra); }
-.card_generating { border-color: var(--color-fg-tertiary); border-style: dashed; }
+.card_active {
+  border: 2px solid var(--color-brown);
+}
+.card_upcoming {
+  border-color: var(--color-terra);
+}
+.card_generating {
+  border-color: var(--color-fg-tertiary);
+  border-style: dashed;
+}
 
 .headRow {
   display: flex;

@@ -5,8 +5,12 @@ import { getPlanFileById } from "@/plans/files";
 
 type Ctx = { params: Promise<{ id: string }> };
 
-function unauthorized() { return NextResponse.json({ error: "unauthorized" }, { status: 401 }); }
-function notFound() { return NextResponse.json({ error: "not found" }, { status: 404 }); }
+function unauthorized() {
+  return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+}
+function notFound() {
+  return NextResponse.json({ error: "not found" }, { status: 404 });
+}
 
 export async function GET(_req: Request, ctx: Ctx): Promise<NextResponse | Response> {
   const session = await auth();

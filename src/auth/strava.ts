@@ -9,7 +9,7 @@ interface StravaProfile {
 }
 
 export default function Strava<P extends StravaProfile>(
-  options: OAuthUserConfig<P>,
+  options: OAuthUserConfig<P>
 ): OAuthConfig<P> {
   return {
     id: "strava",

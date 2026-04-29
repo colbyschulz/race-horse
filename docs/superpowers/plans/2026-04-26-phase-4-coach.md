@@ -7,6 +7,7 @@
 **Goal:** Land the full coach experience — a streaming Anthropic chat endpoint with 12 tools (plan + activity reads/writes + coach-notes management), a single-rolling-chat persistence model with "Clear chat", a coach-notes editor in `/settings`, and a `/coach` full-page chat UI accessed via the existing `AskCoachButton` (which forwards a `?from=<route>` so the coach knows where the user opened it from).
 
 **Architecture:**
+
 - **Persistence:** new `messages` table with `role` enum and `content jsonb` (full Anthropic content-block array round-tripped exactly so `tool_use`/`tool_result`/`thinking` blocks stay valid across turns). One rolling chat per user (no `conversation_id`). `coach_notes` already exists on `users` (added in Phase 1) — the coach reads + writes it via tool.
 - **Coach module** (`src/coach/`):
   - `anthropic.ts` — singleton SDK client
@@ -27,9 +28,10 @@
   - `MessageBubble`, `ToolIndicator`, `MessageInput`, `ContextPill`, `ClearChatDialog`.
   - `AskCoachButton` (already in `src/components/layout/`) — modify to set `href={`/coach?from=${pathname}`}`.
   - `/settings` — extend existing settings page with a `<CoachNotesEditor>` textarea + Save button.
-- **Caching:** `cache_control: { type: "ephemeral" }` breakpoint at the end of the system prompt. Tools render before system prompt, so this single breakpoint caches `tools` + `system` together. Per-user context goes in the user message *after* the cache breakpoint, so cache stays warm across users (modulo per-user message history, which is naturally appended).
+- **Caching:** `cache_control: { type: "ephemeral" }` breakpoint at the end of the system prompt. Tools render before system prompt, so this single breakpoint caches `tools` + `system` together. Per-user context goes in the user message _after_ the cache breakpoint, so cache stays warm across users (modulo per-user message history, which is naturally appended).
 
 **Tech Stack:**
+
 - `@anthropic-ai/sdk` (latest) — using `client.beta.messages.toolRunner({ stream: true })` for the tool loop
 - Next.js 16 route handlers with `ReadableStream` for SSE
 - `react-markdown` + `remark-gfm` for assistant message rendering
@@ -41,6 +43,7 @@
 ## File structure
 
 **Create:**
+
 - `src/coach/anthropic.ts`
 - `src/coach/systemPrompt.ts`
 - `src/coach/context.ts`
@@ -75,6 +78,7 @@
 - `src/strava/queries.ts` — small read helpers used by activity tools (`listRecentActivities`, `getActivityWithLaps`, `getAthleteSummary`). Phase 2 has the upsert/sync side; this adds the read side.
 
 **Modify:**
+
 - `src/db/schema.ts` — add `messageRoleEnum`, `messages` table
 - `src/db/__tests__/schema.test.ts` — extend
 - `src/components/layout/AskCoachButton.tsx` — set `?from=` query param to current pathname
@@ -95,12 +99,14 @@
 ## Task 1: Add dependencies + env scaffolding
 
 **Files:**
+
 - Modify: `package.json`, `package-lock.json` (auto-updated)
 - Modify: `.env.example`
 
 - [ ] **Step 1: Install Anthropic SDK + markdown libraries**
 
 Run:
+
 ```bash
 npm install @anthropic-ai/sdk react-markdown remark-gfm
 ```
@@ -110,6 +116,7 @@ Expected: `package-lock.json` updated. No peer-dep errors (we have `legacy-peer-
 - [ ] **Step 2: Document the env var**
 
 Append to `.env.example`:
+
 ```
 # Anthropic API key for the coach chat endpoint
 ANTHROPIC_API_KEY=
@@ -125,6 +132,7 @@ Expected: existing 84 tests still pass (no new code yet).
 ## Task 2: Schema — `messages` table + role enum
 
 **Files:**
+
 - Modify: `src/db/schema.ts`
 - Modify: `src/db/__tests__/schema.test.ts`
 - Generate: `drizzle/0003_<name>.sql`
@@ -150,13 +158,9 @@ export const messages = pgTable(
     role: messageRoleEnum("role").notNull(),
     // Anthropic content-block array. Preserves text + tool_use + tool_result + thinking blocks.
     content: jsonb("content").notNull(),
-    created_at: timestamp("created_at", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
+    created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [
-    index("message_user_created_idx").on(t.user_id, t.created_at),
-  ],
+  (t) => [index("message_user_created_idx").on(t.user_id, t.created_at)]
 );
 ```
 
@@ -164,6 +168,7 @@ export const messages = pgTable(
 
 Run: `npm run db:generate`
 Expected: `drizzle/0003_<name>.sql` with:
+
 - `CREATE TYPE "public"."message_role" AS ENUM('user', 'assistant');`
 - `CREATE TABLE "message" (...)`
 - `CREATE INDEX "message_user_created_idx" ON "message" ("user_id","created_at");`
@@ -172,6 +177,7 @@ Expected: `drizzle/0003_<name>.sql` with:
 - [ ] **Step 5: Schema test**
 
 Append to `src/db/__tests__/schema.test.ts`:
+
 ```ts
 import { messages, messageRoleEnum } from "@/db/schema";
 
@@ -237,7 +243,7 @@ export type ToolName =
 
 export type ToolHandler<I = unknown, O = unknown> = (
   input: I,
-  ctx: { userId: string },
+  ctx: { userId: string }
 ) => Promise<O>;
 
 export type SSEEvent =
@@ -337,6 +343,7 @@ The block labeled \`Coach notes\` in the per-turn context is your durable memory
 ## Task 6: Coach module — `loadHistory`, `appendMessage`, `clearMessages`
 
 **Files:**
+
 - Create `src/coach/messages.ts`
 - Create `src/coach/__tests__/messages.test.ts`
 
@@ -364,7 +371,13 @@ vi.mock("@/db", () => ({
   },
 }));
 vi.mock("@/db/schema", () => ({
-  messages: { id: "id", user_id: "user_id", role: "role", content: "content", created_at: "created_at" },
+  messages: {
+    id: "id",
+    user_id: "user_id",
+    role: "role",
+    content: "content",
+    created_at: "created_at",
+  },
 }));
 
 import { loadHistory, appendMessage, clearMessages } from "../messages";
@@ -393,13 +406,15 @@ describe("appendMessage", () => {
     const out = await appendMessage("u1", "user", [{ type: "text", text: "hi" }]);
     expect(out.id).toBe("m-new");
     expect(insertChain.values).toHaveBeenCalledWith(
-      expect.objectContaining({ user_id: "u1", role: "user" }),
+      expect.objectContaining({ user_id: "u1", role: "user" })
     );
   });
 });
 
 describe("clearMessages", () => {
-  beforeEach(() => { deleteChain.where.mockClear().mockResolvedValue(undefined); });
+  beforeEach(() => {
+    deleteChain.where.mockClear().mockResolvedValue(undefined);
+  });
   it("issues DELETE scoped to user", async () => {
     await clearMessages("u1");
     expect(deleteChain.where).toHaveBeenCalledOnce();
@@ -428,12 +443,9 @@ export async function loadHistory(userId: string): Promise<StoredMessage[]> {
 export async function appendMessage(
   userId: string,
   role: Role,
-  content: ContentBlock[],
+  content: ContentBlock[]
 ): Promise<StoredMessage> {
-  const result = await db
-    .insert(messages)
-    .values({ user_id: userId, role, content })
-    .returning();
+  const result = await db.insert(messages).values({ user_id: userId, role, content }).returning();
   if (!result[0]) throw new Error("appendMessage: no row returned");
   return result[0] as StoredMessage;
 }
@@ -452,10 +464,12 @@ export async function clearMessages(userId: string): Promise<void> {
 ## Task 7: Coach context prefix builder
 
 **Files:**
+
 - Create `src/coach/context.ts`
 - Create `src/coach/__tests__/context.test.ts`
 
 The context prefix is a small text block prepended to every user message. It carries:
+
 - Today's date (so the coach knows when "tomorrow" is without an `<expectation>` block)
 - User units (`mi` / `km`)
 - Active plan summary (1-3 lines pulled from `listPlansWithCounts`)
@@ -541,7 +555,7 @@ export function routeLabel(from: string | undefined | null): string | null {
 }
 
 export function renderContextPrefix(params: {
-  today: string;                       // YYYY-MM-DD
+  today: string; // YYYY-MM-DD
   units: "mi" | "km";
   activePlan: ActivePlanSummary | null;
   coachNotes: string;
@@ -555,7 +569,7 @@ export function renderContextPrefix(params: {
     const a = params.activePlan;
     const wks = a.weeks_left == null ? "indefinite" : `${a.weeks_left} weeks left`;
     lines.push(
-      `Active plan: ${a.title} — ${wks}, ${a.completed} / ${a.workout_count} workouts done`,
+      `Active plan: ${a.title} — ${wks}, ${a.completed} / ${a.workout_count} workouts done`
     );
   }
   if (params.coachNotes.trim()) {
@@ -580,15 +594,24 @@ export function renderContextPrefix(params: {
 ## Task 8: Strava read helpers (used by activity tools)
 
 **Files:**
+
 - Create `src/strava/queries.ts`
 - Create `src/strava/__tests__/queries.test.ts`
 
 The Phase 2 strava module owns sync (writes). Tools need reads:
 
 ```ts
-export async function listRecentActivities(userId: string, days: number): Promise<ActivitySummary[]>
-export async function getActivityWithLaps(userId: string, activityId: string): Promise<{ activity: Activity; laps: Lap[] } | null>
-export async function getAthleteSummary(userId: string): Promise<{ four_week: VolumeRollup; twelve_week: VolumeRollup; fifty_two_week: VolumeRollup }>
+export async function listRecentActivities(
+  userId: string,
+  days: number
+): Promise<ActivitySummary[]>;
+export async function getActivityWithLaps(
+  userId: string,
+  activityId: string
+): Promise<{ activity: Activity; laps: Lap[] } | null>;
+export async function getAthleteSummary(
+  userId: string
+): Promise<{ four_week: VolumeRollup; twelve_week: VolumeRollup; fifty_two_week: VolumeRollup }>;
 ```
 
 `ActivitySummary` is a thin projection (id, start_date, type, distance_meters, moving_time_seconds, avg_hr, avg_pace_seconds_per_km, avg_power_watts).
@@ -597,7 +620,7 @@ export async function getAthleteSummary(userId: string): Promise<{ four_week: Vo
 
 - [ ] **Step 1: TDD — write tests with mocked db that assert each function shape and SQL surface (where clauses, order, limit). Match the patterns in `src/plans/__tests__/queries.test.ts`.**
 
-- [ ] **Step 2: Implement.** Use `gte(activities.start_date, sql`now() - ${days}::int * interval '1 day'`)` for the cutoff in `listRecentActivities` (single-statement, neon-http-safe). Use a single `SELECT ... GROUP BY` for the rollup aggregations (3 separate window queries are fine — 4 weeks, 12 weeks, 52 weeks are independent).
+- [ ] **Step 2: Implement.** Use `gte(activities.start_date, sql`now() - ${days}::int \* interval '1 day'`)` for the cutoff in `listRecentActivities` (single-statement, neon-http-safe). Use a single `SELECT ... GROUP BY` for the rollup aggregations (3 separate window queries are fine — 4 weeks, 12 weeks, 52 weeks are independent).
 
 - [ ] **Step 3: Run, pass, stage.**
 
@@ -608,12 +631,14 @@ export async function getAthleteSummary(userId: string): Promise<{ four_week: Vo
 ## Task 9: Coach tools — plan tools
 
 **Files:**
+
 - Create `src/coach/tools/plans.ts`
 - Create `src/coach/tools/__tests__/plans.test.ts`
 
 Each tool exports a `Tool` definition (name, description, input schema as JSON Schema) and a handler that takes typed input + `{ userId }` and returns the response Claude will see (`tool_result.content`).
 
 Tools to implement:
+
 - `get_active_plan` — returns `{ plan: Plan | null, workouts: Workout[] }`. Reads `plans` where `userId AND is_active`, then `workouts` where `plan_id = $`.
 - `list_plans` — returns `{ plans: PlanSummary[] }`. Wraps `listPlansWithCounts`.
 - `get_plan(plan_id)` — returns `{ plan, workouts }`.
@@ -625,18 +650,21 @@ Tools to implement:
 Each handler verifies ownership (e.g., re-reads plan + checks `userId` before mutating).
 
 Tool definitions follow this shape:
+
 ```ts
 import type { Anthropic } from "@anthropic-ai/sdk";
 type Tool = Anthropic.Messages.Tool;
 
 export const get_active_plan: Tool = {
   name: "get_active_plan",
-  description: "Returns the user's currently active plan and its workouts as structured JSON. Returns null if no plan is active.",
+  description:
+    "Returns the user's currently active plan and its workouts as structured JSON. Returns null if no plan is active.",
   input_schema: { type: "object", properties: {}, additionalProperties: false },
 };
 ```
 
 The handlers map ties them to functions:
+
 ```ts
 export const PLAN_HANDLERS: Record<string, ToolHandler<unknown, unknown>> = {
   get_active_plan: async (_input, { userId }) => { ... },
@@ -655,22 +683,26 @@ export const PLAN_HANDLERS: Record<string, ToolHandler<unknown, unknown>> = {
 ## Task 10: Coach tools — activity tools
 
 **Files:**
+
 - Create `src/coach/tools/activities.ts`
 - Create `src/coach/tools/__tests__/activities.test.ts`
 
 Tools:
+
 - `get_recent_activities({ days })` — wraps `listRecentActivities`. Returns `{ activities, summary: { count, total_distance_meters, total_moving_time_seconds } }`.
 - `get_activity_laps({ activity_id })` — wraps `getActivityWithLaps`. Returns `{ activity, laps }`.
-- `update_activity_match({ activity_id, workout_id })` — sets `activities.matched_workout_id = workout_id` after verifying both belong to user. Phase 5 fully owns matching, but the *manual* re-match knob is a coach tool, so it lives in Phase 4.
+- `update_activity_match({ activity_id, workout_id })` — sets `activities.matched_workout_id = workout_id` after verifying both belong to user. Phase 5 fully owns matching, but the _manual_ re-match knob is a coach tool, so it lives in Phase 4.
 
   > **Note:** This requires `activities.matched_workout_id` column on `activities`. That column was specced in §6 but Phase 2 did not add it (it's used in Phase 5). **Add it as part of this task's migration.** Specifically: extend the migration in Task 2 (or generate a new one) with `ALTER TABLE "activity" ADD COLUMN "matched_workout_id" uuid REFERENCES "workout"("id") ON DELETE SET NULL;`. Update `src/db/schema.ts` accordingly.
 
 - `get_athlete_summary` — wraps `getAthleteSummary` (4 / 12 / 52-week rollups).
 
 - [ ] **Step 1: Add the `matched_workout_id` column** to `src/db/schema.ts` `activities` table:
+
 ```ts
 matched_workout_id: uuid("matched_workout_id").references(() => workouts.id, { onDelete: "set null" }),
 ```
+
 Re-run `npm run db:generate` — should produce `0004_*.sql` (or amend the Phase 4 migration depending on what's already generated). Verify it only emits the `ALTER TABLE` and no destructive ops.
 
 - [ ] **Step 2: Schema test** — extend `src/db/__tests__/schema.test.ts` to assert `Object.keys(activities).includes("matched_workout_id")`.
@@ -684,6 +716,7 @@ Re-run `npm run db:generate` — should produce `0004_*.sql` (or amend the Phase
 ## Task 11: Coach tools — `update_coach_notes`
 
 **Files:**
+
 - Create `src/coach/tools/notes.ts`
 - Create `src/coach/tools/__tests__/notes.test.ts`
 
@@ -692,7 +725,8 @@ A single tool that overwrites `users.coach_notes`. ≤ 4 KB cap.
 ```ts
 export const update_coach_notes: Tool = {
   name: "update_coach_notes",
-  description: "Overwrites the user's coach notes with the provided content. Use to keep durable memory tight and curated. Notes ≤ 4096 characters.",
+  description:
+    "Overwrites the user's coach notes with the provided content. Use to keep durable memory tight and curated. Notes ≤ 4096 characters.",
   input_schema: {
     type: "object",
     properties: { content: { type: "string", maxLength: 4096 } },
@@ -701,16 +735,15 @@ export const update_coach_notes: Tool = {
   },
 };
 
-export const update_coach_notes_handler: ToolHandler<{ content: string }, { ok: true; bytes: number }> =
-  async (input, { userId }) => {
-    if (typeof input.content !== "string") throw new Error("content must be string");
-    if (input.content.length > 4096) throw new Error("content exceeds 4096 chars");
-    await db
-      .update(users)
-      .set({ coach_notes: input.content })
-      .where(eq(users.id, userId));
-    return { ok: true, bytes: input.content.length };
-  };
+export const update_coach_notes_handler: ToolHandler<
+  { content: string },
+  { ok: true; bytes: number }
+> = async (input, { userId }) => {
+  if (typeof input.content !== "string") throw new Error("content must be string");
+  if (input.content.length > 4096) throw new Error("content exceeds 4096 chars");
+  await db.update(users).set({ coach_notes: input.content }).where(eq(users.id, userId));
+  return { ok: true, bytes: input.content.length };
+};
 ```
 
 - [ ] **Step 1: TDD test.**
@@ -770,21 +803,32 @@ export const HANDLERS: Record<ToolName, ToolHandler> = {
 // Short human-readable summaries for tool-result events (shown in UI as "Updated 3 workouts")
 export function summarizeToolResult(name: ToolName, result: unknown): string {
   switch (name) {
-    case "get_active_plan": return "Read active plan";
-    case "list_plans": return "Listed plans";
-    case "get_plan": return "Read plan";
-    case "create_plan": return "Created plan";
+    case "get_active_plan":
+      return "Read active plan";
+    case "list_plans":
+      return "Listed plans";
+    case "get_plan":
+      return "Read plan";
+    case "create_plan":
+      return "Created plan";
     case "update_workouts": {
       const r = result as { upserted?: number; deleted?: number };
       return `Updated workouts (${r.upserted ?? 0} upserted, ${r.deleted ?? 0} deleted)`;
     }
-    case "set_active_plan": return "Activated plan";
-    case "archive_plan": return "Archived plan";
-    case "get_recent_activities": return "Read recent activities";
-    case "get_activity_laps": return "Read activity laps";
-    case "update_activity_match": return "Updated activity match";
-    case "get_athlete_summary": return "Read athlete summary";
-    case "update_coach_notes": return "Updated coach notes";
+    case "set_active_plan":
+      return "Activated plan";
+    case "archive_plan":
+      return "Archived plan";
+    case "get_recent_activities":
+      return "Read recent activities";
+    case "get_activity_laps":
+      return "Read activity laps";
+    case "update_activity_match":
+      return "Updated activity match";
+    case "get_athlete_summary":
+      return "Read athlete summary";
+    case "update_coach_notes":
+      return "Updated coach notes";
   }
 }
 ```
@@ -798,10 +842,12 @@ export function summarizeToolResult(name: ToolName, result: unknown): string {
 ## Task 13: Coach runner — wraps SDK toolRunner with our tools
 
 **Files:**
+
 - Create `src/coach/runner.ts`
 - Create `src/coach/__tests__/runner.test.ts`
 
 The runner:
+
 1. Loads history.
 2. Builds the next user message: `[ { type: "text", text: contextPrefix + "\n\n" + userMessage } ]`. Persists it.
 3. Calls `client.beta.messages.toolRunner({ stream: true, model, system, tools, messages, ... })`.
@@ -831,10 +877,14 @@ interface RunInput {
 
 async function loadContextPrefix(input: RunInput): Promise<string> {
   // single round-trip user + active plan + counts
-  const u = await db.select({
-    units: sql<"mi" | "km">`(${users.preferences}->>'units')`,
-    coach_notes: users.coach_notes,
-  }).from(users).where(eq(users.id, input.userId)).limit(1);
+  const u = await db
+    .select({
+      units: sql<"mi" | "km">`(${users.preferences}->>'units')`,
+      coach_notes: users.coach_notes,
+    })
+    .from(users)
+    .where(eq(users.id, input.userId))
+    .limit(1);
 
   // Active plan summary — null if no active plan
   const active = await db
@@ -858,7 +908,14 @@ async function loadContextPrefix(input: RunInput): Promise<string> {
       ? {
           title: a.title,
           weeks_left: a.end_date
-            ? Math.max(0, Math.ceil((new Date(a.end_date).getTime() - new Date(input.today).getTime()) / 86_400_000 / 7))
+            ? Math.max(
+                0,
+                Math.ceil(
+                  (new Date(a.end_date).getTime() - new Date(input.today).getTime()) /
+                    86_400_000 /
+                    7
+                )
+              )
             : null,
           workout_count: a.workout_count,
           completed: a.completed,
@@ -882,10 +939,8 @@ export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
   const runner = client.beta.messages.toolRunner({
     model: COACH_MODEL,
     max_tokens: 8192,
-    thinking: { type: "adaptive" } as never,    // SDK shape may vary; cast as needed
-    system: [
-      { type: "text", text: COACH_SYSTEM_PROMPT, cache_control: { type: "ephemeral" } },
-    ],
+    thinking: { type: "adaptive" } as never, // SDK shape may vary; cast as needed
+    system: [{ type: "text", text: COACH_SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }],
     tools: TOOLS,
     messages: sdkMessages,
     runner_handlers: {
@@ -932,6 +987,7 @@ export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
 ## Task 14: API route — `POST /api/coach/chat` (SSE)
 
 **Files:**
+
 - Create `src/app/api/coach/chat/route.ts`
 - Create `src/app/api/coach/chat/__tests__/route.test.ts`
 
@@ -997,7 +1053,7 @@ export async function POST(req: Request): Promise<Response> {
     headers: {
       "content-type": "text/event-stream",
       "cache-control": "no-cache, no-transform",
-      "connection": "keep-alive",
+      connection: "keep-alive",
       "x-accel-buffering": "no", // disable proxy buffering on platforms that honor it
     },
   });
@@ -1015,6 +1071,7 @@ export async function POST(req: Request): Promise<Response> {
 ## Task 15: API route — `GET` + `DELETE /api/coach/messages`
 
 **Files:**
+
 - Create `src/app/api/coach/messages/route.ts`
 - Create `src/app/api/coach/messages/__tests__/route.test.ts`
 
@@ -1047,6 +1104,7 @@ export async function DELETE(): Promise<NextResponse> {
 ## Task 16: API route — `GET` + `PUT /api/coach/notes`
 
 **Files:**
+
 - Create `src/app/api/coach/notes/route.ts`
 - Create `src/app/api/coach/notes/__tests__/route.test.ts`
 
@@ -1060,8 +1118,11 @@ import { users } from "@/db/schema";
 export async function GET(): Promise<NextResponse> {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  const rows = await db.select({ coach_notes: users.coach_notes })
-    .from(users).where(eq(users.id, session.user.id)).limit(1);
+  const rows = await db
+    .select({ coach_notes: users.coach_notes })
+    .from(users)
+    .where(eq(users.id, session.user.id))
+    .limit(1);
   return NextResponse.json({ content: rows[0]?.coach_notes ?? "" });
 }
 
@@ -1069,10 +1130,15 @@ export async function PUT(req: Request): Promise<NextResponse> {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   let body: { content?: string };
-  try { body = (await req.json()) as { content?: string }; }
-  catch { return NextResponse.json({ error: "invalid JSON" }, { status: 400 }); }
-  if (typeof body.content !== "string") return NextResponse.json({ error: "content required" }, { status: 400 });
-  if (body.content.length > 4096) return NextResponse.json({ error: "content exceeds 4096 chars" }, { status: 400 });
+  try {
+    body = (await req.json()) as { content?: string };
+  } catch {
+    return NextResponse.json({ error: "invalid JSON" }, { status: 400 });
+  }
+  if (typeof body.content !== "string")
+    return NextResponse.json({ error: "content required" }, { status: 400 });
+  if (body.content.length > 4096)
+    return NextResponse.json({ error: "content exceeds 4096 chars" }, { status: 400 });
   await db.update(users).set({ coach_notes: body.content }).where(eq(users.id, session.user.id));
   return NextResponse.json({ ok: true });
 }
@@ -1098,9 +1164,8 @@ import styles from "./AskCoachButton.module.scss";
 
 export function AskCoachButton() {
   const pathname = usePathname();
-  const href = pathname && pathname !== "/coach"
-    ? `/coach?from=${encodeURIComponent(pathname)}`
-    : "/coach";
+  const href =
+    pathname && pathname !== "/coach" ? `/coach?from=${encodeURIComponent(pathname)}` : "/coach";
   return (
     <Link href={href} className={styles.button} aria-label="Ask coach">
       ✦ Ask coach
@@ -1120,11 +1185,13 @@ export function AskCoachButton() {
 ## Task 18: `/coach` server component + page client shell
 
 **Files:**
+
 - Create `src/app/(app)/coach/page.tsx`
 - Create `src/app/(app)/coach/CoachPageClient.tsx`
 - Create `src/app/(app)/coach/Coach.module.scss`
 
 Server component:
+
 ```tsx
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
@@ -1164,7 +1231,10 @@ interface Props {
 
 export function CoachPageClient({ initialMessages, fromRoute }: Props) {
   const [messages, setMessages] = useState<StoredMessage[]>(initialMessages);
-  const [streaming, setStreaming] = useState<{ text: string; tools: { name: string; summary?: string }[] } | null>(null);
+  const [streaming, setStreaming] = useState<{
+    text: string;
+    tools: { name: string; summary?: string }[];
+  } | null>(null);
   const [sending, setSending] = useState(false);
   const [clearOpen, setClearOpen] = useState(false);
 
@@ -1174,25 +1244,50 @@ export function CoachPageClient({ initialMessages, fromRoute }: Props) {
       <ContextPill fromRoute={fromRoute} />
       <header className={styles.header}>
         <h1 className={styles.title}>Coach</h1>
-        <button className={styles.clearBtn} onClick={() => setClearOpen(true)}>Clear chat</button>
+        <button className={styles.clearBtn} onClick={() => setClearOpen(true)}>
+          Clear chat
+        </button>
       </header>
       <div className={styles.stream}>
-        {messages.map((m) => <MessageBubble key={m.id} message={m} />)}
+        {messages.map((m) => (
+          <MessageBubble key={m.id} message={m} />
+        ))}
         {streaming && (
           <>
-            {streaming.tools.map((t, i) => <ToolIndicator key={i} name={t.name} summary={t.summary} />)}
-            <MessageBubble message={{ id: "streaming", role: "assistant", created_at: new Date(), content: [{ type: "text", text: streaming.text }] }} />
+            {streaming.tools.map((t, i) => (
+              <ToolIndicator key={i} name={t.name} summary={t.summary} />
+            ))}
+            <MessageBubble
+              message={{
+                id: "streaming",
+                role: "assistant",
+                created_at: new Date(),
+                content: [{ type: "text", text: streaming.text }],
+              }}
+            />
           </>
         )}
       </div>
-      <MessageInput disabled={sending} onSend={(text) => { /* wired in Task 19 */ }} />
-      <ClearChatDialog open={clearOpen} onClose={() => setClearOpen(false)} onConfirm={async () => { /* wired in Task 19 */ }} />
+      <MessageInput
+        disabled={sending}
+        onSend={(text) => {
+          /* wired in Task 19 */
+        }}
+      />
+      <ClearChatDialog
+        open={clearOpen}
+        onClose={() => setClearOpen(false)}
+        onConfirm={async () => {
+          /* wired in Task 19 */
+        }}
+      />
     </div>
   );
 }
 ```
 
 Coach.module.scss:
+
 ```scss
 .page {
   display: flex;
@@ -1226,7 +1321,10 @@ Coach.module.scss:
   font-size: 0.8125rem;
   color: var(--color-fg-secondary);
   cursor: pointer;
-  &:hover { color: var(--color-brown); border-color: var(--color-brown); }
+  &:hover {
+    color: var(--color-brown);
+    border-color: var(--color-brown);
+  }
 }
 
 .stream {
@@ -1247,6 +1345,7 @@ Coach.module.scss:
 ## Task 19: Chat presentational components + streaming
 
 **Files:**
+
 - Create `src/components/coach/MessageBubble.tsx` + `.module.scss`
 - Create `src/components/coach/MessageInput.tsx` + `.module.scss`
 - Create `src/components/coach/ToolIndicator.tsx` + `.module.scss`
@@ -1299,13 +1398,12 @@ export function ToolIndicator({ name, summary }: { name: string; summary?: strin
   return (
     <div className={styles.row}>
       <span className={styles.dot} />
-      <span className={styles.label}>
-        {summary ?? `Calling ${name.replace(/_/g, " ")}…`}
-      </span>
+      <span className={styles.label}>{summary ?? `Calling ${name.replace(/_/g, " ")}…`}</span>
     </div>
   );
 }
 ```
+
 SCSS: small italic gray row with a pulsing dot.
 
 ### ContextPill
@@ -1334,7 +1432,13 @@ export function ContextPill({ fromRoute }: { fromRoute?: string }) {
 import { useState, type KeyboardEvent } from "react";
 import styles from "./MessageInput.module.scss";
 
-export function MessageInput({ disabled, onSend }: { disabled?: boolean; onSend: (text: string) => void }) {
+export function MessageInput({
+  disabled,
+  onSend,
+}: {
+  disabled?: boolean;
+  onSend: (text: string) => void;
+}) {
   const [value, setValue] = useState("");
   function send() {
     const t = value.trim();
@@ -1429,7 +1533,7 @@ async function send(text: string) {
           // Reload full history to get the canonical persisted messages.
           const r = await fetch("/api/coach/messages");
           if (r.ok) {
-            const { messages: m } = await r.json() as { messages: StoredMessage[] };
+            const { messages: m } = (await r.json()) as { messages: StoredMessage[] };
             setMessages(m);
           }
         } else if (ev.type === "error") {
@@ -1463,6 +1567,7 @@ async function clear() {
 ## Task 20: Coach notes editor in `/settings`
 
 **Files:**
+
 - Create `src/components/coach/CoachNotesEditor.tsx` + `.module.scss`
 - Modify: `src/app/(app)/settings/<existing form file>` to mount the editor
 
@@ -1499,7 +1604,10 @@ export function CoachNotesEditor({ initialContent }: { initialContent: string })
   return (
     <section className={styles.section}>
       <h3 className={styles.title}>Coach notes</h3>
-      <p className={styles.help}>The coach's durable memory about you. The coach edits this automatically as your goals shift, but you can also edit directly. Max 4 KB.</p>
+      <p className={styles.help}>
+        The coach's durable memory about you. The coach edits this automatically as your goals
+        shift, but you can also edit directly. Max 4 KB.
+      </p>
       <textarea
         className={styles.textarea}
         value={content}
@@ -1510,7 +1618,9 @@ export function CoachNotesEditor({ initialContent }: { initialContent: string })
         <span className={styles.counter}>{content.length} / 4096</span>
         <span className={styles.spacer} />
         {savedAt && <span className={styles.saved}>Saved {savedAt.toLocaleTimeString()}</span>}
-        <button className={styles.save} onClick={save} disabled={saving}>Save</button>
+        <button className={styles.save} onClick={save} disabled={saving}>
+          Save
+        </button>
       </div>
     </section>
   );
@@ -1552,7 +1662,7 @@ Before declaring Phase 4 done, verify:
    - § 4 Routes — `/api/coach/chat` (SSE), `/api/coach/messages` (GET + DELETE), `/api/coach/notes` (GET + PUT) all live ✓.
    - § 6 `messages` schema — uuid pk, user_id fk cascade, role enum, content jsonb, created_at ✓.
    - § 10 Coach panel — single rolling chat, Clear chat button + confirm, Coach notes editor link, streaming with tool indicators, markdown rendering ✓.
-2. **Phase boundary**: did NOT build upload pipeline (Phase 6), Today/Calendar UI (Phase 5), or workout matching (Phase 5). The `update_activity_match` *tool* exists (it's a coach tool per spec), and we added `activities.matched_workout_id` to enable it — but no UI surfaces matching yet. ✓
+2. **Phase boundary**: did NOT build upload pipeline (Phase 6), Today/Calendar UI (Phase 5), or workout matching (Phase 5). The `update_activity_match` _tool_ exists (it's a coach tool per spec), and we added `activities.matched_workout_id` to enable it — but no UI surfaces matching yet. ✓
 3. **Driver compat**: every multi-row mutation in tools is single-statement (no `db.transaction`).
 4. **Auth + ownership**: every API route checks `auth()`. Every tool handler verifies ownership before mutating (re-reads via `getPlanById` or analogous).
 5. **No "Co-Authored-By" trailers in commits** (the user will commit themselves).

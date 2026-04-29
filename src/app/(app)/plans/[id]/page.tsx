@@ -35,7 +35,7 @@ export default async function PlanDetailPage({
   const { firstMonday: planFirstMonday, lastMonday: planLastMonday } = planNavBounds(
     plan.start_date,
     plan.end_date,
-    mondayOf(today),
+    mondayOf(today)
   );
 
   const defaultMonday =

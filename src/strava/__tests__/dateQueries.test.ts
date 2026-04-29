@@ -37,10 +37,9 @@ vi.mock("drizzle-orm", () => ({
   asc: vi.fn(),
   // `sql` is a tagged template literal function that also has properties (e.g. `sql.raw`).
   // A Proxy lets us intercept both the call (template tag) and property access in one object.
-  sql: new Proxy(
-    (..._args: unknown[]) => "sql-fragment",
-    { get: (_t, p) => p === "raw" ? () => "sql-fragment" : undefined },
-  ),
+  sql: new Proxy((..._args: unknown[]) => "sql-fragment", {
+    get: (_t, p) => (p === "raw" ? () => "sql-fragment" : undefined),
+  }),
 }));
 
 import { getActivitiesForDateRange } from "../dateQueries";

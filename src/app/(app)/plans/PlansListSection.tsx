@@ -5,13 +5,7 @@ import { db } from "@/db";
 import { eq } from "drizzle-orm";
 import { users } from "@/db/schema";
 
-export async function PlansListSection({
-  userId,
-  today,
-}: {
-  userId: string;
-  today: string;
-}) {
+export async function PlansListSection({ userId, today }: { userId: string; today: string }) {
   const [plans, planFiles, prefRows] = await Promise.all([
     listPlansWithCounts(userId),
     listInFlightPlanFiles(userId),

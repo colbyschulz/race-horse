@@ -6,10 +6,7 @@ function parseISODate(d: string): Date {
   return new Date(`${d}T00:00:00Z`);
 }
 
-export function computeWeeksLeft(
-  endDate: string | null,
-  today: string,
-): number | null {
+export function computeWeeksLeft(endDate: string | null, today: string): number | null {
   if (!endDate) return null;
   const end = parseISODate(endDate).getTime();
   const now = parseISODate(today).getTime();
@@ -17,10 +14,7 @@ export function computeWeeksLeft(
   return Math.max(0, Math.ceil(days / 7));
 }
 
-export function formatDuration(
-  startDate: string,
-  endDate: string | null,
-): string {
+export function formatDuration(startDate: string, endDate: string | null): string {
   if (!endDate) return "indefinite";
   const start = parseISODate(startDate).getTime();
   const end = parseISODate(endDate).getTime();
@@ -28,10 +22,7 @@ export function formatDuration(
   return `${weeks} weeks`;
 }
 
-const MONTHS = [
-  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-];
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 function formatRaceDate(iso: string): string {
   const d = parseISODate(iso);

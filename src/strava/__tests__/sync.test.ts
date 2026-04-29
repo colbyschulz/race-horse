@@ -61,8 +61,7 @@ describe("syncActivities", () => {
   });
 
   it("skips lap fetch for non-run/ride activities", async () => {
-    fetchStravaMock
-      .mockResolvedValueOnce([{ ...baseSummary, type: "Walk" }]);
+    fetchStravaMock.mockResolvedValueOnce([{ ...baseSummary, type: "Walk" }]);
     upsertActivityMock.mockResolvedValue("act-uuid");
 
     const r = await syncActivities({
@@ -95,8 +94,7 @@ describe("syncActivities", () => {
 
   it("stops pagination when page has fewer items than LIST_PAGE_SIZE", async () => {
     // Return 1 activity (partial page) — should not fetch a second page
-    fetchStravaMock
-      .mockResolvedValueOnce([{ ...baseSummary, type: "Walk" }]);
+    fetchStravaMock.mockResolvedValueOnce([{ ...baseSummary, type: "Walk" }]);
     upsertActivityMock.mockResolvedValue("uuid");
 
     const r = await syncActivities({ userId: "u", sinceDate: new Date() });

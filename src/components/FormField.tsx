@@ -10,7 +10,9 @@ interface Props {
 export function FormField({ label, htmlFor, children }: Props) {
   return (
     <div className={styles.field}>
-      <label className={styles.label} htmlFor={htmlFor}>{label}</label>
+      <label className={styles.label} htmlFor={htmlFor}>
+        {label}
+      </label>
       {children}
     </div>
   );

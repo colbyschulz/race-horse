@@ -41,7 +41,7 @@ describe("UploadDropzone", () => {
   it("on accepted file: POSTs to /api/plans/upload, fires extract, navigates to review", async () => {
     fetchMock
       .mockResolvedValueOnce({ ok: true, json: async () => ({ id: "f1" }) }) // upload
-      .mockResolvedValueOnce({ ok: true, json: async () => ({}) });          // extract
+      .mockResolvedValueOnce({ ok: true, json: async () => ({}) }); // extract
     render(<UploadDropzone />);
     const input = screen.getByTestId("upload-input") as HTMLInputElement;
     Object.defineProperty(input, "files", { value: [makeFile("p.pdf", 100, "application/pdf")] });
@@ -49,7 +49,10 @@ describe("UploadDropzone", () => {
 
     // Wait for the upload POST to resolve and navigation to fire.
     await new Promise((r) => setTimeout(r, 0));
-    expect(fetchMock).toHaveBeenCalledWith("/api/plans/upload", expect.objectContaining({ method: "POST" }));
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/plans/upload",
+      expect.objectContaining({ method: "POST" })
+    );
     await new Promise((r) => setTimeout(r, 0));
     expect(pushMock).toHaveBeenCalledWith("/plans/upload/f1/review");
   });

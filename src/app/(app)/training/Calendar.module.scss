@@ -84,7 +84,9 @@
   border: 1px solid var(--color-brown-mid, var(--color-brown));
   border-radius: var(--radius-pill);
   opacity: 0.85;
-  &:hover { opacity: 1; }
+  &:hover {
+    opacity: 1;
+  }
 }
 
 .nav {
@@ -119,7 +121,9 @@
 .dayRow {
   padding: 13px 0;
   border-bottom: 1px solid var(--color-border-subtle);
-  &:last-child { border-bottom: none; }
+  &:last-child {
+    border-bottom: none;
+  }
 }
 
 .dayToday {

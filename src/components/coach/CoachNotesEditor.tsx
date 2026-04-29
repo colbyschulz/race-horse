@@ -30,7 +30,10 @@ export function CoachNotesEditor({ initialContent }: { initialContent: string })
   return (
     <section className={styles.section}>
       <h3 className={styles.title}>Coach notes</h3>
-      <p className={styles.help}>The coach&apos;s durable memory about you. The coach edits this automatically as your goals shift, but you can also edit directly. Max 4 KB.</p>
+      <p className={styles.help}>
+        The coach&apos;s durable memory about you. The coach edits this automatically as your goals
+        shift, but you can also edit directly. Max 4 KB.
+      </p>
       <Textarea
         value={content}
         onChange={(e) => setContent(e.target.value.slice(0, 4096))}
@@ -40,7 +43,9 @@ export function CoachNotesEditor({ initialContent }: { initialContent: string })
         <span className={styles.counter}>{content.length} / 4096</span>
         <span className={styles.spacer} />
         {savedAt && <span className={styles.saved}>Saved {savedAt.toLocaleTimeString()}</span>}
-        <Button variant="primary" onClick={save} loading={saving}>Save</Button>
+        <Button variant="primary" onClick={save} loading={saving}>
+          Save
+        </Button>
       </div>
     </section>
   );

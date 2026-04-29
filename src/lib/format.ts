@@ -19,7 +19,7 @@ export interface FormatDistanceOpts {
 export function formatDistance(
   meters: number | string | null | undefined,
   units: Units,
-  opts: FormatDistanceOpts = {},
+  opts: FormatDistanceOpts = {}
 ): string | null {
   if (meters == null) return null;
   const n = typeof meters === "string" ? Number(meters) : meters;
@@ -34,7 +34,7 @@ export interface FormatDurationOpts {
 
 export function formatDuration(
   seconds: number | null | undefined,
-  opts: FormatDurationOpts = {},
+  opts: FormatDurationOpts = {}
 ): string | null {
   if (seconds == null || seconds <= 0) return null;
   const h = Math.floor(seconds / 3600);

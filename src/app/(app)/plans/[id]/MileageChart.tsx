@@ -13,9 +13,7 @@ interface Props {
 
 function weekIndexFromMonday(planStart: string, monday: string): number {
   const startMon = mondayOf(planStart);
-  const ms =
-    new Date(monday + "T00:00:00").getTime() -
-    new Date(startMon + "T00:00:00").getTime();
+  const ms = new Date(monday + "T00:00:00").getTime() - new Date(startMon + "T00:00:00").getTime();
   return Math.round(ms / (7 * 24 * 60 * 60 * 1000)) + 1;
 }
 

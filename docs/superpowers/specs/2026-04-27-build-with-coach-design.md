@@ -23,7 +23,7 @@ This spec replaces that with a small, structured intake card on the coach page, 
 1. User clicks **Build with coach** on `/plans`. Link is `/coach?intent=build`.
 2. Coach page loads. Because `?intent=build` is in the URL, the BuildFormCard renders above the message input. Empty state of the chat (or existing chat history) sits behind it. Input is disabled while the form is active.
 3. User fills the form (sport, goal type, race details if applicable, free-text goals & context) and clicks **Build plan**.
-4. Form transitions to a locked state showing the submitted values plus a small spinner with text *"Loading your training history…"*. Input remains disabled.
+4. Form transitions to a locked state showing the submitted values plus a small spinner with text _"Loading your training history…"_. Input remains disabled.
 5. Server-side: pre-fetch athlete summary (4/12/52-week rollup) + last 12 weeks of activities summary, then start the coach turn with the form's content as the user message and the pre-fetched Strava data injected into the per-turn `<context>` prefix along with a `Cold-start plan build: true` flag.
 6. Coach streams its reply. Spinner on the form card disappears once the first text delta arrives. Per the system-prompt carve-out, the coach either:
    - Asks one focused clarifying question (rare — only when the form + Strava picture is genuinely missing or contradictory), or
@@ -42,19 +42,22 @@ Location: rendered inside `CoachPageClient`'s scroll area, above the existing `M
 Three states:
 
 **Editable** (initial):
+
 - **Sport** — radio: Run / Bike. Required.
 - **Goal type** — radio: Race-targeted / Indefinite build. Required.
 - **Race date** — `<input type="date">`, required if race-targeted, hidden otherwise.
 - **Race distance / event** — text input with preset chips below it (5K, 10K, Half, Marathon, Ultra, Custom), required if race-targeted.
-- **Target time** — text input, optional. Placeholder: *"sub-3:00"*.
-- **Goals & context** — `<textarea>`, optional, ~3 rows. Placeholder: *"Anything else worth knowing — race terrain, days you can't train, equipment, injuries, prior PBs, etc."*
+- **Target time** — text input, optional. Placeholder: _"sub-3:00"_.
+- **Goals & context** — `<textarea>`, optional, ~3 rows. Placeholder: _"Anything else worth knowing — race terrain, days you can't train, equipment, injuries, prior PBs, etc."_
 - Buttons: **Build plan** (primary), **Cancel** (text).
 
 **Submitting** (post-submit, pre-first-stream-delta):
+
 - All fields disabled, showing the submitted values.
-- Buttons replaced by a row containing a spinner and the text *"Loading your training history…"*.
+- Buttons replaced by a row containing a spinner and the text _"Loading your training history…"_.
 
 **Locked** (after first stream delta and on history reload):
+
 - Same as submitting, but spinner is gone. Just shows the submitted values as a static summary card.
 
 Visually distinct from message bubbles — narrower max-width, border-only, no avatar, lower visual weight than coach/user bubbles.
@@ -66,6 +69,7 @@ Visually distinct from message bubbles — narrower max-width, border-only, no a
 ### 4.3 Coach page client change
 
 `src/app/(app)/coach/CoachPageClient.tsx`:
+
 - Read `intent` from `searchParams` (already wired through `page.tsx`'s `searchParams`).
 - If `intent === "build"` and the form has not yet been submitted in this navigation, render the BuildFormCard.
 - New form-submit path that hits a new endpoint (`POST /api/coach/build`) — see §5.
@@ -92,8 +96,10 @@ Body:
 Validates the session, validates the body (zod), then:
 
 1. **Format the form as Markdown** with a sentinel comment. Example output:
+
    ```markdown
    <!-- build_form_request -->
+
    **Build a plan**
 
    - **Sport:** Run
@@ -101,6 +107,7 @@ Validates the session, validates the body (zod), then:
    - **Target time:** sub-3:00
    - **Goals & context:** Hilly course (3000ft of climbing). Can't run Sundays. Coming back from a calf strain — no fast intervals for the first 3 weeks.
    ```
+
 2. **Persist** as a `messages` row with `role=user` and the markdown above as the sole text content block.
 3. **Pre-fetch Strava** server-side (in parallel where possible):
    - `getAthleteSummary(userId)` — 4/12/52-week training-volume rollup. Reuses the same query that backs the existing `get_athlete_summary` tool.
@@ -142,7 +149,7 @@ Strava preload (last 12 weeks + 4/12/52 rollups):
 Strava history: minimal
 ```
 
-`renderContextPrefix` is only called for build-turn requests. Subsequent turns from the user (typed messages, even if they continue the build conversation) do *not* re-inject the Strava preload. The model has the Strava data in the message history already (as the result of the previous turn's context prefix); calling tools is the path forward if it needs more.
+`renderContextPrefix` is only called for build-turn requests. Subsequent turns from the user (typed messages, even if they continue the build conversation) do _not_ re-inject the Strava preload. The model has the Strava data in the message history already (as the result of the previous turn's context prefix); calling tools is the path forward if it needs more.
 
 ### 5.3 System prompt revision
 
@@ -166,13 +173,16 @@ This means: if `create_plan` succeeded but the model errored before `update_work
 ## 6. Persistence shape
 
 User message (form submission):
+
 - Stored in `messages` as `role=user`, `content=[{ type: "text", text: "<markdown with sentinel>" }]`.
 - The leading line `<!-- build_form_request -->` is the sentinel. Markdown-comment style means it renders to nothing if anyone ever views it as plain markdown.
 
 Assistant message:
+
 - Standard. The full Anthropic content array (text + tool_use + tool_result blocks) gets persisted as before.
 
 Renderer logic in `MessageBubble` (or wherever messages are rendered):
+
 - Before rendering as a normal user bubble, peek at the first text block. If it begins with `<!-- build_form_request -->`, parse out the form fields from the markdown and render the BuildFormCard's **Locked** state instead.
 - Parsing is regex-based against the known markdown shape. If parsing fails (corrupted history), fall back to rendering as a plain markdown bubble.
 

@@ -27,7 +27,8 @@ function validate(body: unknown): CreatePlanInput | null {
   if (typeof b.mode !== "string" || !VALID_MODES.includes(b.mode as PlanMode)) return null;
   if (typeof b.source !== "string" || !VALID_SOURCES.includes(b.source as PlanSource)) return null;
   if (typeof b.start_date !== "string" || !ISO_DATE.test(b.start_date)) return null;
-  if (b.end_date != null && (typeof b.end_date !== "string" || !ISO_DATE.test(b.end_date))) return null;
+  if (b.end_date != null && (typeof b.end_date !== "string" || !ISO_DATE.test(b.end_date)))
+    return null;
   return {
     title: b.title.trim(),
     sport: b.sport as Sport,

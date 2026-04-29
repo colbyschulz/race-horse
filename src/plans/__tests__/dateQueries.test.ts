@@ -45,11 +45,7 @@ vi.mock("drizzle-orm", () => ({
 
 import { eq } from "drizzle-orm";
 
-import {
-  getActivePlan,
-  getWorkoutsForDateRange,
-  getNextWorkouts,
-} from "../dateQueries";
+import { getActivePlan, getWorkoutsForDateRange, getNextWorkouts } from "../dateQueries";
 
 // Helper to reset all chains
 function resetChains() {

@@ -79,7 +79,10 @@ export function PlanStatusActions({ plan, today }: Props) {
 
   return (
     <>
-      <Badge variant={status} label={status === "active" ? "Active" : status === "upcoming" ? "Upcoming" : "Archived"} />
+      <Badge
+        variant={status}
+        label={status === "active" ? "Active" : status === "upcoming" ? "Upcoming" : "Archived"}
+      />
       <div className={styles.menu} ref={menuRef}>
         <Button
           variant="ghost"
@@ -93,12 +96,20 @@ export function PlanStatusActions({ plan, today }: Props) {
         {menuOpen && (
           <div className={styles.dropdown}>
             {status !== "active" && (
-              <button type="button" className={styles.item} onClick={() => patch({ is_active: true })}>
+              <button
+                type="button"
+                className={styles.item}
+                onClick={() => patch({ is_active: true })}
+              >
                 Set active
               </button>
             )}
             {status === "active" && (
-              <button type="button" className={styles.item} onClick={() => patch({ is_active: false })}>
+              <button
+                type="button"
+                className={styles.item}
+                onClick={() => patch({ is_active: false })}
+              >
                 Archive
               </button>
             )}
@@ -113,7 +124,11 @@ export function PlanStatusActions({ plan, today }: Props) {
                 </Button>
               </div>
             ) : (
-              <button type="button" className={`${styles.item} ${styles.itemDanger}`} onClick={() => setConfirmDelete(true)}>
+              <button
+                type="button"
+                className={`${styles.item} ${styles.itemDanger}`}
+                onClick={() => setConfirmDelete(true)}
+              >
                 Delete
               </button>
             )}

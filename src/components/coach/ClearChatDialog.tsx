@@ -27,7 +27,9 @@ export function ClearChatDialog({ open, onClose, onConfirm }: Props) {
             <Dialog.Close asChild>
               <Button variant="ghost">Cancel</Button>
             </Dialog.Close>
-            <Button variant="dangerSolid" onClick={handleConfirm}>Clear chat</Button>
+            <Button variant="dangerSolid" onClick={handleConfirm}>
+              Clear chat
+            </Button>
           </div>
         </Dialog.Content>
       </Dialog.Portal>

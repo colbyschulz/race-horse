@@ -34,13 +34,13 @@ _[tool: fork_verifier_agent]_
 
 Here's what's in the wireframes — 8 screens across 5 sections:
 
-| Section | Screens |
-|---|---|
-| **Landing** | Mobile sign-in with Strava CTA, feature bullets |
-| **Today** | Mobile hero card (tempo run, Strava match, "ask coach" shortcut) + Desktop with sidebar + live coach panel |
-| **Calendar** | Mobile week view (type badges, completion checkmarks, weekly total) + Desktop month view (with weekly mileage column) |
-| **Plans** | Mobile plan list (active badge, archived, build/upload CTAs) + Upload sheet (drop zone, extraction progress, review step) |
-| **Coach** | Mobile full chat (conversation tabs, tool-call indicators, context attachment) |
+| Section      | Screens                                                                                                                   |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------- |
+| **Landing**  | Mobile sign-in with Strava CTA, feature bullets                                                                           |
+| **Today**    | Mobile hero card (tempo run, Strava match, "ask coach" shortcut) + Desktop with sidebar + live coach panel                |
+| **Calendar** | Mobile week view (type badges, completion checkmarks, weekly total) + Desktop month view (with weekly mileage column)     |
+| **Plans**    | Mobile plan list (active badge, archived, build/upload CTAs) + Upload sheet (drop zone, extraction progress, review step) |
+| **Coach**    | Mobile full chat (conversation tabs, tool-call indicators, context attachment)                                            |
 
 **Click any artboard to focus it fullscreen.** You can pan/zoom the canvas freely.
 
@@ -70,6 +70,7 @@ I really dislike the typography. Is that what's in my design system?
 No — I chose **Caveat** (the sketchy handwritten font) specifically for the wireframe aesthetic, to keep things rough and low-fi. It's not your design system.
 
 Your design system specifies:
+
 - **Syne** — display/headings (geometric, confident)
 - **Roboto** — body/UI (clean, readable)
 
@@ -120,10 +121,10 @@ A few quick thoughts before I update the wireframes:
 - The current accent is **terracotta** (#C4622D) — a burnt orange-brown. Do you want to replace it entirely, or keep terracotta for workout type badges and make brown the primary brand color?
 - Here are three brown directions that harmonize with the existing palette:
 
-| Name | Hex | Feel |
-|---|---|---|
-| **Saddle** | `#7A4728` | Rich, classic leather |
-| **Walnut** | `#5C3317` | Deep, almost espresso |
+| Name         | Hex       | Feel                     |
+| ------------ | --------- | ------------------------ |
+| **Saddle**   | `#7A4728` | Rich, classic leather    |
+| **Walnut**   | `#5C3317` | Deep, almost espresso    |
 | **Chestnut** | `#8B5A2B` | Warm, mid-tone, readable |
 
 Which feels right? And should I swap all the terracotta accents (buttons, active states, borders) to brown, or just the primary brand moments (logo, nav active state, hero CTA)?
@@ -169,6 +170,7 @@ Good foundation — I have the full token set, type scale, and component pattern
 ## User
 
 Questions answered:
+
 - screens: All of them
 - device: Both side-by-side
 - brown: 0
@@ -191,18 +193,19 @@ _[tool: update_todos]_
 
 Here's what's in the hi-fi — 13 artboards across 6 sections:
 
-| Section | A | B | Desktop |
-|---|---|---|---|
-| **Landing** | Clean, centered | Editorial dark | — |
-| **Today** | Card-heavy, full stat grid | Big editorial type | Sidebar + coach panel |
-| **Calendar** | Grid cells with color bars | Agenda rows | Month view |
-| **Plans** | Card list | Bold brown active strip | — |
-| **Coach** | Slide-up sheet (75%) | Full screen | — |
-| **Settings** | Preferences + coach notes editor | — | — |
+| Section      | A                                | B                       | Desktop               |
+| ------------ | -------------------------------- | ----------------------- | --------------------- |
+| **Landing**  | Clean, centered                  | Editorial dark          | —                     |
+| **Today**    | Card-heavy, full stat grid       | Big editorial type      | Sidebar + coach panel |
+| **Calendar** | Grid cells with color bars       | Agenda rows             | Month view            |
+| **Plans**    | Card list                        | Bold brown active strip | —                     |
+| **Coach**    | Slide-up sheet (75%)             | Full screen             | —                     |
+| **Settings** | Preferences + coach notes editor | —                       | —                     |
 
 **Click any artboard to go fullscreen.** The color bar system on calendar cells (each workout type gets its own color strip) is worth a close look at full size.
 
 A few things to react to:
+
 - **Landing A vs B** — do you want the dark editorial direction, or keep it light?
 - **Today A vs B** — the big Syne headline in B vs the dense stat grid in A
 - **Plans B** — the brown active strip is bolder; works if plans become a frequently visited screen
@@ -212,9 +215,9 @@ What's landing and what isn't?
 
 ## User
 
-For landing I want a light but editorial. 
+For landing I want a light but editorial.
 Today I like B Editorial
-Calendar I like B, but let's get rid of the checkmarks. It's too busy. I also want ot be able to button press to next week or previous week. 
+Calendar I like B, but let's get rid of the checkmarks. It's too busy. I also want ot be able to button press to next week or previous week.
 Plans A card list.
 Coach I liek the slide up
 
@@ -223,6 +226,7 @@ Coach I liek the slide up
 _[tool: str_replace_edit]_
 
 Got it. Three changes to make:
+
 1. **Landing** → light bg + big editorial Syne type (blend of A+B)
 2. **Calendar B** → strip checkmarks, upgrade prev/next to proper buttons
 3. Consolidate canvas to show chosen directions prominently
@@ -254,4 +258,3 @@ Verifier agent check completed
 ## Assistant
 
 ## Assistant
-

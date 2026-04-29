@@ -32,7 +32,7 @@ export type ToolName =
 
 export type ToolHandler<I = unknown, O = unknown> = (
   input: I,
-  ctx: { userId: string; planId?: string | null },
+  ctx: { userId: string; planId?: string | null }
 ) => Promise<O>;
 
 export type SSEEvent =
@@ -52,8 +52,8 @@ export type ChatRequestBody = {
 export type BuildRequestBody = {
   sport: "run" | "bike";
   goal_type: "race" | "indefinite";
-  race_date?: string;       // YYYY-MM-DD, required when goal_type === "race"
-  race_event?: string;      // required when goal_type === "race"
-  target_time?: string;     // optional
-  context?: string;         // optional free-text "Goals & context"
+  race_date?: string; // YYYY-MM-DD, required when goal_type === "race"
+  race_event?: string; // required when goal_type === "race"
+  target_time?: string; // optional
+  context?: string; // optional free-text "Goals & context"
 };

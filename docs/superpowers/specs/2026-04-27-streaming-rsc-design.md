@@ -49,6 +49,7 @@ No third-party skeleton library.
 **Stays in page function:** `auth()`, units preference, `getActivePlan()` (needed for header title + CoachLink planId).
 
 **Suspense sections:**
+
 - `<HeroSection userId planId units />` — `getWorkoutsForDateRange(today, today)` — fallback: `HeroWorkoutSkeleton` (~140px tall card)
 - `<ActivitiesSection userId units />` — `getActivitiesForDateRange(today, today)` — fallback: `ActivitiesSkeleton` (heading + 2 row stubs)
 - `<UpNextSection userId units />` — `getNextWorkouts(userId, today, 2)` — fallback: `UpNextSkeleton` (2 compact row stubs)
@@ -58,6 +59,7 @@ No third-party skeleton library.
 **Stays in page function:** `auth()`, units, `getActivePlan()` (plan title in header), week calculation from searchParams.
 
 **Suspense sections:**
+
 - `<WeekAgendaSection userId monday sunday units activePlanId />` — `getWorkoutsForDateRange` + `getActivitiesForDateRange` in parallel — fallback: `WeekAgendaSkeleton` (7 day-row stubs)
 
 The interactive layer (workout detail sheet) remains a Client Component; `WeekAgendaSection` renders it with data props.
@@ -67,6 +69,7 @@ The interactive layer (workout detail sheet) remains a Client Component; `WeekAg
 **Stays in page function:** `auth()`.
 
 **Suspense sections:**
+
 - `<PlansListSection userId today />` — `listPlansWithCounts` + `listInFlightPlanFiles` in parallel — fallback: `PlansListSkeleton` (3 card stubs)
 
 ### Plan Detail (`/plans/[id]`)
@@ -74,6 +77,7 @@ The interactive layer (workout detail sheet) remains a Client Component; `WeekAg
 **Stays in page function:** `auth()`, `getPlanById()` (plan title/dates needed for shell header), week calculation.
 
 **Suspense sections:**
+
 - `<PlanWeekSection userId planId monday sunday units />` — `getWorkoutsForPlan` + `getActivitiesForDateRange` in parallel — fallback: `PlanWeekSkeleton` (reuses WeekAgendaSkeleton)
 
 ### Coach (`/coach`)
@@ -81,6 +85,7 @@ The interactive layer (workout detail sheet) remains a Client Component; `WeekAg
 **Stays in page function:** `auth()`, plan lookup from searchParams (needed for context pill in header).
 
 **Suspense sections:**
+
 - `<MessagesSection userId planId />` — `loadHistory(userId, planId)` — fallback: `MessagesSkeleton` (3-4 bubble stubs alternating sides)
 
 ### Settings (`/settings`)
@@ -88,6 +93,7 @@ The interactive layer (workout detail sheet) remains a Client Component; `WeekAg
 **Stays in page function:** `auth()`. `SettingsForm` renders immediately from `session.user.preferences` — no extra query.
 
 **Suspense sections:**
+
 - `<CoachNotesSection userId />` — single `coach_notes` DB query — fallback: `CoachNotesSkeleton` (textarea-shaped block)
 
 ---

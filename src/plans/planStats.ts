@@ -39,12 +39,12 @@ export function computePlanStats(workouts: WorkoutRow[], units: "mi" | "km"): Pl
   }
   const totalMeters = workouts.reduce(
     (s, w) => s + (w.distance_meters == null ? 0 : Number(w.distance_meters)),
-    0,
+    0
   );
   const weekly = weeklyMileage(workouts, units);
   const peak = weekly.reduce<WeeklyMileage | null>(
     (best, w) => (best == null || w.miles > best.miles ? w : best),
-    null,
+    null
   );
   let longest: { dateIso: string; meters: number } | null = null;
   for (const w of workouts) {

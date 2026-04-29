@@ -7,8 +7,15 @@ export type ExtractedWorkout = {
   day_offset: number;
   sport: Sport;
   type:
-    | "easy" | "long" | "tempo" | "threshold"
-    | "intervals" | "recovery" | "race" | "rest" | "cross";
+    | "easy"
+    | "long"
+    | "tempo"
+    | "threshold"
+    | "intervals"
+    | "recovery"
+    | "race"
+    | "rest"
+    | "cross";
   distance_meters: number | null;
   duration_seconds: number | null;
   target_intensity: TargetIntensity | null;
@@ -22,7 +29,7 @@ export type MaterializedWorkout = Omit<ExtractedWorkout, "day_offset"> & {
 
 export function materializeWorkouts(
   startDate: string,
-  workouts: ExtractedWorkout[],
+  workouts: ExtractedWorkout[]
 ): MaterializedWorkout[] {
   return workouts.map((w) => {
     const { day_offset, ...rest } = w;

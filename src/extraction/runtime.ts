@@ -1,11 +1,7 @@
 // src/extraction/runtime.ts
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { getAnthropic, EXTRACTION_MODEL } from "@/coach/anthropic";
-import {
-  getPlanFileById,
-  setExtractedPayload,
-  updatePlanFileStatus,
-} from "@/plans/files";
+import { getPlanFileById, setExtractedPayload, updatePlanFileStatus } from "@/plans/files";
 import { fetchPlanFileBytes } from "./blob";
 import { formatForClaude } from "./format";
 import { ExtractedPlanSchema } from "./schema";
@@ -34,7 +30,9 @@ export async function runExtraction(planFileId: string, userId: string): Promise
     const response = await client.messages.parse({
       model: EXTRACTION_MODEL,
       max_tokens: 32000,
-      system: [{ type: "text", text: EXTRACTION_SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }],
+      system: [
+        { type: "text", text: EXTRACTION_SYSTEM_PROMPT, cache_control: { type: "ephemeral" } },
+      ],
       output_config: {
         format: zodOutputFormat(ExtractedPlanSchema),
       },
@@ -44,16 +42,20 @@ export async function runExtraction(planFileId: string, userId: string): Promise
     const parsed = ExtractedPlanSchema.safeParse(response.parsed_output);
     if (!parsed.success) {
       await updatePlanFileStatus(
-        planFileId, userId, "failed",
-        "Couldn't parse the file's structure.",
+        planFileId,
+        userId,
+        "failed",
+        "Couldn't parse the file's structure."
       );
       return;
     }
 
     if (!parsed.data.is_training_plan) {
       await updatePlanFileStatus(
-        planFileId, userId, "failed",
-        "This file doesn't look like a training plan.",
+        planFileId,
+        userId,
+        "failed",
+        "This file doesn't look like a training plan."
       );
       return;
     }

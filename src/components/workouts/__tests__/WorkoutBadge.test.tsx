@@ -4,7 +4,17 @@ import { WorkoutBadge } from "../WorkoutBadge";
 
 describe("WorkoutBadge", () => {
   it("renders the label for each type", () => {
-    const types = ["easy","long","tempo","threshold","intervals","recovery","race","rest","cross"] as const;
+    const types = [
+      "easy",
+      "long",
+      "tempo",
+      "threshold",
+      "intervals",
+      "recovery",
+      "race",
+      "rest",
+      "cross",
+    ] as const;
     for (const t of types) {
       const { unmount } = render(<WorkoutBadge type={t} />);
       const label = t.charAt(0).toUpperCase() + t.slice(1);

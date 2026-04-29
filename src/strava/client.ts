@@ -4,7 +4,7 @@ export class StravaApiError extends Error {
   constructor(
     public status: number,
     public body: string,
-    public url: string,
+    public url: string
   ) {
     super(`Strava API ${status} on ${url}: ${body.slice(0, 200)}`);
   }
@@ -28,23 +28,16 @@ const sleep = (ms: number, signal?: AbortSignal) =>
         clearTimeout(id);
         reject(signal.reason);
       },
-      { once: true },
+      { once: true }
     );
   });
 
 export async function fetchStrava<T>(
   path: string,
   token: string,
-  opts: FetchStravaOptions = {},
+  opts: FetchStravaOptions = {}
 ): Promise<T> {
-  const {
-    params,
-    method = "GET",
-    body,
-    maxRetries = 4,
-    baseDelayMs = 500,
-    signal,
-  } = opts;
+  const { params, method = "GET", body, maxRetries = 4, baseDelayMs = 500, signal } = opts;
 
   let url = STRAVA_BASE + path;
   if (params) {

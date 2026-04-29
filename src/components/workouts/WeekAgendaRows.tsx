@@ -17,7 +17,16 @@ interface Props {
   showWeekTotal?: boolean;
 }
 
-export function WeekAgendaRows({ monday, byDate, activitiesByDate, today, units, isActivePlan, onDayClick, showWeekTotal = true }: Props) {
+export function WeekAgendaRows({
+  monday,
+  byDate,
+  activitiesByDate,
+  today,
+  units,
+  isActivePlan,
+  onDayClick,
+  showWeekTotal = true,
+}: Props) {
   const days = Array.from({ length: 7 }, (_, i) => addDays(monday, i));
   let totalMeters = 0;
   let totalSeconds = 0;
@@ -48,17 +57,22 @@ export function WeekAgendaRows({ monday, byDate, activitiesByDate, today, units,
               <span className={`${styles.dayLabel} ${isToday ? styles.dayLabelToday : ""}`}>
                 {formatDayLabel(d)}
               </span>
-              {isRest
-                ? <span className={styles.rest}>Rest</span>
-                : <WorkoutBadge type={w!.type} size="sm" />
-              }
+              {isRest ? (
+                <span className={styles.rest}>Rest</span>
+              ) : (
+                <WorkoutBadge type={w!.type} size="sm" />
+              )}
               {isToday && <span className={styles.now}>Today</span>}
               {!isRest && w && (
                 <span className={styles.meta}>
-                  <span className={styles.metaVal}>{formatDistance(w.distance_meters as string | null, units) ?? "—"}</span>
+                  <span className={styles.metaVal}>
+                    {formatDistance(w.distance_meters as string | null, units) ?? "—"}
+                  </span>
                   <span className={styles.metaUnit}>{units}</span>
                   <span className={styles.metaSep}>·</span>
-                  <span className={styles.metaVal}>{formatDuration(w.duration_seconds) ?? "—"}</span>
+                  <span className={styles.metaVal}>
+                    {formatDuration(w.duration_seconds) ?? "—"}
+                  </span>
                 </span>
               )}
             </button>
@@ -73,8 +87,10 @@ export function WeekAgendaRows({ monday, byDate, activitiesByDate, today, units,
                 <span className={styles.activityLabel}>Completed</span>
                 <span className={styles.activityName}>{act.name}</span>
                 <span className={styles.activityMeta}>
-                  {formatDistance(act.distance_meters, units) ?? "—"}{" "}{units}
-                  {act.moving_time_seconds ? ` · ${formatDuration(act.moving_time_seconds) ?? ""}` : ""}
+                  {formatDistance(act.distance_meters, units) ?? "—"} {units}
+                  {act.moving_time_seconds
+                    ? ` · ${formatDuration(act.moving_time_seconds) ?? ""}`
+                    : ""}
                 </span>
               </a>
             ))}
@@ -85,7 +101,8 @@ export function WeekAgendaRows({ monday, byDate, activitiesByDate, today, units,
         <div className={styles.weekTotal}>
           <span className={styles.totalLabel}>Week total</span>
           <span className={styles.totalValue}>
-            {formatDistance(totalMeters, units) ?? "—"} {units} · {formatDuration(totalSeconds) ?? "—"}
+            {formatDistance(totalMeters, units) ?? "—"} {units} ·{" "}
+            {formatDuration(totalSeconds) ?? "—"}
           </span>
         </div>
       )}

@@ -11,9 +11,25 @@
 }
 
 // Header used only in extracting/failed pre-extraction state
-.header { display: flex; flex-direction: column; gap: var(--space-1); }
-.title  { font-family: var(--font-display); font-size: clamp(1.5rem, 4vw, 2.25rem); font-weight: 700; letter-spacing: -0.02em; line-height: 1; color: var(--color-fg-primary); margin: 0; }
-.sub    { font-size: 0.875rem; color: var(--color-fg-tertiary); margin: 0; }
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.title {
+  font-family: var(--font-display);
+  font-size: clamp(1.5rem, 4vw, 2.25rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  color: var(--color-fg-primary);
+  margin: 0;
+}
+.sub {
+  font-size: 0.875rem;
+  color: var(--color-fg-tertiary);
+  margin: 0;
+}
 
 // Save / Discard / Set active actions (rendered in PlanView's actionsBar)
 .toggle {

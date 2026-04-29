@@ -13,12 +13,14 @@ describe("routeLabel", () => {
     expect(routeLabel("/some/random/path")).toBeNull();
   });
   it("labels plan detail routes with the plan id", () => {
-    expect(routeLabel("/plans/3f2c4a91-aa11-4cb1-9f2d-12345678abcd"))
-      .toBe("Plan detail (plan id: 3f2c4a91-aa11-4cb1-9f2d-12345678abcd)");
+    expect(routeLabel("/plans/3f2c4a91-aa11-4cb1-9f2d-12345678abcd")).toBe(
+      "Plan detail (plan id: 3f2c4a91-aa11-4cb1-9f2d-12345678abcd)"
+    );
   });
   it("labels plan workout drill-in routes with id and date", () => {
-    expect(routeLabel("/plans/3f2c4a91-aa11-4cb1-9f2d-12345678abcd/2026-05-04"))
-      .toBe("Workout detail (plan id: 3f2c4a91-aa11-4cb1-9f2d-12345678abcd, date: 2026-05-04)");
+    expect(routeLabel("/plans/3f2c4a91-aa11-4cb1-9f2d-12345678abcd/2026-05-04")).toBe(
+      "Workout detail (plan id: 3f2c4a91-aa11-4cb1-9f2d-12345678abcd, date: 2026-05-04)"
+    );
   });
   it("still labels static routes", () => {
     expect(routeLabel("/today")).toBe("Today view");
@@ -77,7 +79,11 @@ describe("renderContextPrefix planFile branch", () => {
   });
   it("omits the block when planFile is null", () => {
     const out = renderContextPrefix({
-      today: "2026-04-27", units: "mi", activePlan: null, coachNotes: "", fromLabel: null,
+      today: "2026-04-27",
+      units: "mi",
+      activePlan: null,
+      coachNotes: "",
+      fromLabel: null,
     });
     expect(out).not.toContain("read_uploaded_file");
   });
@@ -117,11 +123,30 @@ describe("renderContextPrefix build branch", () => {
       coldStartBuild: true,
       stravaPreload: {
         athlete_summary: {
-          four_week: { count: 1, total_distance_meters: 1, total_moving_time_seconds: 1, by_type: {} },
-          twelve_week: { count: 5, total_distance_meters: 5, total_moving_time_seconds: 5, by_type: {} },
-          fifty_two_week: { count: 10, total_distance_meters: 10, total_moving_time_seconds: 10, by_type: {} },
+          four_week: {
+            count: 1,
+            total_distance_meters: 1,
+            total_moving_time_seconds: 1,
+            by_type: {},
+          },
+          twelve_week: {
+            count: 5,
+            total_distance_meters: 5,
+            total_moving_time_seconds: 5,
+            by_type: {},
+          },
+          fifty_two_week: {
+            count: 10,
+            total_distance_meters: 10,
+            total_moving_time_seconds: 10,
+            by_type: {},
+          },
         },
-        recent_activities_summary: { count: 5, total_distance_meters: 5, total_moving_time_seconds: 5 },
+        recent_activities_summary: {
+          count: 5,
+          total_distance_meters: 5,
+          total_moving_time_seconds: 5,
+        },
         minimal: false,
       },
     });
@@ -141,11 +166,30 @@ describe("renderContextPrefix build branch", () => {
       coldStartBuild: true,
       stravaPreload: {
         athlete_summary: {
-          four_week: { count: 0, total_distance_meters: 0, total_moving_time_seconds: 0, by_type: {} },
-          twelve_week: { count: 0, total_distance_meters: 0, total_moving_time_seconds: 0, by_type: {} },
-          fifty_two_week: { count: 0, total_distance_meters: 0, total_moving_time_seconds: 0, by_type: {} },
+          four_week: {
+            count: 0,
+            total_distance_meters: 0,
+            total_moving_time_seconds: 0,
+            by_type: {},
+          },
+          twelve_week: {
+            count: 0,
+            total_distance_meters: 0,
+            total_moving_time_seconds: 0,
+            by_type: {},
+          },
+          fifty_two_week: {
+            count: 0,
+            total_distance_meters: 0,
+            total_moving_time_seconds: 0,
+            by_type: {},
+          },
         },
-        recent_activities_summary: { count: 0, total_distance_meters: 0, total_moving_time_seconds: 0 },
+        recent_activities_summary: {
+          count: 0,
+          total_distance_meters: 0,
+          total_moving_time_seconds: 0,
+        },
         minimal: true,
       },
     });

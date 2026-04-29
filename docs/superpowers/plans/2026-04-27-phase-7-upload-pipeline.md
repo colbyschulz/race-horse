@@ -23,6 +23,7 @@
 ## File structure
 
 **Create:**
+
 - `src/db/schema.ts` — extend with `plan_file_status` enum + `planFiles` table.
 - `drizzle/000X_<auto>.sql` — generated migration.
 - `src/plans/files.ts` — queries: `createPlanFile`, `getPlanFileById`, `listInFlightPlanFiles`, `updatePlanFileStatus`, `setExtractedPayload`, `setExtractedPlanId`, `deletePlanFile`.
@@ -51,6 +52,7 @@
 - `src/coach/tools/__tests__/files.test.ts`
 
 **Modify:**
+
 - `package.json` / lockfile — add `@vercel/blob`, `papaparse`, `@types/papaparse`, `xlsx`.
 - `src/components/plans/PlanActionRow.tsx` — drop disabled state on Upload button (and on "Build with coach" — Phase 4 already shipped).
 - `src/components/plans/PlanActionRow.module.scss` — remove `.comingSoon` if it becomes unused; keep otherwise.
@@ -67,6 +69,7 @@
 - `src/coach/__tests__/context.test.ts` — extend tests for the planFile branch.
 
 **No changes needed:**
+
 - `plans.source_file_id` already exists; the save handler populates it.
 - Phase 6 components (`PlanStats`, `MileageChart`, `WeekGrid`, `WorkoutDetailSheet`) are reused as-is.
 
@@ -75,6 +78,7 @@
 ## Task 1: Dependencies + Vercel Blob env
 
 **Files:**
+
 - Modify: `package.json` (and lockfile via npm install)
 
 - [ ] **Step 1: Install runtime deps**
@@ -92,6 +96,7 @@ npm install --save-dev @types/papaparse
 - [ ] **Step 3: Verify versions**
 
 Run:
+
 ```bash
 npx tsc --noEmit
 ```
@@ -117,6 +122,7 @@ Leave `package.json`, the lockfile, and any README change unstaged. Do not commi
 ## Task 2: Schema migration — `plan_files` + `plan_file_status` enum
 
 **Files:**
+
 - Modify: `src/db/schema.ts`
 - Create: `drizzle/000X_*.sql` (auto-generated)
 
@@ -125,11 +131,7 @@ Leave `package.json`, the lockfile, and any README change unstaged. Do not commi
 In `src/db/schema.ts`, near the other `pgEnum` declarations (line 34 area), add:
 
 ```ts
-export const planFileStatusEnum = pgEnum("plan_file_status", [
-  "extracting",
-  "extracted",
-  "failed",
-]);
+export const planFileStatusEnum = pgEnum("plan_file_status", ["extracting", "extracted", "failed"]);
 ```
 
 - [ ] **Step 2: Add the table**
@@ -151,17 +153,13 @@ export const planFiles = pgTable(
     status: planFileStatusEnum("status").notNull(),
     extraction_error: text("extraction_error"),
     extracted_payload: jsonb("extracted_payload"),
-    extracted_plan_id: uuid("extracted_plan_id").references(() => plans.id, { onDelete: "set null" }),
-    created_at: timestamp("created_at", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-    updated_at: timestamp("updated_at", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
+    extracted_plan_id: uuid("extracted_plan_id").references(() => plans.id, {
+      onDelete: "set null",
+    }),
+    created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [
-    index("plan_file_user_idx").on(t.userId, t.created_at),
-  ],
+  (t) => [index("plan_file_user_idx").on(t.userId, t.created_at)]
 );
 ```
 
@@ -194,6 +192,7 @@ Stage `src/db/schema.ts` + the new `drizzle/0005_*.sql` (or whatever the next nu
 ## Task 3: `src/plans/files.ts` queries
 
 **Files:**
+
 - Create: `src/plans/files.ts`
 - Create: `src/plans/__tests__/files.test.ts`
 
@@ -261,7 +260,7 @@ describe("createPlanFile", () => {
     });
     expect(result).toEqual(row);
     expect(insertChain.values).toHaveBeenCalledWith(
-      expect.objectContaining({ id: "f1", userId: "u1", status: "extracting" }),
+      expect.objectContaining({ id: "f1", userId: "u1", status: "extracting" })
     );
   });
 });
@@ -302,7 +301,7 @@ describe("updatePlanFileStatus", () => {
   it("updates status + optional error", async () => {
     await updatePlanFileStatus("f1", "u1", "failed", "boom");
     expect(updateChain.set).toHaveBeenCalledWith(
-      expect.objectContaining({ status: "failed", extraction_error: "boom" }),
+      expect.objectContaining({ status: "failed", extraction_error: "boom" })
     );
   });
 });
@@ -311,7 +310,10 @@ describe("setExtractedPayload", () => {
   it("writes payload + status=extracted", async () => {
     await setExtractedPayload("f1", "u1", { is_training_plan: true });
     expect(updateChain.set).toHaveBeenCalledWith(
-      expect.objectContaining({ status: "extracted", extracted_payload: { is_training_plan: true } }),
+      expect.objectContaining({
+        status: "extracted",
+        extracted_payload: { is_training_plan: true },
+      })
     );
   });
 });
@@ -320,7 +322,7 @@ describe("setExtractedPlanId", () => {
   it("links plan id", async () => {
     await setExtractedPlanId("f1", "u1", "p1");
     expect(updateChain.set).toHaveBeenCalledWith(
-      expect.objectContaining({ extracted_plan_id: "p1" }),
+      expect.objectContaining({ extracted_plan_id: "p1" })
     );
   });
 });
@@ -410,7 +412,7 @@ export async function updatePlanFileStatus(
   id: string,
   userId: string,
   status: "extracting" | "extracted" | "failed",
-  error?: string | null,
+  error?: string | null
 ): Promise<void> {
   await db
     .update(planFiles)
@@ -425,7 +427,7 @@ export async function updatePlanFileStatus(
 export async function setExtractedPayload(
   id: string,
   userId: string,
-  payload: unknown,
+  payload: unknown
 ): Promise<void> {
   await db
     .update(planFiles)
@@ -441,7 +443,7 @@ export async function setExtractedPayload(
 export async function setExtractedPlanId(
   id: string,
   userId: string,
-  planId: string,
+  planId: string
 ): Promise<void> {
   await db
     .update(planFiles)
@@ -450,9 +452,7 @@ export async function setExtractedPlanId(
 }
 
 export async function deletePlanFile(id: string, userId: string): Promise<void> {
-  await db
-    .delete(planFiles)
-    .where(and(eq(planFiles.id, id), eq(planFiles.userId, userId)));
+  await db.delete(planFiles).where(and(eq(planFiles.id, id), eq(planFiles.userId, userId)));
 }
 
 // Reference imports kept to silence lints if any helper above goes unused initially.
@@ -475,6 +475,7 @@ Stage. Do not commit.
 ## Task 4: Workout materialization util
 
 **Files:**
+
 - Create: `src/plans/materialize.ts`
 - Create: `src/plans/__tests__/materialize.test.ts`
 
@@ -545,8 +546,15 @@ export type ExtractedWorkout = {
   day_offset: number;
   sport: Sport;
   type:
-    | "easy" | "long" | "tempo" | "threshold"
-    | "intervals" | "recovery" | "race" | "rest" | "cross";
+    | "easy"
+    | "long"
+    | "tempo"
+    | "threshold"
+    | "intervals"
+    | "recovery"
+    | "race"
+    | "rest"
+    | "cross";
   distance_meters: number | null;
   duration_seconds: number | null;
   target_intensity: TargetIntensity | null;
@@ -560,7 +568,7 @@ export type MaterializedWorkout = Omit<ExtractedWorkout, "day_offset"> & {
 
 export function materializeWorkouts(
   startDate: string,
-  workouts: ExtractedWorkout[],
+  workouts: ExtractedWorkout[]
 ): MaterializedWorkout[] {
   return workouts.map((w) => {
     const { day_offset, ...rest } = w;
@@ -590,6 +598,7 @@ Stage.
 ## Task 5: Extraction Zod schema
 
 **Files:**
+
 - Create: `src/extraction/schema.ts`
 
 - [ ] **Step 1: Implement**
@@ -599,18 +608,24 @@ Stage.
 import { z } from "zod";
 
 const TargetIntensityZ = z.object({
-  pace: z.object({
-    min_seconds_per_km: z.number().optional(),
-    max_seconds_per_km: z.number().optional(),
-  }).optional(),
-  power: z.object({
-    min_watts: z.number().optional(),
-    max_watts: z.number().optional(),
-  }).optional(),
-  hr: z.union([
-    z.object({ min_bpm: z.number().optional(), max_bpm: z.number().optional() }),
-    z.object({ zone: z.string() }),
-  ]).optional(),
+  pace: z
+    .object({
+      min_seconds_per_km: z.number().optional(),
+      max_seconds_per_km: z.number().optional(),
+    })
+    .optional(),
+  power: z
+    .object({
+      min_watts: z.number().optional(),
+      max_watts: z.number().optional(),
+    })
+    .optional(),
+  hr: z
+    .union([
+      z.object({ min_bpm: z.number().optional(), max_bpm: z.number().optional() }),
+      z.object({ zone: z.string() }),
+    ])
+    .optional(),
   rpe: z.number().optional(),
 });
 
@@ -619,15 +634,24 @@ const IntervalSpecZ = z.object({
   distance_m: z.number().optional(),
   duration_s: z.number().optional(),
   target_intensity: TargetIntensityZ.optional(),
-  rest: z.object({
-    duration_s: z.number().optional(),
-    distance_m: z.number().optional(),
-  }).optional(),
+  rest: z
+    .object({
+      duration_s: z.number().optional(),
+      distance_m: z.number().optional(),
+    })
+    .optional(),
 });
 
 const WorkoutTypeZ = z.enum([
-  "easy", "long", "tempo", "threshold",
-  "intervals", "recovery", "race", "rest", "cross",
+  "easy",
+  "long",
+  "tempo",
+  "threshold",
+  "intervals",
+  "recovery",
+  "race",
+  "rest",
+  "cross",
 ]);
 
 export const ExtractedPlanSchema = z.object({
@@ -635,22 +659,26 @@ export const ExtractedPlanSchema = z.object({
   title: z.string(),
   sport: z.enum(["run", "bike"]),
   mode: z.enum(["goal", "indefinite"]),
-  goal: z.object({
-    race_date: z.string().nullable(),
-    race_distance: z.string().nullable(),
-    target_time: z.string().nullable(),
-  }).nullable(),
+  goal: z
+    .object({
+      race_date: z.string().nullable(),
+      race_distance: z.string().nullable(),
+      target_time: z.string().nullable(),
+    })
+    .nullable(),
   tentative_start_date: z.string().nullable(),
-  workouts: z.array(z.object({
-    day_offset: z.number().int().nonnegative(),
-    sport: z.enum(["run", "bike"]),
-    type: WorkoutTypeZ,
-    distance_meters: z.number().nullable(),
-    duration_seconds: z.number().int().nullable(),
-    target_intensity: TargetIntensityZ.nullable(),
-    intervals: z.array(IntervalSpecZ).nullable(),
-    notes: z.string(),
-  })),
+  workouts: z.array(
+    z.object({
+      day_offset: z.number().int().nonnegative(),
+      sport: z.enum(["run", "bike"]),
+      type: WorkoutTypeZ,
+      distance_meters: z.number().nullable(),
+      duration_seconds: z.number().int().nullable(),
+      target_intensity: TargetIntensityZ.nullable(),
+      intervals: z.array(IntervalSpecZ).nullable(),
+      notes: z.string(),
+    })
+  ),
 });
 
 export type ExtractedPlan = z.infer<typeof ExtractedPlanSchema>;
@@ -669,6 +697,7 @@ Stage. (No tests yet — covered by `runtime.test.ts` in Task 7.)
 ## Task 6: Extraction file formatting
 
 **Files:**
+
 - Create: `src/extraction/format.ts`
 - Create: `src/extraction/__tests__/format.test.ts`
 
@@ -699,7 +728,10 @@ describe("formatForClaude", () => {
       type: "document",
       source: { type: "base64", media_type: "application/pdf" },
     });
-    const textBlocks = blocks.filter((b) => b.type === "text") as Array<{ type: "text"; text: string }>;
+    const textBlocks = blocks.filter((b) => b.type === "text") as Array<{
+      type: "text";
+      text: string;
+    }>;
     expect(textBlocks[0].text).toContain("plan.pdf");
   });
 
@@ -728,7 +760,7 @@ describe("formatForClaude", () => {
     const blocks = await formatForClaude(
       buf,
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      "plan.xlsx",
+      "plan.xlsx"
     );
     const t = blocks[0] as { type: "text"; text: string };
     expect(t.text).toContain("S1");
@@ -784,7 +816,7 @@ function bufferToText(buf: ArrayBuffer): string {
 export async function formatForClaude(
   buf: ArrayBuffer,
   mime: string,
-  filename: string,
+  filename: string
 ): Promise<ContentBlock[]> {
   if (mime === "application/pdf") {
     return [
@@ -854,6 +886,7 @@ Stage.
 ## Task 7: Extraction runtime + Anthropic call
 
 **Files:**
+
 - Create: `src/extraction/blob.ts`
 - Create: `src/extraction/runtime.ts`
 - Create: `src/extraction/__tests__/runtime.test.ts`
@@ -926,8 +959,12 @@ describe("runExtraction", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     getPlanFileById.mockResolvedValue({
-      id: "f1", userId: "u1", status: "extracting",
-      blob_url: "https://blob/x", original_filename: "plan.pdf", mime_type: "application/pdf",
+      id: "f1",
+      userId: "u1",
+      status: "extracting",
+      blob_url: "https://blob/x",
+      original_filename: "plan.pdf",
+      mime_type: "application/pdf",
     });
     fetchPlanFileBytes.mockResolvedValue(new ArrayBuffer(8));
     formatForClaude.mockResolvedValue([{ type: "text", text: "x" }]);
@@ -943,7 +980,10 @@ describe("runExtraction", () => {
     messagesParse.mockResolvedValue({ output: { ...validPayload, is_training_plan: false } });
     await runExtraction("f1", "u1");
     expect(updatePlanFileStatus).toHaveBeenCalledWith(
-      "f1", "u1", "failed", expect.stringMatching(/training plan/i),
+      "f1",
+      "u1",
+      "failed",
+      expect.stringMatching(/training plan/i)
     );
   });
 
@@ -951,16 +991,17 @@ describe("runExtraction", () => {
     messagesParse.mockRejectedValue(new Error("network"));
     await runExtraction("f1", "u1");
     expect(updatePlanFileStatus).toHaveBeenCalledWith(
-      "f1", "u1", "failed", expect.stringContaining("network"),
+      "f1",
+      "u1",
+      "failed",
+      expect.stringContaining("network")
     );
   });
 
   it("marks failed on schema mismatch", async () => {
     messagesParse.mockResolvedValue({ output: { is_training_plan: true /* missing fields */ } });
     await runExtraction("f1", "u1");
-    expect(updatePlanFileStatus).toHaveBeenCalledWith(
-      "f1", "u1", "failed", expect.any(String),
-    );
+    expect(updatePlanFileStatus).toHaveBeenCalledWith("f1", "u1", "failed", expect.any(String));
   });
 
   it("returns silently if row is missing or already terminal", async () => {
@@ -982,11 +1023,7 @@ npx vitest run src/extraction/__tests__/runtime.test.ts
 ```ts
 // src/extraction/runtime.ts
 import { getAnthropic, COACH_MODEL } from "@/coach/anthropic";
-import {
-  getPlanFileById,
-  setExtractedPayload,
-  updatePlanFileStatus,
-} from "@/plans/files";
+import { getPlanFileById, setExtractedPayload, updatePlanFileStatus } from "@/plans/files";
 import { fetchPlanFileBytes } from "./blob";
 import { formatForClaude } from "./format";
 import { ExtractedPlanSchema } from "./schema";
@@ -1015,7 +1052,9 @@ export async function runExtraction(planFileId: string, userId: string): Promise
     const response = await client.messages.parse({
       model: COACH_MODEL,
       max_tokens: 8192,
-      system: [{ type: "text", text: EXTRACTION_SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }],
+      system: [
+        { type: "text", text: EXTRACTION_SYSTEM_PROMPT, cache_control: { type: "ephemeral" } },
+      ],
       schema: ExtractedPlanSchema,
       messages: [{ role: "user", content }],
     } as never); // SDK shape — verify against node_modules/@anthropic-ai/sdk for exact `parse` signature.
@@ -1024,16 +1063,20 @@ export async function runExtraction(planFileId: string, userId: string): Promise
     const parsed = ExtractedPlanSchema.safeParse(output);
     if (!parsed.success) {
       await updatePlanFileStatus(
-        planFileId, userId, "failed",
-        "Couldn't parse the file's structure.",
+        planFileId,
+        userId,
+        "failed",
+        "Couldn't parse the file's structure."
       );
       return;
     }
 
     if (!parsed.data.is_training_plan) {
       await updatePlanFileStatus(
-        planFileId, userId, "failed",
-        "This file doesn't look like a training plan.",
+        planFileId,
+        userId,
+        "failed",
+        "This file doesn't look like a training plan."
       );
       return;
     }
@@ -1064,6 +1107,7 @@ Stage.
 ## Task 8: Upload route — `POST /api/plans/upload`
 
 **Files:**
+
 - Create: `src/app/api/plans/upload/route.ts`
 
 - [ ] **Step 1: Implement**
@@ -1085,7 +1129,9 @@ const ALLOWED: Record<string, string> = {
   txt: "text/plain",
 };
 
-function unauthorized() { return NextResponse.json({ error: "unauthorized" }, { status: 401 }); }
+function unauthorized() {
+  return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+}
 
 function extFromName(name: string): string | null {
   const i = name.lastIndexOf(".");
@@ -1135,7 +1181,11 @@ export async function POST(req: Request): Promise<NextResponse> {
     });
   } catch (err) {
     // Best-effort blob cleanup so we don't leak.
-    try { await del(blobUrl); } catch { /* swallow */ }
+    try {
+      await del(blobUrl);
+    } catch {
+      /* swallow */
+    }
     return NextResponse.json({ error: "could not record upload" }, { status: 500 });
   }
 
@@ -1158,6 +1208,7 @@ No tests for this route in this task — covered by smoke testing in Task 16 + t
 ## Task 9: Status + discard routes — `GET / DELETE /api/plans/upload/[id]`
 
 **Files:**
+
 - Create: `src/app/api/plans/upload/[id]/route.ts`
 
 - [ ] **Step 1: Implement**
@@ -1171,8 +1222,12 @@ import { deletePlanFile, getPlanFileById } from "@/plans/files";
 
 type Ctx = { params: Promise<{ id: string }> };
 
-function unauthorized() { return NextResponse.json({ error: "unauthorized" }, { status: 401 }); }
-function notFound() { return NextResponse.json({ error: "not found" }, { status: 404 }); }
+function unauthorized() {
+  return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+}
+function notFound() {
+  return NextResponse.json({ error: "not found" }, { status: 404 });
+}
 
 export async function GET(_req: Request, ctx: Ctx): Promise<NextResponse> {
   const session = await auth();
@@ -1200,7 +1255,11 @@ export async function DELETE(_req: Request, ctx: Ctx): Promise<NextResponse> {
   const row = await getPlanFileById(id, session.user.id);
   if (!row) return notFound();
 
-  try { await del(row.blob_url); } catch { /* swallow — keep going to delete the row */ }
+  try {
+    await del(row.blob_url);
+  } catch {
+    /* swallow — keep going to delete the row */
+  }
   await deletePlanFile(id, session.user.id);
   return new NextResponse(null, { status: 204 });
 }
@@ -1219,6 +1278,7 @@ Stage.
 ## Task 10: Extract route — `POST /api/plans/upload/[id]/extract`
 
 **Files:**
+
 - Create: `src/app/api/plans/upload/[id]/extract/route.ts`
 
 - [ ] **Step 1: Implement**
@@ -1234,8 +1294,12 @@ export const maxDuration = 300;
 
 type Ctx = { params: Promise<{ id: string }> };
 
-function unauthorized() { return NextResponse.json({ error: "unauthorized" }, { status: 401 }); }
-function notFound() { return NextResponse.json({ error: "not found" }, { status: 404 }); }
+function unauthorized() {
+  return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+}
+function notFound() {
+  return NextResponse.json({ error: "not found" }, { status: 404 });
+}
 
 export async function POST(_req: Request, ctx: Ctx): Promise<NextResponse> {
   const session = await auth();
@@ -1272,6 +1336,7 @@ Stage.
 ## Task 11: Save route — `POST /api/plans/upload/[id]/save`
 
 **Files:**
+
 - Create: `src/app/api/plans/upload/[id]/save/route.ts`
 
 - [ ] **Step 1: Implement**
@@ -1282,29 +1347,24 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { workouts } from "@/db/schema";
 import { auth } from "@/auth";
-import {
-  getPlanFileById,
-  setExtractedPlanId,
-} from "@/plans/files";
-import {
-  createPlan,
-  deletePlan,
-  setActivePlan,
-} from "@/plans/queries";
-import {
-  materializeWorkouts,
-  computeEndDate,
-  type ExtractedWorkout,
-} from "@/plans/materialize";
+import { getPlanFileById, setExtractedPlanId } from "@/plans/files";
+import { createPlan, deletePlan, setActivePlan } from "@/plans/queries";
+import { materializeWorkouts, computeEndDate, type ExtractedWorkout } from "@/plans/materialize";
 import { ExtractedPlanSchema } from "@/extraction/schema";
 import type { Sport, PlanMode, Goal } from "@/plans/types";
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 type Ctx = { params: Promise<{ id: string }> };
 
-function unauthorized() { return NextResponse.json({ error: "unauthorized" }, { status: 401 }); }
-function notFound() { return NextResponse.json({ error: "not found" }, { status: 404 }); }
-function badRequest(msg: string) { return NextResponse.json({ error: msg }, { status: 400 }); }
+function unauthorized() {
+  return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+}
+function notFound() {
+  return NextResponse.json({ error: "not found" }, { status: 404 });
+}
+function badRequest(msg: string) {
+  return NextResponse.json({ error: msg }, { status: 400 });
+}
 
 type SaveBody = {
   title: string;
@@ -1348,18 +1408,20 @@ export async function POST(req: Request, ctx: Ctx): Promise<NextResponse> {
   if (!parsed.success) return badRequest("payload corrupt");
 
   let body: unknown;
-  try { body = await req.json(); } catch { return badRequest("invalid JSON"); }
+  try {
+    body = await req.json();
+  } catch {
+    return badRequest("invalid JSON");
+  }
   const input = validate(body);
   if (!input) return badRequest("invalid body");
 
   const materialized = materializeWorkouts(
     input.start_date,
-    parsed.data.workouts as ExtractedWorkout[],
+    parsed.data.workouts as ExtractedWorkout[]
   );
   const endDate =
-    input.mode === "indefinite" || materialized.length === 0
-      ? null
-      : computeEndDate(materialized);
+    input.mode === "indefinite" || materialized.length === 0 ? null : computeEndDate(materialized);
 
   // 1. Insert plan (always inactive at first; we activate in step 4 if requested).
   const plan = await createPlan(userId, {
@@ -1387,11 +1449,15 @@ export async function POST(req: Request, ctx: Ctx): Promise<NextResponse> {
           target_intensity: w.target_intensity,
           intervals: w.intervals,
           notes: w.notes,
-        })),
+        }))
       );
     } catch (err) {
       // Best-effort rollback: delete the plan we just inserted.
-      try { await deletePlan(plan.id, userId); } catch { /* swallow */ }
+      try {
+        await deletePlan(plan.id, userId);
+      } catch {
+        /* swallow */
+      }
       throw err;
     }
   }
@@ -1421,6 +1487,7 @@ Stage.
 ## Task 12: File proxy — `GET /api/plans/upload/[id]/file`
 
 **Files:**
+
 - Create: `src/app/api/plans/upload/[id]/file/route.ts`
 
 - [ ] **Step 1: Implement**
@@ -1433,8 +1500,12 @@ import { getPlanFileById } from "@/plans/files";
 
 type Ctx = { params: Promise<{ id: string }> };
 
-function unauthorized() { return NextResponse.json({ error: "unauthorized" }, { status: 401 }); }
-function notFound() { return NextResponse.json({ error: "not found" }, { status: 404 }); }
+function unauthorized() {
+  return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+}
+function notFound() {
+  return NextResponse.json({ error: "not found" }, { status: 404 });
+}
 
 export async function GET(_req: Request, ctx: Ctx): Promise<NextResponse | Response> {
   const session = await auth();
@@ -1469,6 +1540,7 @@ Stage.
 ## Task 13: `<UploadDropzone />` + wire `PlanActionRow`
 
 **Files:**
+
 - Create: `src/components/plans/UploadDropzone.tsx`
 - Create: `src/components/plans/UploadDropzone.module.scss`
 - Create: `src/components/plans/__tests__/UploadDropzone.test.tsx`
@@ -1521,7 +1593,7 @@ describe("UploadDropzone", () => {
   it("on accepted file: POSTs to /api/plans/upload, fires extract, navigates to review", async () => {
     fetchMock
       .mockResolvedValueOnce({ ok: true, json: async () => ({ id: "f1" }) }) // upload
-      .mockResolvedValueOnce({ ok: true, json: async () => ({}) });          // extract
+      .mockResolvedValueOnce({ ok: true, json: async () => ({}) }); // extract
     render(<UploadDropzone />);
     const input = screen.getByTestId("upload-input") as HTMLInputElement;
     Object.defineProperty(input, "files", { value: [makeFile("p.pdf", 100, "application/pdf")] });
@@ -1529,7 +1601,10 @@ describe("UploadDropzone", () => {
 
     // Wait for the upload POST to resolve and navigation to fire.
     await new Promise((r) => setTimeout(r, 0));
-    expect(fetchMock).toHaveBeenCalledWith("/api/plans/upload", expect.objectContaining({ method: "POST" }));
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/plans/upload",
+      expect.objectContaining({ method: "POST" })
+    );
     await new Promise((r) => setTimeout(r, 0));
     expect(pushMock).toHaveBeenCalledWith("/plans/upload/f1/review");
   });
@@ -1618,7 +1693,10 @@ export function UploadDropzone() {
   return (
     <div
       className={`${styles.zone} ${hover ? styles.hover : ""}`}
-      onDragOver={(e) => { e.preventDefault(); setHover(true); }}
+      onDragOver={(e) => {
+        e.preventDefault();
+        setHover(true);
+      }}
       onDragLeave={() => setHover(false)}
       onDrop={onDrop}
     >
@@ -1631,7 +1709,11 @@ export function UploadDropzone() {
         onChange={onChange}
       />
       <PlanActionRow onUpload={pickFile} uploadDisabled={busy} />
-      {error && <p className={styles.error} role="alert">{error}</p>}
+      {error && (
+        <p className={styles.error} role="alert">
+          {error}
+        </p>
+      )}
     </div>
   );
 }
@@ -1647,17 +1729,21 @@ export function UploadDropzone() {
   gap: var(--space-2);
   padding: 0;
   border-radius: var(--radius-md);
-  transition: background 120ms ease, border-color 120ms ease;
+  transition:
+    background 120ms ease,
+    border-color 120ms ease;
 }
 .zone.hover {
   background: var(--color-bg-subtle);
   outline: 1.5px dashed var(--color-brown);
   outline-offset: 4px;
 }
-.hidden { display: none; }
+.hidden {
+  display: none;
+}
 .error {
   font-size: 0.8125rem;
-  color: #B83232;
+  color: #b83232;
   margin: 0;
 }
 ```
@@ -1718,6 +1804,7 @@ Stage.
 ## Task 14: `<InFlightUploadCard />` + in-flight section on `/plans`
 
 **Files:**
+
 - Create: `src/components/plans/InFlightUploadCard.tsx`
 - Create: `src/components/plans/InFlightUploadCard.module.scss`
 - Create: `src/components/plans/__tests__/InFlightUploadCard.test.tsx`
@@ -1825,7 +1912,12 @@ export function InFlightUploadCard({ row }: { row: Row }) {
           <p className={styles.title}>Extracting your plan…</p>
           <p className={styles.sub}>{row.original_filename}</p>
         </div>
-        <button type="button" className={styles.btnGhost} disabled={busy || pending} onClick={discard}>
+        <button
+          type="button"
+          className={styles.btnGhost}
+          disabled={busy || pending}
+          onClick={discard}
+        >
           Cancel
         </button>
       </div>
@@ -1853,13 +1945,23 @@ export function InFlightUploadCard({ row }: { row: Row }) {
         {row.extraction_error && <p className={styles.error}>{row.extraction_error}</p>}
       </div>
       <div className={styles.actions}>
-        <button type="button" className={styles.btnPrimary} disabled={busy || pending} onClick={retry}>
+        <button
+          type="button"
+          className={styles.btnPrimary}
+          disabled={busy || pending}
+          onClick={retry}
+        >
           Retry
         </button>
         <Link href={`/coach?from=/plans&plan_file_id=${row.id}`} className={styles.btnSecondary}>
           Talk to coach
         </Link>
-        <button type="button" className={styles.btnDanger} disabled={busy || pending} onClick={discard}>
+        <button
+          type="button"
+          className={styles.btnDanger}
+          disabled={busy || pending}
+          onClick={discard}
+        >
           Discard
         </button>
       </div>
@@ -1868,7 +1970,7 @@ export function InFlightUploadCard({ row }: { row: Row }) {
 }
 ```
 
-**Important:** Retry posts to `/extract` which requires `status === 'extracting'`. The card sees `failed`. Therefore retry needs to **first reset status to extracting**, *then* fire extract. Update accordingly:
+**Important:** Retry posts to `/extract` which requires `status === 'extracting'`. The card sees `failed`. Therefore retry needs to **first reset status to extracting**, _then_ fire extract. Update accordingly:
 
 ```ts
 async function retry() {
@@ -1889,7 +1991,8 @@ Update `src/app/api/plans/upload/[id]/extract/route.ts` (Task 10's file) to acce
 
 ```scss
 // src/components/plans/InFlightUploadCard.module.scss
-.card, .cardLink {
+.card,
+.cardLink {
   display: flex;
   align-items: center;
   gap: var(--space-3);
@@ -1900,23 +2003,60 @@ Update `src/app/api/plans/upload/[id]/extract/route.ts` (Task 10's file) to acce
   text-decoration: none;
   color: inherit;
 }
-.cardLink:hover { border-color: var(--color-brown); }
-.cardFailed { border-color: color-mix(in srgb, #B83232 50%, var(--color-border-default)); }
-.body { flex: 1; display: flex; flex-direction: column; gap: 2px; }
-.title { font-size: 0.9375rem; font-weight: 600; color: var(--color-fg-primary); margin: 0; }
-.sub { font-size: 0.8125rem; color: var(--color-fg-tertiary); margin: 0; }
-.error { font-size: 0.8125rem; color: #B83232; margin: 4px 0 0 0; }
+.cardLink:hover {
+  border-color: var(--color-brown);
+}
+.cardFailed {
+  border-color: color-mix(in srgb, #b83232 50%, var(--color-border-default));
+}
+.body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--color-fg-primary);
+  margin: 0;
+}
+.sub {
+  font-size: 0.8125rem;
+  color: var(--color-fg-tertiary);
+  margin: 0;
+}
+.error {
+  font-size: 0.8125rem;
+  color: #b83232;
+  margin: 4px 0 0 0;
+}
 .spinner {
-  width: 18px; height: 18px;
+  width: 18px;
+  height: 18px;
   border: 2px solid var(--color-border-default);
   border-top-color: var(--color-brown);
   border-radius: 50%;
   animation: spin 800ms linear infinite;
 }
-@keyframes spin { to { transform: rotate(360deg); } }
-.chev { font-size: 1.25rem; color: var(--color-fg-tertiary); }
-.actions { display: flex; gap: var(--space-2); flex-wrap: wrap; }
-.btnPrimary, .btnSecondary, .btnDanger, .btnGhost {
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.chev {
+  font-size: 1.25rem;
+  color: var(--color-fg-tertiary);
+}
+.actions {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+.btnPrimary,
+.btnSecondary,
+.btnDanger,
+.btnGhost {
   font-size: 0.8125rem;
   font-weight: 600;
   padding: var(--space-2) var(--space-3);
@@ -1926,11 +2066,24 @@ Update `src/app/api/plans/upload/[id]/extract/route.ts` (Task 10's file) to acce
   color: var(--color-fg-primary);
   text-decoration: none;
   cursor: pointer;
-  &:disabled { opacity: 0.5; cursor: not-allowed; }
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
 }
-.btnPrimary { background: var(--color-brown); color: #fff; border-color: var(--color-brown); }
-.btnDanger:hover:not(:disabled) { border-color: #B83232; color: #B83232; }
-.btnGhost { font-weight: 500; color: var(--color-fg-secondary); }
+.btnPrimary {
+  background: var(--color-brown);
+  color: #fff;
+  border-color: var(--color-brown);
+}
+.btnDanger:hover:not(:disabled) {
+  border-color: #b83232;
+  color: #b83232;
+}
+.btnGhost {
+  font-weight: 500;
+  color: var(--color-fg-secondary);
+}
 ```
 
 - [ ] **Step 5: Wire into `/plans` page**
@@ -1945,15 +2098,20 @@ const planFiles = await listInFlightPlanFiles(userId);
 ```
 
 In `src/app/(app)/plans/PlansPageClient.tsx`:
+
 - Add `planFiles: { id, status, original_filename, extraction_error }[]` to `Props`.
 - Render an `<section>` above the active plan card:
 
 ```tsx
-{planFiles.length > 0 && (
-  <section className={styles.inflight}>
-    {planFiles.map((f) => <InFlightUploadCard key={f.id} row={f} />)}
-  </section>
-)}
+{
+  planFiles.length > 0 && (
+    <section className={styles.inflight}>
+      {planFiles.map((f) => (
+        <InFlightUploadCard key={f.id} row={f} />
+      ))}
+    </section>
+  );
+}
 ```
 
 Add `.inflight { display: flex; flex-direction: column; gap: var(--space-3); }` to `Plans.module.scss`.
@@ -1972,6 +2130,7 @@ Stage.
 ## Task 15: Review page (`/plans/upload/[id]/review`)
 
 **Files:**
+
 - Create: `src/app/(app)/plans/upload/[id]/review/page.tsx`
 - Create: `src/app/(app)/plans/upload/[id]/review/ReviewClient.tsx`
 - Create: `src/app/(app)/plans/upload/[id]/review/ReviewForm.tsx`
@@ -1991,11 +2150,7 @@ import { getPlanFileById } from "@/plans/files";
 import { todayIso } from "@/lib/dates";
 import { ReviewClient } from "./ReviewClient";
 
-export default async function ReviewPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+export default async function ReviewPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
   if (!session?.user?.id) redirect("/");
   const userId = session.user.id;
@@ -2074,10 +2229,15 @@ export function ReviewClient({ initialFile, units, today, hasActivePlan }: Props
         if (!res.ok) return;
         const data = (await res.json()) as FileSnapshot;
         if (!cancelled) setFile(data);
-      } catch { /* swallow */ }
+      } catch {
+        /* swallow */
+      }
     };
     const handle = setInterval(tick, 2000);
-    return () => { cancelled = true; clearInterval(handle); };
+    return () => {
+      cancelled = true;
+      clearInterval(handle);
+    };
   }, [file.id, file.status]);
 
   if (file.status === "extracting" || file.status === "failed") {
@@ -2161,7 +2321,13 @@ function bucketByWeek(rows: WorkoutRow[]): WeekBucket[] {
 }
 
 export function ReviewForm({
-  fileId, payload, units, today, hasActivePlan, onDiscarded, onSaved,
+  fileId,
+  payload,
+  units,
+  today,
+  hasActivePlan,
+  onDiscarded,
+  onSaved,
 }: Props) {
   const [title, setTitle] = useState(payload.title);
   const [sport, setSport] = useState<"run" | "bike">(payload.sport);
@@ -2188,7 +2354,7 @@ export function ReviewForm({
         intervals: w.intervals,
         notes: w.notes,
       })) as WorkoutRow[],
-    [payload.workouts, startDate],
+    [payload.workouts, startDate]
   );
 
   const weeks = useMemo(() => bucketByWeek(materialized), [materialized]);
@@ -2210,7 +2376,9 @@ export function ReviewForm({
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           title: title.trim(),
-          sport, mode, goal,
+          sport,
+          mode,
+          goal,
           start_date: startDate,
           set_active: setActive,
         }),
@@ -2245,37 +2413,74 @@ export function ReviewForm({
       <div className={styles.form}>
         <label className={styles.field}>
           <span className={styles.lbl}>Title</span>
-          <input className={styles.input} value={title} onChange={(e) => setTitle(e.target.value)} />
+          <input
+            className={styles.input}
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+          />
         </label>
         <fieldset className={styles.field}>
           <legend className={styles.lbl}>Sport</legend>
-          <label><input type="radio" checked={sport === "run"} onChange={() => setSport("run")} /> Run</label>
-          <label><input type="radio" checked={sport === "bike"} onChange={() => setSport("bike")} /> Bike</label>
+          <label>
+            <input type="radio" checked={sport === "run"} onChange={() => setSport("run")} /> Run
+          </label>
+          <label>
+            <input type="radio" checked={sport === "bike"} onChange={() => setSport("bike")} /> Bike
+          </label>
         </fieldset>
         <fieldset className={styles.field}>
           <legend className={styles.lbl}>Mode</legend>
-          <label><input type="radio" checked={mode === "goal"} onChange={() => setMode("goal")} /> Goal</label>
-          <label><input type="radio" checked={mode === "indefinite"} onChange={() => setMode("indefinite")} /> Indefinite</label>
+          <label>
+            <input type="radio" checked={mode === "goal"} onChange={() => setMode("goal")} /> Goal
+          </label>
+          <label>
+            <input
+              type="radio"
+              checked={mode === "indefinite"}
+              onChange={() => setMode("indefinite")}
+            />{" "}
+            Indefinite
+          </label>
         </fieldset>
         {mode === "goal" && (
           <div className={styles.goalRow}>
             <label className={styles.field}>
               <span className={styles.lbl}>Race date</span>
-              <input className={styles.input} type="date" value={raceDate} onChange={(e) => setRaceDate(e.target.value)} />
+              <input
+                className={styles.input}
+                type="date"
+                value={raceDate}
+                onChange={(e) => setRaceDate(e.target.value)}
+              />
             </label>
             <label className={styles.field}>
               <span className={styles.lbl}>Distance</span>
-              <input className={styles.input} value={raceDistance} onChange={(e) => setRaceDistance(e.target.value)} placeholder="e.g. Marathon" />
+              <input
+                className={styles.input}
+                value={raceDistance}
+                onChange={(e) => setRaceDistance(e.target.value)}
+                placeholder="e.g. Marathon"
+              />
             </label>
             <label className={styles.field}>
               <span className={styles.lbl}>Target time</span>
-              <input className={styles.input} value={targetTime} onChange={(e) => setTargetTime(e.target.value)} placeholder="e.g. 3:05" />
+              <input
+                className={styles.input}
+                value={targetTime}
+                onChange={(e) => setTargetTime(e.target.value)}
+                placeholder="e.g. 3:05"
+              />
             </label>
           </div>
         )}
         <label className={styles.field}>
           <span className={styles.lbl}>Start date</span>
-          <input className={styles.input} type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+          <input
+            className={styles.input}
+            type="date"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+          />
           <span className={styles.help}>All workouts will be re-anchored from this date.</span>
         </label>
       </div>
@@ -2300,16 +2505,33 @@ export function ReviewForm({
         </div>
       </div>
 
-      {error && <p className={styles.errorBanner} role="alert">{error}</p>}
+      {error && (
+        <p className={styles.errorBanner} role="alert">
+          {error}
+        </p>
+      )}
 
       <footer className={styles.footer}>
         <label className={styles.toggle}>
-          <input type="checkbox" checked={setActive} onChange={(e) => setSetActive(e.target.checked)} />
+          <input
+            type="checkbox"
+            checked={setActive}
+            onChange={(e) => setSetActive(e.target.checked)}
+          />
           Save as active plan
         </label>
         <div className={styles.footerBtns}>
-          <button type="button" className={styles.btnDanger} disabled={busy} onClick={discard}>Discard</button>
-          <button type="button" className={styles.btnPrimary} disabled={busy || !title.trim()} onClick={save}>Save</button>
+          <button type="button" className={styles.btnDanger} disabled={busy} onClick={discard}>
+            Discard
+          </button>
+          <button
+            type="button"
+            className={styles.btnPrimary}
+            disabled={busy || !title.trim()}
+            onClick={save}
+          >
+            Save
+          </button>
         </div>
       </footer>
     </>
@@ -2319,28 +2541,134 @@ export function ReviewForm({
 
 ```scss
 // src/app/(app)/plans/upload/[id]/review/Review.module.scss
-.page { display: flex; flex-direction: column; max-width: 720px; margin: 0 auto; padding: var(--space-6) var(--space-4); gap: var(--space-5); }
-.header { display: flex; flex-direction: column; gap: var(--space-1); }
-.title { font-family: var(--font-display); font-size: 1.75rem; font-weight: 700; letter-spacing: -0.03em; line-height: 1; color: var(--color-fg-primary); margin: 0; }
-.sub { font-size: 0.875rem; color: var(--color-fg-tertiary); margin: 0; }
-.form { display: flex; flex-direction: column; gap: var(--space-4); padding: var(--space-5); background: var(--color-bg-surface); border: 1px solid var(--color-border-default); border-radius: var(--radius-lg); }
-.field { display: flex; flex-direction: column; gap: var(--space-1); }
-.lbl { font-size: 0.6875rem; color: var(--color-fg-tertiary); text-transform: uppercase; letter-spacing: 0.07em; font-weight: 600; }
-.input { font-size: 0.9375rem; padding: var(--space-2) var(--space-3); border: 1px solid var(--color-border-default); border-radius: var(--radius-md); background: var(--color-bg-surface); color: var(--color-fg-primary); }
-.help { font-size: 0.75rem; color: var(--color-fg-tertiary); }
-.goalRow { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: var(--space-3); }
-.preview { display: flex; flex-direction: column; gap: var(--space-5); }
-.weeks { display: flex; flex-direction: column; gap: var(--space-5); }
-.errorBanner { color: #B83232; font-size: 0.875rem; padding: var(--space-3); background: color-mix(in srgb, #B83232 8%, transparent); border-radius: var(--radius-md); margin: 0; }
-.footer { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding-top: var(--space-3); border-top: 1px solid var(--color-border-subtle); }
-.toggle { display: flex; align-items: center; gap: var(--space-2); font-size: 0.875rem; color: var(--color-fg-primary); }
-.footerBtns { display: flex; gap: var(--space-2); }
-.btnPrimary, .btnDanger {
-  font-size: 0.875rem; font-weight: 600; padding: var(--space-2) var(--space-4); border-radius: var(--radius-md); border: 1px solid transparent; cursor: pointer;
-  &:disabled { opacity: 0.5; cursor: not-allowed; }
+.page {
+  display: flex;
+  flex-direction: column;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: var(--space-6) var(--space-4);
+  gap: var(--space-5);
 }
-.btnPrimary { background: var(--color-brown); color: #fff; }
-.btnDanger { background: transparent; color: var(--color-fg-secondary); border-color: var(--color-border-default); &:hover:not(:disabled) { border-color: #B83232; color: #B83232; } }
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.title {
+  font-family: var(--font-display);
+  font-size: 1.75rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  color: var(--color-fg-primary);
+  margin: 0;
+}
+.sub {
+  font-size: 0.875rem;
+  color: var(--color-fg-tertiary);
+  margin: 0;
+}
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-lg);
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.lbl {
+  font-size: 0.6875rem;
+  color: var(--color-fg-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  font-weight: 600;
+}
+.input {
+  font-size: 0.9375rem;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-surface);
+  color: var(--color-fg-primary);
+}
+.help {
+  font-size: 0.75rem;
+  color: var(--color-fg-tertiary);
+}
+.goalRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--space-3);
+}
+.preview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+.weeks {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+.errorBanner {
+  color: #b83232;
+  font-size: 0.875rem;
+  padding: var(--space-3);
+  background: color-mix(in srgb, #b83232 8%, transparent);
+  border-radius: var(--radius-md);
+  margin: 0;
+}
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border-subtle);
+}
+.toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 0.875rem;
+  color: var(--color-fg-primary);
+}
+.footerBtns {
+  display: flex;
+  gap: var(--space-2);
+}
+.btnPrimary,
+.btnDanger {
+  font-size: 0.875rem;
+  font-weight: 600;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+  cursor: pointer;
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+.btnPrimary {
+  background: var(--color-brown);
+  color: #fff;
+}
+.btnDanger {
+  background: transparent;
+  color: var(--color-fg-secondary);
+  border-color: var(--color-border-default);
+  &:hover:not(:disabled) {
+    border-color: #b83232;
+    color: #b83232;
+  }
+}
 ```
 
 - [ ] **Step 4: Failing test for ReviewForm**
@@ -2370,14 +2698,42 @@ const payload = {
   goal: null,
   tentative_start_date: "2026-05-04",
   workouts: [
-    { day_offset: 0, sport: "run" as const, type: "easy" as const, distance_meters: 5000, duration_seconds: null, target_intensity: null, intervals: null, notes: "" },
-    { day_offset: 6, sport: "run" as const, type: "long" as const, distance_meters: 16000, duration_seconds: null, target_intensity: null, intervals: null, notes: "" },
+    {
+      day_offset: 0,
+      sport: "run" as const,
+      type: "easy" as const,
+      distance_meters: 5000,
+      duration_seconds: null,
+      target_intensity: null,
+      intervals: null,
+      notes: "",
+    },
+    {
+      day_offset: 6,
+      sport: "run" as const,
+      type: "long" as const,
+      distance_meters: 16000,
+      duration_seconds: null,
+      target_intensity: null,
+      intervals: null,
+      notes: "",
+    },
   ],
 };
 
 describe("ReviewForm", () => {
   it("renders title from payload + Save button + active toggle defaulting to true when no active plan", () => {
-    render(<ReviewForm fileId="f1" payload={payload} units="mi" today="2026-04-27" hasActivePlan={false} onSaved={onSaved} onDiscarded={onDiscarded} />);
+    render(
+      <ReviewForm
+        fileId="f1"
+        payload={payload}
+        units="mi"
+        today="2026-04-27"
+        hasActivePlan={false}
+        onSaved={onSaved}
+        onDiscarded={onDiscarded}
+      />
+    );
     expect(screen.getByDisplayValue("From File")).toBeInTheDocument();
     const toggle = screen.getByRole("checkbox", { name: /Save as active/ }) as HTMLInputElement;
     expect(toggle.checked).toBe(true);
@@ -2385,21 +2741,52 @@ describe("ReviewForm", () => {
 
   it("Save POSTs to the save endpoint with the editable fields", async () => {
     fetchMock.mockResolvedValueOnce({ ok: true, json: async () => ({ plan_id: "p1" }) });
-    render(<ReviewForm fileId="f1" payload={payload} units="mi" today="2026-04-27" hasActivePlan={false} onSaved={onSaved} onDiscarded={onDiscarded} />);
+    render(
+      <ReviewForm
+        fileId="f1"
+        payload={payload}
+        units="mi"
+        today="2026-04-27"
+        hasActivePlan={false}
+        onSaved={onSaved}
+        onDiscarded={onDiscarded}
+      />
+    );
     fireEvent.click(screen.getByRole("button", { name: /^Save$/ }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalled());
     const [url, opts] = fetchMock.mock.calls[0];
     expect(url).toBe("/api/plans/upload/f1/save");
     const body = JSON.parse((opts as { body: string }).body);
-    expect(body).toMatchObject({ title: "From File", sport: "run", mode: "indefinite", start_date: "2026-05-04", set_active: true });
+    expect(body).toMatchObject({
+      title: "From File",
+      sport: "run",
+      mode: "indefinite",
+      start_date: "2026-05-04",
+      set_active: true,
+    });
     await waitFor(() => expect(onSaved).toHaveBeenCalledWith("p1"));
   });
 
   it("Discard DELETEs and calls onDiscarded", async () => {
     fetchMock.mockResolvedValueOnce({ ok: true });
-    render(<ReviewForm fileId="f1" payload={payload} units="mi" today="2026-04-27" hasActivePlan onSaved={onSaved} onDiscarded={onDiscarded} />);
+    render(
+      <ReviewForm
+        fileId="f1"
+        payload={payload}
+        units="mi"
+        today="2026-04-27"
+        hasActivePlan
+        onSaved={onSaved}
+        onDiscarded={onDiscarded}
+      />
+    );
     fireEvent.click(screen.getByRole("button", { name: /Discard/ }));
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/plans/upload/f1", expect.objectContaining({ method: "DELETE" })));
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/plans/upload/f1",
+        expect.objectContaining({ method: "DELETE" })
+      )
+    );
     await waitFor(() => expect(onDiscarded).toHaveBeenCalled());
   });
 });
@@ -2419,6 +2806,7 @@ Stage.
 ## Task 16: `read_uploaded_file` coach tool
 
 **Files:**
+
 - Create: `src/coach/tools/files.ts`
 - Create: `src/coach/tools/__tests__/files.test.ts`
 - Modify: `src/coach/types.ts`
@@ -2456,8 +2844,11 @@ describe("read_uploaded_file_handler", () => {
 
   it("returns content blocks for PDF", async () => {
     getPlanFileById.mockResolvedValueOnce({
-      id: "f1", userId: "u1", blob_url: "https://blob/x",
-      original_filename: "plan.pdf", mime_type: "application/pdf",
+      id: "f1",
+      userId: "u1",
+      blob_url: "https://blob/x",
+      original_filename: "plan.pdf",
+      mime_type: "application/pdf",
     });
     fetchPlanFileBytes.mockResolvedValueOnce(new Uint8Array([0x25, 0x50]).buffer);
     const result = await read_uploaded_file_handler({ plan_file_id: "f1" }, { userId: "u1" });
@@ -2469,8 +2860,11 @@ describe("read_uploaded_file_handler", () => {
 
   it("returns text content for markdown", async () => {
     getPlanFileById.mockResolvedValueOnce({
-      id: "f1", userId: "u1", blob_url: "https://blob/x",
-      original_filename: "plan.md", mime_type: "text/markdown",
+      id: "f1",
+      userId: "u1",
+      blob_url: "https://blob/x",
+      original_filename: "plan.md",
+      mime_type: "text/markdown",
     });
     fetchPlanFileBytes.mockResolvedValueOnce(new TextEncoder().encode("# Plan\nWeek 1").buffer);
     const result = await read_uploaded_file_handler({ plan_file_id: "f1" }, { userId: "u1" });
@@ -2550,9 +2944,15 @@ export const read_uploaded_file_handler: ToolHandler<Input, Output> = async (inp
     const parsed = Papa.parse(text, { header: true, skipEmptyLines: true });
     const rows = (parsed as { data: unknown[] }).data;
     const truncated = rows.slice(0, MAX_ROWS);
-    const truncNote = rows.length > MAX_ROWS ? ` (showing first ${MAX_ROWS} of ${rows.length})` : "";
+    const truncNote =
+      rows.length > MAX_ROWS ? ` (showing first ${MAX_ROWS} of ${rows.length})` : "";
     return {
-      content: [{ type: "text", text: `Filename: ${filename}${truncNote}\n${JSON.stringify(truncated, null, 2)}` }],
+      content: [
+        {
+          type: "text",
+          text: `Filename: ${filename}${truncNote}\n${JSON.stringify(truncated, null, 2)}`,
+        },
+      ],
     };
   }
 
@@ -2583,6 +2983,7 @@ export const read_uploaded_file_handler: ToolHandler<Input, Output> = async (inp
 - [ ] **Step 5: Register in `tools/index.ts`**
 
 In `src/coach/tools/index.ts`:
+
 - Import: `import { readUploadedFileTool, read_uploaded_file_handler } from "./files";`
 - Append `readUploadedFileTool` to the `TOOLS` array (after `update_coach_notes`, before `web_search`).
 - Add `read_uploaded_file: read_uploaded_file_handler as AnyHandler,` to `HANDLERS`.
@@ -2612,6 +3013,7 @@ Stage.
 ## Task 17: Coach context — `plan_file_id` deep-link
 
 **Files:**
+
 - Modify: `src/coach/context.ts`
 - Modify: `src/coach/types.ts`
 - Modify: `src/coach/runner.ts`
@@ -2645,7 +3047,11 @@ describe("renderContextPrefix planFile branch", () => {
   });
   it("omits the block when planFile is null", () => {
     const out = renderContextPrefix({
-      today: "2026-04-27", units: "mi", activePlan: null, coachNotes: "", fromLabel: null,
+      today: "2026-04-27",
+      units: "mi",
+      activePlan: null,
+      coachNotes: "",
+      fromLabel: null,
     });
     expect(out).not.toContain("read_uploaded_file");
   });
@@ -2685,7 +3091,9 @@ export function renderContextPrefix(params: {
   if (params.activePlan) {
     const a = params.activePlan;
     const wks = a.weeks_left == null ? "indefinite" : `${a.weeks_left} weeks left`;
-    lines.push(`Active plan: ${a.title} — ${wks}, ${a.completed} / ${a.workout_count} workouts done`);
+    lines.push(
+      `Active plan: ${a.title} — ${wks}, ${a.completed} / ${a.workout_count} workouts done`
+    );
   }
   if (params.coachNotes.trim()) {
     lines.push(``);
@@ -2701,7 +3109,9 @@ export function renderContextPrefix(params: {
     lines.push(`The user wants help with an unprocessed plan file.`);
     lines.push(`File id: ${params.planFile.id}`);
     lines.push(`Filename: ${params.planFile.original_filename}`);
-    lines.push(`Status: ${params.planFile.status}${params.planFile.extraction_error ? ` (error: ${params.planFile.extraction_error.slice(0, 256)})` : ""}`);
+    lines.push(
+      `Status: ${params.planFile.status}${params.planFile.extraction_error ? ` (error: ${params.planFile.extraction_error.slice(0, 256)})` : ""}`
+    );
     lines.push(`Call \`read_uploaded_file({ plan_file_id })\` to read it and help build a plan.`);
   }
   lines.push(`</context>`);
@@ -2724,13 +3134,21 @@ export type ChatRequestBody = {
 In `src/coach/runner.ts`, add `planFileId?: string` to `RunInput`. After computing `activePlanSummary`, add:
 
 ```ts
-let planFileSummary: { id: string; original_filename: string; status: "extracting" | "extracted" | "failed"; extraction_error: string | null } | null = null;
+let planFileSummary: {
+  id: string;
+  original_filename: string;
+  status: "extracting" | "extracted" | "failed";
+  extraction_error: string | null;
+} | null = null;
 if (input.planFileId) {
   const { getPlanFileById } = await import("@/plans/files");
   const f = await getPlanFileById(input.planFileId, userId);
   if (f) {
     planFileSummary = {
-      id: f.id, original_filename: f.original_filename, status: f.status, extraction_error: f.extraction_error,
+      id: f.id,
+      original_filename: f.original_filename,
+      status: f.status,
+      extraction_error: f.extraction_error,
     };
   }
 }
@@ -2790,6 +3208,7 @@ npm run dev
 - [ ] **Step 2: Upload a real PDF**
 
 Sign in. From `/plans`, click **↑ Upload plan**, pick a PDF training plan from disk. Confirm:
+
 - The browser navigates to `/plans/upload/<id>/review`.
 - Page shows "Extracting your plan…" spinner with the filename.
 - Spinner clears within ~30–60 s (depends on plan size + Anthropic latency) and the review form appears.
@@ -2797,6 +3216,7 @@ Sign in. From `/plans`, click **↑ Upload plan**, pick a PDF training plan from
 - [ ] **Step 3: Review form**
 
 Confirm:
+
 - Title, sport, mode, start date are pre-filled from extraction.
 - Changing the start date updates the WeekGrid preview (workouts shift to new dates).
 - "Save as active plan" is on by default if you have no active plan, off otherwise.
@@ -2804,6 +3224,7 @@ Confirm:
 - [ ] **Step 4: Save**
 
 Click **Save**. Confirm:
+
 - Browser redirects to `/plans/<new_plan_id>`.
 - The plan renders with the right title, dates, and workouts.
 - If `set_active` was on, the plan shows the **Active** badge and `/today` reflects it.
@@ -2816,6 +3237,7 @@ Repeat steps 2–4 for a CSV, an XLSX, and a Markdown plan. Confirm extraction w
 - [ ] **Step 6: Failure path**
 
 Upload a non-plan PDF (e.g., a recipe or random article). Confirm:
+
 - Review page renders the failed state with the message "This file doesn't look like a training plan."
 - **Talk to coach** link goes to `/coach?from=/plans&plan_file_id=<id>`.
 - In the coach panel, the per-turn context shows the file id and filename. Ask "help me build this plan" — the coach calls `read_uploaded_file` (you'll see "Read uploaded file" in the tool indicator) and continues.
@@ -2823,6 +3245,7 @@ Upload a non-plan PDF (e.g., a recipe or random article). Confirm:
 - [ ] **Step 7: Discard**
 
 From a failed card on `/plans` (or on the review page), click **Discard**. Confirm:
+
 - The row vanishes from `/plans`.
 - No stale row in the DB (`select * from plan_file where id = '...'`).
 - The Vercel Blob object is removed (or at least, the proxy returns 404).
@@ -2836,6 +3259,7 @@ Open the dev console while signed in as user A. POST to `/api/plans/upload/<some
 ## Self-review
 
 **Spec coverage:**
+
 - §3 Lifecycle (5 states) — Tasks 8–12 cover the routes; Task 11 covers save semantics. ✓
 - §4 Schema — Task 2. ✓
 - §5 Routes (6 routes) — Tasks 8 (upload), 9 (status + discard), 10 (extract), 11 (save), 12 (file proxy). ✓
@@ -2850,6 +3274,7 @@ Open the dev console while signed in as user A. POST to `/api/plans/upload/<some
 **Placeholder scan:** No "TBD" or unfinished steps. Two areas with clearly-marked verify-against-SDK notes (Task 7 on Anthropic `messages.parse`, Task 8 on Vercel Blob `access`) are deliberate — they require reading installed package types rather than guessing.
 
 **Type consistency:**
+
 - `PlanFileRow` shape (Task 3) matches what `GET /api/plans/upload/[id]` returns (Task 9) and what the review page consumes (Task 15). ✓
 - `ExtractedPlan` (Task 5) is the single shape emitted by `runExtraction` (Task 7), stored on `extracted_payload`, and consumed by `ReviewForm` (Task 15) and the save handler (Task 11). ✓
 - `MaterializedWorkout` (Task 4) is consumed by Task 11's insert and by Task 15's `WorkoutRow`-shaped preview adapter. ✓

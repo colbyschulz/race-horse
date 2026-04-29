@@ -1,9 +1,5 @@
 import { describe, it, expect } from "vitest";
-import {
-  BUILD_FORM_SENTINEL,
-  formatBuildForm,
-  parseBuildForm,
-} from "../buildForm";
+import { BUILD_FORM_SENTINEL, formatBuildForm, parseBuildForm } from "../buildForm";
 
 describe("BUILD_FORM_SENTINEL", () => {
   it("is the documented HTML comment sentinel", () => {
@@ -88,13 +84,13 @@ describe("parseBuildForm", () => {
   it("returns null when sentinel is missing", () => {
     expect(parseBuildForm("just some text")).toBeNull();
     expect(
-      parseBuildForm("**Build a plan**\n- **Sport:** Run\n- **Goal:** Indefinite build"),
+      parseBuildForm("**Build a plan**\n- **Sport:** Run\n- **Goal:** Indefinite build")
     ).toBeNull();
   });
 
   it("returns null when required fields are missing", () => {
     expect(
-      parseBuildForm("<!-- build_form_request -->\n**Build a plan**\n- **Sport:** Run\n"),
+      parseBuildForm("<!-- build_form_request -->\n**Build a plan**\n- **Sport:** Run\n")
     ).toBeNull();
   });
 

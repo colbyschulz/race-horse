@@ -22,7 +22,10 @@ describe("formatForClaude", () => {
       type: "document",
       source: { type: "base64", media_type: "application/pdf" },
     });
-    const textBlocks = blocks.filter((b) => b.type === "text") as Array<{ type: "text"; text: string }>;
+    const textBlocks = blocks.filter((b) => b.type === "text") as Array<{
+      type: "text";
+      text: string;
+    }>;
     expect(textBlocks[0].text).toContain("plan.pdf");
   });
 
@@ -51,7 +54,7 @@ describe("formatForClaude", () => {
     const blocks = await formatForClaude(
       buf,
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      "plan.xlsx",
+      "plan.xlsx"
     );
     const t = blocks[0] as { type: "text"; text: string };
     expect(t.text).toContain("S1");

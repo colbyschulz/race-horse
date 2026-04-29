@@ -2,10 +2,7 @@ import { fetchStrava } from "./client";
 import { getStravaToken } from "./token";
 import { normalizeActivity, normalizeLap } from "./normalize";
 import { replaceLaps, upsertActivity } from "./upsert";
-import type {
-  StravaDetailedActivity,
-  StravaSummaryActivity,
-} from "./types";
+import type { StravaDetailedActivity, StravaSummaryActivity } from "./types";
 
 export const LIST_PAGE_SIZE = 200;
 
@@ -30,19 +27,15 @@ export async function syncActivities(opts: {
   let pages = 0;
 
   while (true) {
-    const summaries = await fetchStrava<StravaSummaryActivity[]>(
-      "/athlete/activities",
-      token,
-      { params: { per_page: LIST_PAGE_SIZE, page, after } },
-    );
+    const summaries = await fetchStrava<StravaSummaryActivity[]>("/athlete/activities", token, {
+      params: { per_page: LIST_PAGE_SIZE, page, after },
+    });
     pages += 1;
 
     if (!summaries.length) break;
 
     for (const summary of summaries) {
-      const activityId = await upsertActivity(
-        normalizeActivity(summary, opts.userId),
-      );
+      const activityId = await upsertActivity(normalizeActivity(summary, opts.userId));
       upserted += 1;
 
       if (!TYPES_WITH_LAPS.has(summary.type)) continue;
@@ -51,7 +44,7 @@ export async function syncActivities(opts: {
         const detail = await fetchStrava<StravaDetailedActivity>(
           `/activities/${summary.id}`,
           token,
-          { params: { include_all_efforts: "true" } },
+          { params: { include_all_efforts: "true" } }
         );
         // upsert again with the richer detail (overwrites raw + any newly-present fields)
         await upsertActivity(normalizeActivity(detail, opts.userId));
