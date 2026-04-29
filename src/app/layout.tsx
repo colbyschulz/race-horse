@@ -4,6 +4,11 @@ import "@/styles/globals.scss";
 export const metadata: Metadata = {
   title: "Race Horse",
   description: "Virtual coach for runners and cyclists",
+  appleWebApp: {
+    capable: true,
+    title: "Race Horse",
+    statusBarStyle: "default",
+  },
 };
 
 export const viewport: Viewport = {
