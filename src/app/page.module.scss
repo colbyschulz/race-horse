@@ -4,6 +4,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 3.5rem;
   padding: var(--space-8);
   text-align: center;
   background: var(--color-bg-base);
@@ -11,59 +12,15 @@
 
 .title {
   font-family: var(--font-display);
-  font-size: clamp(3rem, 12vw, 5rem);
+  font-size: clamp(4rem, 18vw, 8rem);
   font-weight: 800;
   letter-spacing: -0.05em;
-  line-height: 1;
+  line-height: 0.88;
   color: var(--color-fg-primary);
-  margin: 0 0 var(--space-4);
-}
-
-.divider {
-  width: 100%;
-  max-width: 24rem;
-  height: 1px;
-  background: var(--color-border-default);
-  margin: 0 0 var(--space-6);
-}
-
-.features {
-  list-style: none;
-  margin: 0 0 var(--space-8);
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  text-align: left;
-  max-width: 24rem;
-  width: 100%;
-}
-
-.feature {
-  font-family: var(--font-body);
-  font-size: 0.9375rem;
-  color: var(--color-fg-secondary);
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-3);
-}
-
-.bullet {
-  color: var(--color-brown);
-  font-size: 1.25rem;
-  line-height: 1.2;
-  flex-shrink: 0;
+  margin: 0;
 }
 
 .signIn {
   padding: var(--space-3) var(--space-6);
   font-size: 1rem;
-}
-
-.domain {
-  margin-top: var(--space-8);
-  font-family: var(--font-body);
-  font-size: 0.75rem;
-  color: var(--color-fg-tertiary);
-  letter-spacing: 0.05em;
 }

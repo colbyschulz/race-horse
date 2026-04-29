@@ -3,11 +3,8 @@
   flex-direction: column;
 }
 
-.row {
-  border-bottom: 1px solid var(--color-border-subtle);
-  &:last-of-type {
-    border-bottom: none;
-  }
+.row + .row {
+  border-top: 1px solid var(--color-border-default);
 }
 
 .rowToday {
@@ -38,8 +35,8 @@
 
 .dayLabel {
   font-size: 0.75rem;
-  font-weight: 400;
-  color: var(--color-fg-tertiary);
+  font-weight: 600;
+  color: var(--color-fg-primary);
   width: 52px;
   flex-shrink: 0;
 }
@@ -90,36 +87,49 @@
 }
 
 .activityRow {
+  position: relative;
   display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: 5px 0 7px calc(52px + var(--space-3));
-  border-top: 1px solid var(--color-border-subtle);
-  text-decoration: none;
+  padding: 0 0 10px calc(52px + var(--space-3));
+  margin-top: -4px;
+}
+
+.activityRowBg {
+  position: absolute;
+  inset: 0;
+  appearance: none;
+  background: transparent;
+  border: none;
+  padding: 0;
   cursor: pointer;
 
-  &:hover {
-    .activityName {
-      text-decoration: underline;
-    }
+  &:disabled {
+    cursor: default;
   }
 }
 
-.activityLabel {
-  font-size: 0.625rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-  color: var(--color-olive);
+.activityLink {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  text-decoration: none;
+  cursor: pointer;
+
+  &:hover .activityMeta {
+    text-decoration: underline;
+  }
+}
+
+.stravaIcon {
+  width: 14px;
+  height: 14px;
   flex-shrink: 0;
-  white-space: nowrap;
 }
 
 .activityName {
   font-size: 0.8125rem;
   font-weight: 500;
   color: var(--color-olive);
-  flex: 1;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;

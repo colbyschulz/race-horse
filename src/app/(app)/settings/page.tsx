@@ -4,6 +4,8 @@ import { Suspense } from "react";
 import { SettingsForm } from "./SettingsForm";
 import { CoachNotesSection } from "./CoachNotesSection";
 import { CoachNotesSkeleton } from "./CoachNotesSkeleton";
+import { Button } from "@/components/Button";
+import { signOutAction } from "@/app/_actions/sign-out";
 import styles from "./Settings.module.scss";
 
 export default async function SettingsPage() {
@@ -17,6 +19,11 @@ export default async function SettingsPage() {
       <Suspense fallback={<CoachNotesSkeleton />}>
         <CoachNotesSection userId={session.user.id!} />
       </Suspense>
+      <form action={signOutAction} className={styles.signOut}>
+        <Button type="submit" variant="danger">
+          Log out
+        </Button>
+      </form>
     </div>
   );
 }
