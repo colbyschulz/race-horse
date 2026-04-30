@@ -1,13 +1,13 @@
 // src/app/api/plans/upload/[id]/save/route.ts
 import { NextResponse } from "next/server";
-import { db } from "@/db";
-import { workouts } from "@/db/schema";
-import { auth } from "@/auth";
-import { getPlanFileById, setExtractedPlanId } from "@/plans/files";
-import { createPlan, deletePlan, setActivePlan } from "@/plans/queries";
-import { materializeWorkouts, computeEndDate, type ExtractedWorkout } from "@/plans/materialize";
-import { ExtractedPlanSchema } from "@/extraction/schema";
-import type { Sport, PlanMode, Goal } from "@/plans/types";
+import { db } from "@/server/db";
+import { workouts } from "@/server/db/schema";
+import { auth } from "@/server/auth";
+import { getPlanFileById, setExtractedPlanId } from "@/server/plans/files";
+import { createPlan, deletePlan, setActivePlan } from "@/server/plans/queries";
+import { materializeWorkouts, computeEndDate, type ExtractedWorkout } from "@/server/plans/materialize";
+import { ExtractedPlanSchema } from "@/server/extraction/schema";
+import type { Sport, PlanMode, Goal } from "@/server/plans/types";
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 type Ctx = { params: Promise<{ id: string }> };

@@ -1,4 +1,4 @@
-import type { SSEEvent } from "@/coach/types";
+import type { SSEEvent } from "@/types/coach";
 
 const SSE_HEADERS = {
   "content-type": "text/event-stream",

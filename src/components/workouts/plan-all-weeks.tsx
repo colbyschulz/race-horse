@@ -1,6 +1,6 @@
 "use client";
 import { useMemo } from "react";
-import type { WorkoutRow } from "@/plans/date-queries";
+import type { WorkoutRow } from "@/types/plans";
 import { mondayOf, addDays } from "@/lib/dates";
 import { WeekNavigator } from "./week-navigator";
 import { WeekAgendaRows } from "./week-agenda-rows";

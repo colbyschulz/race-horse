@@ -1,43 +1,55 @@
-import { notFound, redirect } from "next/navigation";
-import { Suspense } from "react";
-import { auth } from "@/auth";
-import { db } from "@/db";
-import { eq } from "drizzle-orm";
-import { users } from "@/db/schema";
-import { getPlanById } from "@/plans/queries";
-import { addDays, mondayOf, todayIso } from "@/lib/dates";
+"use client";
+
+import { useMemo, use } from "react";
+import { notFound, useSearchParams } from "next/navigation";
+import { CSRSuspense } from "@/lib/csr-suspense";
+import type { PlanRow, WorkoutRow } from "@/types/plans";
+import { addDays, mondayOf, todayIso, isIsoDate } from "@/lib/dates";
 import { planNavBounds } from "@/lib/plan-nav";
-import { PlanWeekSection } from "./plan-week-section";
-import { WeekAgendaSkeleton } from "@/app/(app)/training/week-agenda-skeleton";
+import { groupActivitiesByDate } from "@/lib/group-activities";
+import { useWorkoutSheet } from "@/lib/use-workout-sheet";
+import { PlanView } from "@/components/plans/plan-view";
+import { PlanStatusActions } from "@/components/plans/plan-status-actions";
+import { WorkoutDetailSheet } from "@/components/workouts/workout-detail-sheet";
+import { CoachLink } from "@/components/layout/coach-link";
+import { WeekAgendaSkeleton } from "@/components/skeletons/week-agenda-skeleton";
+import { usePreferences } from "@/queries/preferences";
+import { usePlan, usePlanWorkouts } from "@/queries/plans";
+import { useActivities } from "@/queries/activities";
 import styles from "./plan-detail.module.scss";
 
-export default async function PlanDetailPage({
-  params,
-  searchParams,
-}: {
+interface PageProps {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ week?: string }>;
-}) {
-  const session = await auth();
-  if (!session?.user?.id) redirect("/");
-  const userId = session.user.id;
-  const { id } = await params;
-  const { week } = await searchParams;
+}
 
-  const [[pref], plan] = await Promise.all([
-    db.select({ preferences: users.preferences }).from(users).where(eq(users.id, userId)).limit(1),
-    getPlanById(id, userId),
-  ]);
+export default function PlanDetailPage({ params }: PageProps) {
+  const { id } = use(params);
+  return (
+    <div className={styles.page}>
+      <CSRSuspense fallback={<WeekAgendaSkeleton />}>
+        <PlanDetailContent planId={id} />
+      </CSRSuspense>
+    </div>
+  );
+}
+
+function PlanDetailContent({ planId }: { planId: string }) {
+  const searchParams = useSearchParams();
+  const week = searchParams.get("week");
+
+  const { data: prefs } = usePreferences();
+  const { data: plan } = usePlan(planId);
+  const { data: allWorkouts } = usePlanWorkouts(planId);
+
   if (!plan) notFound();
 
-  const units = (pref?.preferences?.units === "km" ? "km" : "mi") as "mi" | "km";
-  const today = todayIso();
+  const today = todayIso(prefs.timezone);
+
   const { firstMonday: planFirstMonday, lastMonday: planLastMonday } = planNavBounds(
     plan.start_date,
     plan.end_date,
     mondayOf(today)
   );
-
   const defaultMonday =
     planLastMonday == null || mondayOf(today) <= planLastMonday
       ? mondayOf(today) >= planFirstMonday
@@ -45,28 +57,86 @@ export default async function PlanDetailPage({
         : planFirstMonday
       : planLastMonday;
 
-  const monday = week && /^\d{4}-\d{2}-\d{2}$/.test(week) ? mondayOf(week) : defaultMonday;
+  const monday = isIsoDate(week) ? mondayOf(week) : defaultMonday;
   const sunday = addDays(monday, 6);
 
   const { prevDisabled, nextDisabled } = planNavBounds(plan.start_date, plan.end_date, monday);
   const isCurrentWeek = monday === mondayOf(today);
 
   return (
-    <div className={styles.page}>
-      <Suspense fallback={<WeekAgendaSkeleton />}>
-        <PlanWeekSection
-          plan={plan}
-          userId={userId}
-          monday={monday}
-          sunday={sunday}
-          prevHref={prevDisabled ? null : `/plans/${id}?week=${addDays(monday, -7)}`}
-          nextHref={nextDisabled ? null : `/plans/${id}?week=${addDays(monday, 7)}`}
-          todayHref={`/plans/${id}`}
-          isCurrentWeek={isCurrentWeek}
-          today={today}
-          units={units}
-        />
-      </Suspense>
-    </div>
+    <PlanWeek
+      plan={plan}
+      allWorkouts={allWorkouts}
+      monday={monday}
+      sunday={sunday}
+      prevHref={prevDisabled ? null : `/plans/${planId}?week=${addDays(monday, -7)}`}
+      nextHref={nextDisabled ? null : `/plans/${planId}?week=${addDays(monday, 7)}`}
+      todayHref={`/plans/${planId}`}
+      isCurrentWeek={isCurrentWeek}
+      today={today}
+      units={prefs.units}
+    />
+  );
+}
+
+interface PlanWeekProps {
+  plan: PlanRow;
+  allWorkouts: WorkoutRow[];
+  monday: string;
+  sunday: string;
+  prevHref: string | null;
+  nextHref: string | null;
+  todayHref: string;
+  isCurrentWeek: boolean;
+  today: string;
+  units: "mi" | "km";
+}
+
+function PlanWeek({
+  plan,
+  allWorkouts,
+  monday,
+  sunday,
+  prevHref,
+  nextHref,
+  todayHref,
+  isCurrentWeek,
+  today,
+  units,
+}: PlanWeekProps) {
+  const { data: weekActivities } = useActivities(monday, sunday);
+  const activitiesByDate = useMemo(
+    () => groupActivitiesByDate(weekActivities),
+    [weekActivities]
+  );
+  const sheet = useWorkoutSheet((date) => allWorkouts.find((w) => w.date === date));
+
+  return (
+    <>
+      <PlanView
+        plan={plan}
+        today={today}
+        units={units}
+        allWorkouts={allWorkouts}
+        headerActions={<PlanStatusActions plan={plan} today={today} />}
+        subheaderAction={<CoachLink />}
+        currentWeek={{
+          monday,
+          prev: prevHref ? { href: prevHref } : { disabled: true },
+          next: nextHref ? { href: nextHref } : { disabled: true },
+          todayNav: { href: todayHref },
+          showToday: !isCurrentWeek,
+          activitiesByDate,
+          isActivePlan: plan.is_active,
+          onWorkoutClick: sheet.open,
+        }}
+      />
+      <WorkoutDetailSheet
+        workout={sheet.openWorkout}
+        planId={plan.id}
+        units={units}
+        onClose={sheet.close}
+      />
+    </>
   );
 }

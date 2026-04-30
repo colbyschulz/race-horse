@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const mockAuth = vi.fn();
-vi.mock("@/auth", () => ({ auth: () => mockAuth() }));
+vi.mock("@/server/auth", () => ({ auth: () => mockAuth() }));
 
 const mockRunCoach = vi.fn();
-vi.mock("@/coach/runner", () => ({ runCoach: (...args: unknown[]) => mockRunCoach(...args) }));
+vi.mock("@/server/coach/runner", () => ({ runCoach: (...args: unknown[]) => mockRunCoach(...args) }));
 
 import { POST } from "../route";
 

@@ -1,8 +1,8 @@
 // src/app/api/plans/upload/route.ts
 import { NextResponse } from "next/server";
 import { put, del } from "@vercel/blob";
-import { auth } from "@/auth";
-import { createPlanFile } from "@/plans/files";
+import { auth } from "@/server/auth";
+import { createPlanFile } from "@/server/plans/files";
 
 const MAX_BYTES = 10 * 1024 * 1024;
 

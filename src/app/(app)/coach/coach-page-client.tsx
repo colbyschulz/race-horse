@@ -2,9 +2,9 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import styles from "./coach.module.scss";
-import type { StoredMessage, SSEEvent } from "@/coach/types";
+import type { StoredMessage, SSEEvent } from "@/types/coach";
 import { consumeStream } from "@/lib/sse";
-import type { BuildFormInput } from "@/coach/build-form";
+import type { BuildFormInput } from "@/lib/build-form";
 
 import { Button } from "@/components/button/button";
 import { PageHeader } from "@/components/layout/page-header";

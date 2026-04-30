@@ -1,18 +1,18 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const mockAuth = vi.fn();
-vi.mock("@/auth", () => ({ auth: () => mockAuth() }));
+vi.mock("@/server/auth", () => ({ auth: () => mockAuth() }));
 
 const mockSelect = vi.fn();
 const mockUpdate = vi.fn();
-vi.mock("@/db", () => ({
+vi.mock("@/server/db", () => ({
   db: {
     select: (...args: unknown[]) => mockSelect(...args),
     update: (...args: unknown[]) => mockUpdate(...args),
   },
 }));
 
-vi.mock("@/db/schema", () => ({
+vi.mock("@/server/db/schema", () => ({
   users: { id: "id", coach_notes: "coach_notes" },
 }));
 

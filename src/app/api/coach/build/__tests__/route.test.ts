@@ -1,18 +1,18 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const mockRunCoach = vi.fn();
-vi.mock("@/coach/runner", () => ({ runCoach: (...args: unknown[]) => mockRunCoach(...args) }));
+vi.mock("@/server/coach/runner", () => ({ runCoach: (...args: unknown[]) => mockRunCoach(...args) }));
 
 const mockFetchPreload = vi.fn();
-vi.mock("@/coach/stravaPreload", () => ({
+vi.mock("@/server/coach/stravaPreload", () => ({
   fetchStravaPreload: (...args: unknown[]) => mockFetchPreload(...args),
 }));
 
-vi.mock("@/auth", () => ({
+vi.mock("@/server/auth", () => ({
   auth: vi.fn(),
 }));
 
-import { auth } from "@/auth";
+import { auth } from "@/server/auth";
 import { POST } from "../route";
 
 beforeEach(() => {

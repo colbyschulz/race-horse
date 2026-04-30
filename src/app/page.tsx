@@ -1,4 +1,4 @@
-import { auth } from "@/auth";
+import { auth } from "@/server/auth";
 import { redirect } from "next/navigation";
 import { Button } from "@/components/button/button";
 import { signInWithStrava } from "./_actions/sign-in";

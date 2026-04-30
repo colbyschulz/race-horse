@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
-import { auth } from "@/auth";
-import { db } from "@/db";
-import { users } from "@/db/schema";
+import { auth } from "@/server/auth";
+import { db } from "@/server/db";
+import { users } from "@/server/db/schema";
 
 export async function GET(): Promise<NextResponse> {
   const session = await auth();

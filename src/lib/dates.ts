@@ -1,3 +1,9 @@
+export const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+export function isIsoDate(value: string | null | undefined): value is string {
+  return typeof value === "string" && ISO_DATE_RE.test(value);
+}
+
 export function todayIso(timezone?: string): string {
   if (!timezone || timezone === "UTC") {
     return new Date().toISOString().slice(0, 10);

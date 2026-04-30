@@ -1,5 +1,5 @@
 import styles from "./activity-row.module.scss";
-import type { ActivityRow as Activity } from "@/strava/date-queries";
+import type { Activity } from "@/types/strava";
 import { formatDistance, formatDuration, formatPace } from "@/lib/format";
 
 export function ActivityRow({ activity, units }: { activity: Activity; units: "mi" | "km" }) {

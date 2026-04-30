@@ -1,78 +1,66 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import type { UserPreferences } from "@/db/schema";
+import { useEffect, useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import type { UserPreferences } from "@/types/preferences";
 import { FormField } from "@/components/form-field/form-field";
 import { Select } from "@/components/select/select";
 import { Textarea } from "@/components/textarea/textarea";
+import { usePreferences } from "@/queries/preferences";
+import { useCoachNotes } from "@/queries/coach-notes";
 import styles from "./settings-form.module.scss";
 
-interface Props {
-  initialPreferences: UserPreferences;
-  initialCoachNotes: string;
-}
+export function SettingsForm() {
+  const qc = useQueryClient();
+  const { data: prefs } = usePreferences();
+  const { data: initialCoachNotes } = useCoachNotes();
 
-type Status = "idle" | "saving" | "saved" | "error";
-
-export function SettingsForm({ initialPreferences, initialCoachNotes }: Props) {
-  const [units, setUnits] = useState<UserPreferences["units"]>(initialPreferences.units);
-  const [paceFormat, setPaceFormat] = useState<UserPreferences["pace_format"]>(
-    initialPreferences.pace_format
-  );
+  const [units, setUnits] = useState<UserPreferences["units"]>(prefs.units);
+  const [paceFormat, setPaceFormat] = useState<UserPreferences["pace_format"]>(prefs.pace_format);
   const [coachNotes, setCoachNotes] = useState(initialCoachNotes);
-  const [status, setStatus] = useState<Status>("idle");
 
-  const initialPrefsRef = useRef(initialPreferences);
-
-  async function savePreferences(next: {
-    units: UserPreferences["units"];
-    paceFormat: UserPreferences["pace_format"];
-  }) {
-    setStatus("saving");
-    try {
+  const savePreferences = useMutation({
+    mutationFn: async (next: {
+      units: UserPreferences["units"];
+      paceFormat: UserPreferences["pace_format"];
+    }) => {
       const res = await fetch("/api/preferences", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           units: next.units,
-          timezone: initialPrefsRef.current.timezone,
+          timezone: prefs.timezone,
           pace_format: next.paceFormat,
           power_units: "watts",
         }),
       });
-      setStatus(res.ok ? "saved" : "error");
-    } catch {
-      setStatus("error");
-    }
-  }
+      if (!res.ok) throw new Error("save failed");
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["preferences"] }),
+  });
 
-  async function saveCoachNotes(content: string) {
-    setStatus("saving");
-    try {
+  const saveCoachNotes = useMutation({
+    mutationFn: async (content: string) => {
       const res = await fetch("/api/coach/notes", {
         method: "PUT",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ content }),
       });
-      setStatus(res.ok ? "saved" : "error");
-    } catch {
-      setStatus("error");
-    }
-  }
+      if (!res.ok) throw new Error("save failed");
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["coach", "notes"] }),
+  });
 
-  // Debounce coach-notes saves (500ms after last change). Skip the initial mount.
-  const isFirstRun = useRef(true);
+  // Debounce coach-notes saves: skip when nothing changed (also skips initial mount).
   useEffect(() => {
-    if (isFirstRun.current) {
-      isFirstRun.current = false;
-      return;
-    }
-    const handle = setTimeout(() => {
-      saveCoachNotes(coachNotes);
-    }, 500);
+    if (coachNotes === initialCoachNotes) return;
+    const handle = setTimeout(() => saveCoachNotes.mutate(coachNotes), 500);
     return () => clearTimeout(handle);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [coachNotes]);
+  }, [coachNotes, initialCoachNotes, saveCoachNotes]);
+
+  const isSaving = savePreferences.isPending || saveCoachNotes.isPending;
+  const hasError = savePreferences.isError || saveCoachNotes.isError;
+  const hasSaved = savePreferences.isSuccess || saveCoachNotes.isSuccess;
 
   return (
     <form className={styles.form} onSubmit={(e) => e.preventDefault()}>
@@ -83,7 +71,7 @@ export function SettingsForm({ initialPreferences, initialCoachNotes }: Props) {
           onChange={(v) => {
             const next = v as UserPreferences["units"];
             setUnits(next);
-            savePreferences({ units: next, paceFormat });
+            savePreferences.mutate({ units: next, paceFormat });
           }}
           options={[
             { value: "mi", label: "Miles (mi)" },
@@ -99,7 +87,7 @@ export function SettingsForm({ initialPreferences, initialCoachNotes }: Props) {
           onChange={(v) => {
             const next = v as UserPreferences["pace_format"];
             setPaceFormat(next);
-            savePreferences({ units, paceFormat: next });
+            savePreferences.mutate({ units, paceFormat: next });
           }}
           options={[
             { value: "min_per_mi", label: "Min/mile" },
@@ -119,9 +107,9 @@ export function SettingsForm({ initialPreferences, initialCoachNotes }: Props) {
           <span className={styles.counter}>{coachNotes.length} / 4096</span>
           <span className={styles.spacer} />
           <span className={styles.status} aria-live="polite">
-            {status === "saving" && "Saving…"}
-            {status === "saved" && "Saved."}
-            {status === "error" && "Save failed — try again."}
+            {isSaving && "Saving…"}
+            {!isSaving && hasError && "Save failed — try again."}
+            {!isSaving && !hasError && hasSaved && "Saved."}
           </span>
         </div>
       </FormField>

@@ -1,10 +1,12 @@
-import { WorkoutBadge } from "@/components/workouts/workout-badge";
-import type { WorkoutRow } from "@/plans/date-queries";
-import type { TargetIntensity, IntervalSpec } from "@/db/schema";
+"use client";
+
+import { WorkoutBadge, type WorkoutType } from "@/components/workouts/workout-badge";
+import type { TargetIntensity, IntervalSpec } from "@/types/preferences";
 import { formatDistance, formatDuration, formatPaceRange, metersToUnits } from "@/lib/format";
+import { useWorkouts } from "@/queries/workouts";
 import styles from "./today.module.scss";
 
-const TYPE_HEADLINE: Record<string, string> = {
+const TYPE_HEADLINE: Record<WorkoutType, string> = {
   easy: "Easy Run",
   long: "Long Run",
   tempo: "Tempo Run",
@@ -16,13 +18,20 @@ const TYPE_HEADLINE: Record<string, string> = {
   cross: "Cross Train",
 };
 
-export function HeroWorkout({ workout, units }: { workout: WorkoutRow; units: "mi" | "km" }) {
+export function HeroWorkout({ units, today }: { units: "mi" | "km"; today: string }) {
+  const { data: workouts } = useWorkouts(today, today);
+  if (workouts.length === 0) {
+    return <div className={styles.restCard}>Rest day. Take it easy.</div>;
+  }
+  const workout = workouts[0];
   const hasNotes = !!workout.notes;
-  const t = hasNotes
-    ? ({} as TargetIntensity)
-    : ((workout.target_intensity ?? {}) as TargetIntensity);
-  const intervals = hasNotes ? null : ((workout.intervals ?? null) as IntervalSpec[] | null);
-  const pace = t.pace ? formatPaceRange(t.pace, units) : null;
+  const intensity: TargetIntensity | null = hasNotes
+    ? null
+    : ((workout.target_intensity as TargetIntensity | null) ?? null);
+  const intervals: IntervalSpec[] | null = hasNotes
+    ? null
+    : ((workout.intervals as IntervalSpec[] | null) ?? null);
+  const pace = intensity?.pace ? formatPaceRange(intensity.pace, units) : null;
 
   return (
     <article className={styles.hero}>
@@ -54,30 +63,30 @@ export function HeroWorkout({ workout, units }: { workout: WorkoutRow; units: "m
           </>
         )}
       </div>
-      {(t.hr || t.rpe != null || t.power) && (
+      {intensity && (intensity.hr || intensity.rpe != null || intensity.power) && (
         <div className={styles.intensityRow}>
-          {t.hr && (
+          {intensity.hr && (
             <div className={styles.intensityCell}>
               <span className={styles.lbl}>HR</span>
               <span className={styles.val}>
-                {"zone" in t.hr
-                  ? t.hr.zone
-                  : `${(t.hr as { min_bpm?: number }).min_bpm ?? ""}–${(t.hr as { max_bpm?: number }).max_bpm ?? ""}`}
+                {"zone" in intensity.hr
+                  ? intensity.hr.zone
+                  : `${(intensity.hr as { min_bpm?: number }).min_bpm ?? ""}–${(intensity.hr as { max_bpm?: number }).max_bpm ?? ""}`}
               </span>
             </div>
           )}
-          {t.rpe != null && (
+          {intensity.rpe != null && (
             <div className={styles.intensityCell}>
               <span className={styles.lbl}>RPE</span>
-              <span className={styles.val}>{t.rpe}/10</span>
+              <span className={styles.val}>{intensity.rpe}/10</span>
             </div>
           )}
-          {t.power && (
+          {intensity.power && (
             <div className={styles.intensityCell}>
               <span className={styles.lbl}>Power</span>
               <span
                 className={styles.val}
-              >{`${t.power.min_watts ?? ""}–${t.power.max_watts ?? ""} W`}</span>
+              >{`${intensity.power.min_watts ?? ""}–${intensity.power.max_watts ?? ""} W`}</span>
             </div>
           )}
         </div>

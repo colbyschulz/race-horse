@@ -1,6 +1,6 @@
-import { computePlanStats } from "@/plans/plan-stats";
-import { computeWeeksLeft } from "@/plans/stats";
-import type { WorkoutRow } from "@/plans/date-queries";
+import { computePlanStats } from "@/lib/plan-stats";
+import { computeWeeksLeft } from "@/lib/plan-format";
+import type { WorkoutRow } from "@/types/plans";
 import styles from "./plan-detail.module.scss";
 
 function fmtDate(iso: string): string {

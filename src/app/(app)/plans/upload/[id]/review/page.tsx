@@ -1,43 +1,37 @@
-// src/app/(app)/plans/upload/[id]/review/page.tsx
-import { notFound, redirect } from "next/navigation";
-import { auth } from "@/auth";
-import { db } from "@/db";
-import { eq, and } from "drizzle-orm";
-import { plans, users } from "@/db/schema";
-import { getPlanFileById } from "@/plans/files";
+"use client";
+
+import { use } from "react";
+import { notFound, useSearchParams } from "next/navigation";
+import { CSRSuspense } from "@/lib/csr-suspense";
 import { todayIso } from "@/lib/dates";
 import { ReviewClient } from "./review-client";
+import { usePreferences } from "@/queries/preferences";
+import { useActivePlan } from "@/queries/plans";
+import { usePlanFile } from "@/queries/plan-files";
+import { ReviewSkeleton } from "@/components/skeletons/review-skeleton";
 
-export default async function ReviewPage({
-  params,
-  searchParams,
-}: {
+interface PageProps {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ retry?: string }>;
-}) {
-  const session = await auth();
-  if (!session?.user?.id) redirect("/");
-  const userId = session.user.id;
-  const { id } = await params;
-  const { retry } = await searchParams;
-  const isRetry = retry === "1";
+}
 
-  const file = await getPlanFileById(id, userId);
+export default function ReviewPage({ params }: PageProps) {
+  const { id } = use(params);
+  return (
+    <CSRSuspense fallback={<ReviewSkeleton />}>
+      <ReviewContent id={id} />
+    </CSRSuspense>
+  );
+}
+
+function ReviewContent({ id }: { id: string }) {
+  const searchParams = useSearchParams();
+  const isRetry = searchParams.get("retry") === "1";
+
+  const { data: prefs } = usePreferences();
+  const { data: file } = usePlanFile(id);
+  const { data: activePlan } = useActivePlan();
+
   if (!file) notFound();
-
-  const [pref] = await db
-    .select({ preferences: users.preferences })
-    .from(users)
-    .where(eq(users.id, userId))
-    .limit(1);
-  const units = (pref?.preferences?.units === "km" ? "km" : "mi") as "mi" | "km";
-
-  const activeRows = await db
-    .select({ id: plans.id })
-    .from(plans)
-    .where(and(eq(plans.userId, userId), eq(plans.is_active, true)))
-    .limit(1);
-  const hasActivePlan = activeRows.length > 0;
 
   return (
     <ReviewClient
@@ -48,9 +42,9 @@ export default async function ReviewPage({
         extraction_error: file.extraction_error,
         extracted_payload: file.extracted_payload,
       }}
-      units={units}
-      today={todayIso()}
-      hasActivePlan={hasActivePlan}
+      units={prefs.units}
+      today={todayIso(prefs.timezone)}
+      hasActivePlan={activePlan !== null}
       isRetry={isRetry}
     />
   );

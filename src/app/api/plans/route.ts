@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/auth";
-import { createPlan, listPlansWithCounts } from "@/plans/queries";
-import type { CreatePlanInput, PlanMode, PlanSource, Sport } from "@/plans/types";
+import { auth } from "@/server/auth";
+import { createPlan, listPlansWithCounts } from "@/server/plans/queries";
+import type { CreatePlanInput, PlanMode, PlanSource, Sport } from "@/server/plans/types";
 
 const VALID_SPORTS: Sport[] = ["run", "bike"];
 const VALID_MODES: PlanMode[] = ["goal", "indefinite"];

@@ -1,9 +1,9 @@
 import { NextResponse, after } from "next/server";
-import { auth } from "@/auth";
-import { db } from "@/db";
-import { users } from "@/db/schema";
+import { auth } from "@/server/auth";
+import { db } from "@/server/db";
+import { users } from "@/server/db/schema";
 import { eq } from "drizzle-orm";
-import { syncActivities } from "@/strava/sync";
+import { syncActivities } from "@/server/strava/sync";
 
 const MANUAL_WINDOW_DAYS = 7;
 

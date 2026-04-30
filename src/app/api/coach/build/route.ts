@@ -1,13 +1,13 @@
-import { auth } from "@/auth";
-import { db } from "@/db";
+import { auth } from "@/server/auth";
+import { db } from "@/server/db";
 import { eq } from "drizzle-orm";
-import { users } from "@/db/schema";
-import { runCoach } from "@/coach/runner";
-import { fetchStravaPreload } from "@/coach/strava-preload";
-import { formatBuildForm, type BuildFormInput } from "@/coach/build-form";
+import { users } from "@/server/db/schema";
+import { runCoach } from "@/server/coach/runner";
+import { fetchStravaPreload } from "@/server/coach/strava-preload";
+import { formatBuildForm, type BuildFormInput } from "@/lib/build-form";
 import { todayIso } from "@/lib/dates";
 import { sseResponse } from "@/lib/sse";
-import type { BuildRequestBody } from "@/coach/types";
+import type { BuildRequestBody } from "@/server/coach/types";
 
 function validate(body: unknown): { ok: true; value: BuildRequestBody } | { ok: false; error: string } {
   if (!body || typeof body !== "object") return { ok: false, error: "body required" };

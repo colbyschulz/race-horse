@@ -1,6 +1,6 @@
 import { NextResponse, after } from "next/server";
-import { handleWebhookEvent } from "@/strava/webhook";
-import type { StravaWebhookEvent } from "@/strava/types";
+import { handleWebhookEvent } from "@/server/strava/webhook";
+import type { StravaWebhookEvent } from "@/server/strava/types";
 
 export async function GET(req: Request) {
   const url = new URL(req.url);

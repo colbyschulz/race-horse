@@ -1,8 +1,8 @@
 // src/app/(app)/plans/upload/[id]/review/ReviewForm.tsx
 "use client";
 import { useState, useMemo } from "react";
-import type { ExtractedPlan } from "@/extraction/schema";
-import type { WorkoutRow } from "@/plans/date-queries";
+import type { ExtractedPlan } from "@/types/extraction";
+import type { WorkoutRow } from "@/types/plans";
 import { addDays } from "@/lib/dates";
 import { usePlanWeekNav } from "@/lib/use-plan-week-nav";
 import { Button } from "@/components/button/button";

@@ -1,10 +1,15 @@
+"use client";
+
 import { WorkoutBadge } from "@/components/workouts/workout-badge";
 import { formatDayLabel } from "@/lib/dates";
 import { formatDistance, formatDuration } from "@/lib/format";
-import type { WorkoutRow } from "@/plans/date-queries";
+import { useNextWorkouts } from "@/queries/workouts";
 import styles from "./today.module.scss";
 
-export function UpNext({ workouts, units }: { workouts: WorkoutRow[]; units: "mi" | "km" }) {
+export function UpNext({ units, today }: { units: "mi" | "km"; today: string }) {
+  const { data: workouts } = useNextWorkouts(today, 1);
+  if (workouts.length === 0) return null;
+
   return (
     <section className={styles.upNextSection}>
       <h2 className={styles.h2}>Up next</h2>

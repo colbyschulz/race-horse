@@ -1,7 +1,7 @@
 // src/app/api/plans/upload/[id]/file/route.ts
 import { NextResponse } from "next/server";
-import { auth } from "@/auth";
-import { getPlanFileById } from "@/plans/files";
+import { auth } from "@/server/auth";
+import { getPlanFileById } from "@/server/plans/files";
 
 type Ctx = { params: Promise<{ id: string }> };
 

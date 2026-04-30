@@ -2,14 +2,14 @@
 import { addDays, formatDayLabel } from "@/lib/dates";
 import { formatDistance, formatDuration } from "@/lib/format";
 import { WorkoutBadge } from "./workout-badge";
-import type { WorkoutRow } from "@/plans/date-queries";
-import type { ActivityRow } from "@/strava/date-queries";
+import type { WorkoutRow } from "@/types/plans";
+import type { Activity } from "@/types/strava";
 import styles from "./week-agenda-rows.module.scss";
 
 interface Props {
   monday: string;
   byDate: Map<string, WorkoutRow>;
-  activitiesByDate?: Map<string, ActivityRow[]>;
+  activitiesByDate?: Map<string, Activity[]>;
   today: string;
   units: "mi" | "km";
   isActivePlan: boolean;

@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { del } from "@vercel/blob";
-import { auth } from "@/auth";
-import { archivePlan, deletePlan, getPlanById, setActivePlan } from "@/plans/queries";
-import { deletePlanFilesByPlanId } from "@/plans/files";
+import { auth } from "@/server/auth";
+import { archivePlan, deletePlan, getPlanById, setActivePlan } from "@/server/plans/queries";
+import { deletePlanFilesByPlanId } from "@/server/plans/files";
 
 type Ctx = { params: Promise<{ id: string }> };
 

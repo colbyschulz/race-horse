@@ -1,11 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const mockAuth = vi.fn();
-vi.mock("@/auth", () => ({ auth: () => mockAuth() }));
+vi.mock("@/server/auth", () => ({ auth: () => mockAuth() }));
 
 const loadHistoryMock = vi.fn();
 const clearMessagesMock = vi.fn();
-vi.mock("@/coach/messages", () => ({
+vi.mock("@/server/coach/messages", () => ({
   loadHistory: (...args: unknown[]) => loadHistoryMock(...args),
   clearMessages: (...args: unknown[]) => clearMessagesMock(...args),
 }));

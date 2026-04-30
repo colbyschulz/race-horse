@@ -1,8 +1,8 @@
 // src/app/api/plans/upload/[id]/extract/route.ts
 import { NextResponse } from "next/server";
-import { auth } from "@/auth";
-import { runExtraction } from "@/extraction/runtime";
-import { getPlanFileById, updatePlanFileStatus } from "@/plans/files";
+import { auth } from "@/server/auth";
+import { runExtraction } from "@/server/extraction/runtime";
+import { getPlanFileById, updatePlanFileStatus } from "@/server/plans/files";
 
 export const maxDuration = 300;
 

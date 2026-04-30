@@ -4,8 +4,8 @@ const auth = vi.fn();
 const listPlansWithCounts = vi.fn();
 const createPlan = vi.fn();
 
-vi.mock("@/auth", () => ({ auth: (...a: unknown[]) => auth(...a) }));
-vi.mock("@/plans/queries", () => ({
+vi.mock("@/server/auth", () => ({ auth: (...a: unknown[]) => auth(...a) }));
+vi.mock("@/server/plans/queries", () => ({
   listPlansWithCounts: (...a: unknown[]) => listPlansWithCounts(...a),
   createPlan: (...a: unknown[]) => createPlan(...a),
 }));

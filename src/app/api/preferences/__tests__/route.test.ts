@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const mockAuth = vi.fn();
-vi.mock("@/auth", () => ({ auth: () => mockAuth() }));
+vi.mock("@/server/auth", () => ({ auth: () => mockAuth() }));
 
 const updateMock = vi.fn();
-vi.mock("@/db", () => ({
+vi.mock("@/server/db", () => ({
   db: {
     update: () => ({
       set: () => ({

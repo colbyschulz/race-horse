@@ -1,4 +1,4 @@
-import { auth } from "@/auth";
+import { auth } from "@/server/auth";
 import { NavLinks } from "./nav-links";
 import styles from "./app-shell.module.scss";
 

@@ -6,7 +6,7 @@ import { Input } from "@/components/input/input";
 import { Textarea } from "@/components/textarea/textarea";
 import { Spinner } from "@/components/spinner/spinner";
 import styles from "./build-form-card.module.scss";
-import type { BuildFormInput } from "@/coach/build-form";
+import type { BuildFormInput } from "@/lib/build-form";
 
 export type BuildFormCardState =
   | { kind: "editable" }

@@ -1,8 +1,8 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { weeklyMileage } from "@/plans/plan-stats";
+import { weeklyMileage } from "@/lib/plan-stats";
 import { mondayOf } from "@/lib/dates";
-import type { WorkoutRow } from "@/plans/date-queries";
+import type { WorkoutRow } from "@/types/plans";
 import styles from "./plan-detail.module.scss";
 
 interface Props {

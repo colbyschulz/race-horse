@@ -1,37 +1,38 @@
-import { redirect } from "next/navigation";
+"use client";
+
 import { Suspense } from "react";
-import { auth } from "@/auth";
-import { db } from "@/db";
-import { eq } from "drizzle-orm";
-import { users } from "@/db/schema";
-import { getActivePlan } from "@/plans/date-queries";
+import { CSRSuspense } from "@/lib/csr-suspense";
 import { todayIso, formatLongDate } from "@/lib/dates";
-import { HeroSection } from "./hero-section";
-import { HeroSkeleton } from "./hero-skeleton";
-import { ActivitiesSection } from "./activities-section";
-import { ActivitiesSkeleton } from "./activities-skeleton";
-import { UpNextSection } from "./up-next-section";
-import { UpNextSkeleton } from "./up-next-skeleton";
+import { HeroWorkout } from "./hero-workout";
+import { Activities } from "./activities";
+import { UpNext } from "./up-next";
+import { HeroSkeleton } from "@/components/skeletons/hero-skeleton";
+import { ActivitiesSkeleton } from "@/components/skeletons/activities-skeleton";
+import { UpNextSkeleton } from "@/components/skeletons/up-next-skeleton";
 import { EmptyState } from "@/components/empty-state/empty-state";
 import { CoachLink } from "@/components/layout/coach-link";
 import { PageHeader } from "@/components/layout/page-header";
+import { usePreferences } from "@/queries/preferences";
+import { useActivePlan } from "@/queries/plans";
 import styles from "./today.module.scss";
 
-export default async function TodayPage() {
-  const session = await auth();
-  if (!session?.user?.id) redirect("/");
-  const userId = session.user.id;
-
-  const [[pref], activePlan] = await Promise.all([
-    db.select({ preferences: users.preferences }).from(users).where(eq(users.id, userId)).limit(1),
-    getActivePlan(userId),
-  ]);
-  const units = (pref?.preferences?.units === "km" ? "km" : "mi") as "mi" | "km";
-  const tz = (pref?.preferences as { timezone?: string } | null)?.timezone;
-  const today = todayIso(tz);
-
+export default function TodayPage() {
   return (
     <div className={styles.page}>
+      <CSRSuspense fallback={<HeroSkeleton />}>
+        <TodayContent />
+      </CSRSuspense>
+    </div>
+  );
+}
+
+function TodayContent() {
+  const { data: prefs } = usePreferences();
+  const { data: activePlan } = useActivePlan();
+  const today = todayIso(prefs.timezone);
+
+  return (
+    <>
       <PageHeader
         title={formatLongDate(today)}
         subtitle={activePlan?.title}
@@ -50,19 +51,19 @@ export default async function TodayPage() {
 
       {activePlan && (
         <Suspense fallback={<HeroSkeleton />}>
-          <HeroSection userId={userId} units={units} today={today} />
+          <HeroWorkout units={prefs.units} today={today} />
         </Suspense>
       )}
 
-      <Suspense fallback={activePlan ? <ActivitiesSkeleton /> : null}>
-        <ActivitiesSection userId={userId} units={units} today={today} />
+      <Suspense fallback={<ActivitiesSkeleton />}>
+        <Activities units={prefs.units} today={today} />
       </Suspense>
 
       {activePlan && (
         <Suspense fallback={<UpNextSkeleton />}>
-          <UpNextSection userId={userId} units={units} today={today} />
+          <UpNext units={prefs.units} today={today} />
         </Suspense>
       )}
-    </div>
+    </>
   );
 }

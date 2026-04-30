@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
-import type { WorkoutRow } from "@/plans/date-queries";
-import type { ActivityRow } from "@/strava/date-queries";
+import type { WorkoutRow } from "@/types/plans";
+import type { Activity } from "@/types/strava";
 import { mondayOf, addDays, formatDateShort, weekIndexFromStart } from "@/lib/dates";
 import { PlanHeading } from "./plan-heading";
 import { PlanMeta, type GoalLike } from "./plan-meta";
@@ -26,7 +26,7 @@ export interface CurrentWeek {
   next: NavTarget;
   todayNav?: NavTarget;
   showToday?: boolean;
-  activitiesByDate?: Map<string, ActivityRow[]>;
+  activitiesByDate?: Map<string, Activity[]>;
   isActivePlan: boolean;
   onWorkoutClick?: (date: string) => void;
 }

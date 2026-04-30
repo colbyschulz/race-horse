@@ -1,4 +1,4 @@
-import { auth as proxy } from "@/auth";
+import { auth as proxy } from "@/server/auth";
 
 export { proxy };
 

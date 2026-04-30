@@ -2,10 +2,10 @@
 import Link from "next/link";
 import styles from "./plan-card.module.scss";
 import { Badge } from "@/components/badge/badge";
-import { computeWeeksLeft } from "@/plans/stats";
+import { computeWeeksLeft } from "@/lib/plan-format";
 import { formatDistance } from "@/lib/format";
 import { formatDateRange } from "@/lib/dates";
-import type { PlanWithCounts } from "@/plans/types";
+import type { PlanWithCounts } from "@/types/plans";
 
 type Status = "active" | "generating" | "upcoming" | "archived";
 

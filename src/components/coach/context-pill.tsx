@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import styles from "./context-pill.module.scss";
-import { routeLabel } from "@/coach/context";
+import { routeLabel } from "@/lib/route-label";
 
 export function ContextPill({ fromRoute, fromLabel }: { fromRoute?: string; fromLabel?: string }) {
   const label = fromLabel ?? routeLabel(fromRoute);

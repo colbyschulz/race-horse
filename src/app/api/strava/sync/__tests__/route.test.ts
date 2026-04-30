@@ -1,16 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const authMock = vi.fn();
-vi.mock("@/auth", () => ({ auth: () => authMock() }));
+vi.mock("@/server/auth", () => ({ auth: () => authMock() }));
 
 const updateMock = vi.fn();
-vi.mock("@/db", () => ({
+vi.mock("@/server/db", () => ({
   db: { update: () => ({ set: () => ({ where: updateMock }) }) },
 }));
-vi.mock("@/db/schema", () => ({ users: { id: "id" } }));
+vi.mock("@/server/db/schema", () => ({ users: { id: "id" } }));
 
 const syncActivitiesMock = vi.fn();
-vi.mock("@/strava/sync", () => ({
+vi.mock("@/server/strava/sync", () => ({
   syncActivities: (...a: unknown[]) => syncActivitiesMock(...a),
 }));
 

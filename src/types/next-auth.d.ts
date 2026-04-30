@@ -1,4 +1,4 @@
-import type { UserPreferences } from "@/db/schema";
+import type { UserPreferences } from "@/types/preferences";
 
 declare module "next-auth" {
   interface Session {

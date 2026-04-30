@@ -7,6 +7,8 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      // Stub the server-only marker so it's a no-op under vitest.
+      "server-only": path.resolve(__dirname, "./vitest.server-only-stub.ts"),
     },
   },
   test: {

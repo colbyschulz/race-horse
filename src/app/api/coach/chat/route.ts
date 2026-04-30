@@ -1,11 +1,11 @@
-import { auth } from "@/auth";
-import { db } from "@/db";
+import { auth } from "@/server/auth";
+import { db } from "@/server/db";
 import { eq } from "drizzle-orm";
-import { users } from "@/db/schema";
-import { runCoach } from "@/coach/runner";
+import { users } from "@/server/db/schema";
+import { runCoach } from "@/server/coach/runner";
 import { todayIso } from "@/lib/dates";
 import { sseResponse } from "@/lib/sse";
-import type { ChatRequestBody } from "@/coach/types";
+import type { ChatRequestBody } from "@/server/coach/types";
 
 export async function POST(req: Request): Promise<Response> {
   const session = await auth();

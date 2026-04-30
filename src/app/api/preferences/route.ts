@@ -1,15 +1,24 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/auth";
-import { db } from "@/db";
-import { users } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { db } from "@/server/db";
+import { users, DEFAULT_PREFERENCES } from "@/server/db/schema";
+import { requireUser } from "@/lib/api-auth";
 import { PreferencesSchema } from "@/lib/preferences";
 
-export async function POST(req: Request) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
+export async function GET(): Promise<NextResponse> {
+  const auth = await requireUser();
+  if (auth instanceof NextResponse) return auth;
+  const [row] = await db
+    .select({ preferences: users.preferences })
+    .from(users)
+    .where(eq(users.id, auth.userId))
+    .limit(1);
+  return NextResponse.json({ preferences: row?.preferences ?? DEFAULT_PREFERENCES });
+}
+
+export async function POST(req: Request): Promise<NextResponse> {
+  const auth = await requireUser();
+  if (auth instanceof NextResponse) return auth;
 
   let body: unknown;
   try {
@@ -26,7 +35,6 @@ export async function POST(req: Request) {
     );
   }
 
-  await db.update(users).set({ preferences: parsed.data }).where(eq(users.id, session.user.id));
-
+  await db.update(users).set({ preferences: parsed.data }).where(eq(users.id, auth.userId));
   return NextResponse.json({ ok: true });
 }

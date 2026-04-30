@@ -6,8 +6,8 @@ const setActivePlan = vi.fn();
 const archivePlan = vi.fn();
 const deletePlan = vi.fn();
 
-vi.mock("@/auth", () => ({ auth: (...a: unknown[]) => auth(...a) }));
-vi.mock("@/plans/queries", () => ({
+vi.mock("@/server/auth", () => ({ auth: (...a: unknown[]) => auth(...a) }));
+vi.mock("@/server/plans/queries", () => ({
   getPlanById: (...a: unknown[]) => getPlanById(...a),
   setActivePlan: (...a: unknown[]) => setActivePlan(...a),
   archivePlan: (...a: unknown[]) => archivePlan(...a),

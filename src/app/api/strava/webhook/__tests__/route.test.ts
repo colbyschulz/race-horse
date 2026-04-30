@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const handleMock = vi.fn();
-vi.mock("@/strava/webhook", () => ({
+vi.mock("@/server/strava/webhook", () => ({
   handleWebhookEvent: (...a: unknown[]) => handleMock(...a),
 }));
 const afterMock = vi.fn((fn: () => unknown) => Promise.resolve(fn()));

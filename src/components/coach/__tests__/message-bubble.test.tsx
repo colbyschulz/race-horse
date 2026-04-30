@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { MessageBubble } from "../message-bubble";
-import { BUILD_FORM_SENTINEL, formatBuildForm } from "@/coach/build-form";
-import type { StoredMessage } from "@/coach/types";
+import { BUILD_FORM_SENTINEL, formatBuildForm } from "@/lib/build-form";
+import type { StoredMessage } from "@/types/coach";
 
 function makeMessage(text: string, role: "user" | "assistant" = "user"): StoredMessage {
   return {

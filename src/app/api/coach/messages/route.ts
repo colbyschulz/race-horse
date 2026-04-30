@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { auth } from "@/auth";
-import { clearMessages, loadHistory } from "@/coach/messages";
+import { auth } from "@/server/auth";
+import { clearMessages, loadHistory } from "@/server/coach/messages";
 
 function parsePlanId(req: NextRequest): string | null {
   const v = req.nextUrl.searchParams.get("plan_id");

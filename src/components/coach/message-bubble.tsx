@@ -2,8 +2,8 @@
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import styles from "./message-bubble.module.scss";
-import type { StoredMessage } from "@/coach/types";
-import { BUILD_FORM_SENTINEL, parseBuildForm } from "@/coach/build-form";
+import type { StoredMessage } from "@/types/coach";
+import { BUILD_FORM_SENTINEL, parseBuildForm } from "@/lib/build-form";
 import { BuildFormCard } from "./build-form-card";
 
 function stripContext(text: string): string {
