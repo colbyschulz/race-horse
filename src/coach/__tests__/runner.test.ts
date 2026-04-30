@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { SSEEvent } from "../types";
-import type { StravaPreload } from "../stravaPreload";
+import type { StravaPreload } from "../strava-preload";
 
 // ---------------------------------------------------------------------------
 // DB mock
@@ -108,7 +108,7 @@ vi.mock("@/coach/anthropic", () => ({
 // ---------------------------------------------------------------------------
 // Tools mock — replace HANDLERS with a simple mock
 // ---------------------------------------------------------------------------
-vi.mock("@/coach/tools/index", () => ({
+vi.mock("@/coach/tools", () => ({
   getTools: vi.fn().mockReturnValue([]),
   getColdStartTools: vi.fn().mockReturnValue([]),
   HANDLERS: {
@@ -287,7 +287,7 @@ describe("runCoach", () => {
     expect(types[types.length - 1]).toBe("done");
 
     // Verify tool handler was called with userId
-    const { HANDLERS } = await import("@/coach/tools/index");
+    const { HANDLERS } = await import("@/coach/tools");
     expect(HANDLERS.get_active_plan).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({ userId: "u1" })

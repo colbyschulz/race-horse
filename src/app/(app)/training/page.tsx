@@ -4,13 +4,13 @@ import { auth } from "@/auth";
 import { db } from "@/db";
 import { eq } from "drizzle-orm";
 import { users } from "@/db/schema";
-import { getActivePlan } from "@/plans/dateQueries";
+import { getActivePlan } from "@/plans/date-queries";
 import { addDays, mondayOf, todayIso, formatDateShort, weekIndexFromStart } from "@/lib/dates";
-import { planNavBounds } from "@/lib/planNav";
-import { WeekAgendaSection } from "./WeekAgendaSection";
-import { WeekAgendaSkeleton } from "./WeekAgendaSkeleton";
-import { EmptyState } from "@/components/EmptyState";
-import styles from "./Calendar.module.scss";
+import { planNavBounds } from "@/lib/plan-nav";
+import { WeekAgendaSection } from "./week-agenda-section";
+import { WeekAgendaSkeleton } from "./week-agenda-skeleton";
+import { EmptyState } from "@/components/empty-state/empty-state";
+import styles from "./calendar.module.scss";
 
 export default async function CalendarPage({
   searchParams,

@@ -1,4 +1,4 @@
-import type { StravaPreload } from "./stravaPreload";
+import type { StravaPreload } from "./strava-preload";
 
 type ActivePlanSummary = {
   title: string;

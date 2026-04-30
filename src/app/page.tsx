@@ -1,6 +1,6 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
-import { Button } from "@/components/Button";
+import { Button } from "@/components/button/button";
 import { signInWithStrava } from "./_actions/sign-in";
 import styles from "./page.module.scss";
 

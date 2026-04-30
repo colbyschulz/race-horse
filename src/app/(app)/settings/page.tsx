@@ -3,11 +3,11 @@ import { redirect } from "next/navigation";
 import { db } from "@/db";
 import { eq } from "drizzle-orm";
 import { users } from "@/db/schema";
-import { SettingsForm } from "./SettingsForm";
-import { Button } from "@/components/Button";
+import { SettingsForm } from "./settings-form";
+import { Button } from "@/components/button/button";
 import { signOutAction } from "@/app/_actions/sign-out";
-import { PageHeader } from "@/components/layout/PageHeader";
-import styles from "./Settings.module.scss";
+import { PageHeader } from "@/components/layout/page-header";
+import styles from "./settings.module.scss";
 
 export default async function SettingsPage() {
   const session = await auth();

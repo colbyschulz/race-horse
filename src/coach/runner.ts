@@ -2,13 +2,13 @@ import { eq, and, sql, count } from "drizzle-orm";
 import { db } from "@/db";
 import { users, plans, workouts } from "@/db/schema";
 import { getAnthropic, COACH_MODEL, COACH_BUILD_MODEL } from "./anthropic";
-import { COACH_SYSTEM_PROMPT } from "./systemPrompt";
+import { COACH_SYSTEM_PROMPT } from "./system-prompt";
 import { renderContextPrefix, routeLabel } from "./context";
 import { loadHistory, appendMessage } from "./messages";
 import { getTools, getColdStartTools, HANDLERS, summarizeToolResult } from "./tools/index";
 import type { SSEEvent, ToolName, ContentBlock } from "./types";
 import type { Anthropic } from "@anthropic-ai/sdk";
-import type { StravaPreload } from "./stravaPreload";
+import type { StravaPreload } from "./strava-preload";
 
 const KNOWN_TOOLS = new Set([
   "get_active_plan",

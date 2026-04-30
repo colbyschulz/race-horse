@@ -5,9 +5,9 @@ import { db } from "@/db";
 import { users } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { syncActivities } from "@/strava/sync";
-import { SyncStatusBanner } from "@/components/SyncStatusBanner";
-import { AppShell } from "@/components/layout/AppShell";
-import { PreferencesCapture } from "@/components/PreferencesCapture";
+import { SyncStatusBanner } from "@/components/sync-status-banner/sync-status-banner";
+import { AppShell } from "@/components/layout/app-shell";
+import { PreferencesCapture } from "@/components/preferences-capture";
 
 const INITIAL_BACKFILL_DAYS = 90;
 

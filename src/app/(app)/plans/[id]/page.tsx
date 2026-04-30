@@ -6,10 +6,10 @@ import { eq } from "drizzle-orm";
 import { users } from "@/db/schema";
 import { getPlanById } from "@/plans/queries";
 import { addDays, mondayOf, todayIso } from "@/lib/dates";
-import { planNavBounds } from "@/lib/planNav";
-import { PlanWeekSection } from "./PlanWeekSection";
-import { WeekAgendaSkeleton } from "@/app/(app)/training/WeekAgendaSkeleton";
-import styles from "./PlanDetail.module.scss";
+import { planNavBounds } from "@/lib/plan-nav";
+import { PlanWeekSection } from "./plan-week-section";
+import { WeekAgendaSkeleton } from "@/app/(app)/training/week-agenda-skeleton";
+import styles from "./plan-detail.module.scss";
 
 export default async function PlanDetailPage({
   params,

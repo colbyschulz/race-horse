@@ -6,7 +6,7 @@ import { eq, and } from "drizzle-orm";
 import { plans, users } from "@/db/schema";
 import { getPlanFileById } from "@/plans/files";
 import { todayIso } from "@/lib/dates";
-import { ReviewClient } from "./ReviewClient";
+import { ReviewClient } from "./review-client";
 
 export default async function ReviewPage({
   params,

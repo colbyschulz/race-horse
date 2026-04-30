@@ -2,8 +2,8 @@ import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { auth } from "@/auth";
 import { getPlanById } from "@/plans/queries";
-import { MessagesSection } from "./MessagesSection";
-import { MessagesSkeleton } from "./MessagesSkeleton";
+import { MessagesSection } from "./messages-section";
+import { MessagesSkeleton } from "./messages-skeleton";
 
 const UUID_RE = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
 const PLAN_FROM_RE = new RegExp(`^/plans/(${UUID_RE})$`);
