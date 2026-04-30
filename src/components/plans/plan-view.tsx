@@ -61,7 +61,7 @@ export function PlanView({
 }: Props) {
   const isDesktop = useSyncExternalStore(subscribeResize, () => window.innerWidth >= 768, () => false);
   const [metaOverride, setMetaOverride] = useState<boolean | null>(null);
-  const metaOpen = metaOverride ?? isDesktop;
+  const metaOpen = metaOverride ?? true;
 
   const weekData = useMemo(() => {
     if (!currentWeek) return null;
@@ -88,15 +88,34 @@ export function PlanView({
     <>
       <div className={styles.topSection}>
         <PlanHeading title={plan.title} actions={headerActions} subRow={actionsBar} />
-        {subheaderAction && <div className={styles.subheaderAction}>{subheaderAction}</div>}
+        {/* Desktop: chevron toggle */}
         <button
           type="button"
           className={styles.detailsToggle}
-          onClick={() => setMetaOverride((v) => !(v ?? isDesktop))}
+          onClick={() => setMetaOverride((v) => !(v ?? true))}
         >
           Plan details
           <span className={`${styles.chevron} ${metaOpen ? styles.chevronUp : ""}`}>▾</span>
         </button>
+        <div className={styles.segmentRow}>
+          <div className={styles.viewSegment}>
+          <button
+            type="button"
+            className={metaOpen ? styles.viewSegmentBtnActive : styles.viewSegmentBtn}
+            onClick={() => setMetaOverride(true)}
+          >
+            Details
+          </button>
+          <button
+            type="button"
+            className={!metaOpen ? styles.viewSegmentBtnActive : styles.viewSegmentBtn}
+            onClick={() => setMetaOverride(false)}
+          >
+            Calendar
+          </button>
+        </div>
+          {subheaderAction && <div className={styles.segmentRowAction}>{subheaderAction}</div>}
+        </div>
         {metaOpen && (
           <>
             <PlanMeta
@@ -115,7 +134,7 @@ export function PlanView({
             <MileageChart workouts={allWorkouts} units={units} planStartDate={plan.start_date} />
           </>
         )}
-        {currentWeek && weekData && (
+        {currentWeek && weekData && (!metaOpen || isDesktop) && (
           <WeekNavigator
             weekTitle={weekData.weekTitle}
             weekRange={weekData.weekRange}
@@ -129,7 +148,7 @@ export function PlanView({
 
       {banner && <div className={styles.banner}>{banner}</div>}
 
-      {currentWeek && weekData && (
+      {currentWeek && weekData && (!metaOpen || isDesktop) && (
         <div className={styles.scrollSection}>
           <WeekAgendaRows
             monday={currentWeek.monday}

@@ -1,12 +1,6 @@
 .header {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
-}
-
-.titles {
-  display: flex;
-  flex-direction: column;
   gap: var(--space-1);
 }
 
@@ -20,14 +14,24 @@
   margin: 0;
 }
 
+.subtitleRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
 .subtitle {
   font-size: 0.875rem;
   color: var(--color-fg-tertiary);
   margin: 0;
+  flex: 1;
+  min-width: 0;
 }
 
 .actions {
   display: flex;
   align-items: center;
   gap: var(--space-2);
+  flex-shrink: 0;
+  margin-left: auto;
 }

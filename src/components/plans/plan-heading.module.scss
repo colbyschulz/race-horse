@@ -38,11 +38,24 @@
   margin: 0;
 }
 
+.sublineRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
 .subline {
   font-size: 0.875rem;
   color: var(--color-fg-tertiary);
   margin: 0;
   text-transform: capitalize;
+  flex: 1;
+  min-width: 0;
+}
+
+.sublineAction {
+  flex-shrink: 0;
+  margin-left: auto;
 }
 
 .actions {
