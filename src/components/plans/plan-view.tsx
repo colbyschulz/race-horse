@@ -1,5 +1,10 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
+
+const subscribeResize = (cb: () => void) => {
+  window.addEventListener("resize", cb);
+  return () => window.removeEventListener("resize", cb);
+};
 import type { WorkoutRow } from "@/types/plans";
 import type { Activity } from "@/types/strava";
 import { mondayOf, addDays, formatDateShort, weekIndexFromStart } from "@/lib/dates";
@@ -54,10 +59,9 @@ export function PlanView({
   banner,
   currentWeek,
 }: Props) {
-  const [metaOpen, setMetaOpen] = useState(false);
-  useEffect(() => {
-    setMetaOpen(window.innerWidth >= 768);
-  }, []);
+  const isDesktop = useSyncExternalStore(subscribeResize, () => window.innerWidth >= 768, () => false);
+  const [metaOverride, setMetaOverride] = useState<boolean | null>(null);
+  const metaOpen = metaOverride ?? isDesktop;
 
   const weekData = useMemo(() => {
     if (!currentWeek) return null;
@@ -88,7 +92,7 @@ export function PlanView({
         <button
           type="button"
           className={styles.detailsToggle}
-          onClick={() => setMetaOpen((v) => !v)}
+          onClick={() => setMetaOverride((v) => !(v ?? isDesktop))}
         >
           Plan details
           <span className={`${styles.chevron} ${metaOpen ? styles.chevronUp : ""}`}>▾</span>
