@@ -57,17 +57,10 @@ export function WeekAgendaRows({
             />
             <div className={styles.dayContent}>
               <div className={styles.workoutLine}>
-                <div className={styles.dayCol}>
-                  <span className={`${styles.dayLabel} ${isToday ? styles.dayLabelToday : ""}`}>
-                    {formatDayLabel(d)}
-                  </span>
-                  {isToday && <span className={styles.now}>Today</span>}
-                </div>
-                {isRest ? (
-                  <span className={styles.rest}>Rest</span>
-                ) : (
-                  <WorkoutBadge type={w!.type} size="sm" />
-                )}
+                <span className={`${styles.dayLabel} ${isToday ? styles.dayLabelToday : ""}`}>
+                  {formatDayLabel(d)}
+                </span>
+                <WorkoutBadge type={isRest ? "rest" : w!.type} size="sm" />
                 {!isRest && w && (
                   <span className={styles.meta}>
                     <span className={styles.metaVal}>

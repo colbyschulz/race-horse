@@ -55,37 +55,17 @@
   align-items: center;
 }
 
-.dayCol {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 2px;
-  width: 52px;
-  flex-shrink: 0;
-}
-
 .dayLabel {
   font-size: 0.75rem;
   font-weight: 600;
   color: var(--color-fg-primary);
+  width: 52px;
+  flex-shrink: 0;
 }
 
 .dayLabelToday {
   color: var(--color-brown);
   font-weight: 600;
-}
-
-.rest {
-  font-size: 0.875rem;
-  color: var(--color-fg-tertiary);
-}
-
-.now {
-  font-size: 0.625rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-  color: var(--color-brown);
 }
 
 .meta {
