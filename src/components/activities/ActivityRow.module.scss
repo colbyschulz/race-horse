@@ -22,6 +22,17 @@
   justify-content: space-between;
   gap: 8px;
 }
+.nameWrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.stravaIcon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
 .name {
   font-weight: 600;
   font-size: 0.9375rem;

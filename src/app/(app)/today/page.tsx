@@ -15,7 +15,6 @@ import { UpNextSkeleton } from "./UpNextSkeleton";
 import { EmptyState } from "@/components/EmptyState";
 import { CoachLink } from "@/components/layout/CoachLink";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { StickyTop } from "@/components/layout/StickyTop";
 import styles from "./Today.module.scss";
 
 export default async function TodayPage() {
@@ -33,13 +32,11 @@ export default async function TodayPage() {
 
   return (
     <div className={styles.page}>
-      <StickyTop>
-        <PageHeader
-          title={formatLongDate(today)}
-          subtitle={activePlan?.title}
-          actions={<CoachLink planId={activePlan?.id} />}
-        />
-      </StickyTop>
+      <PageHeader
+        title={formatLongDate(today)}
+        subtitle={activePlan?.title}
+        actions={<CoachLink planId={activePlan?.id} />}
+      />
 
       {!activePlan && (
         <EmptyState

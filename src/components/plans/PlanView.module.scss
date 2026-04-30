@@ -1,22 +1,9 @@
-// Sticky top section with bleed-to-edge bg + bottom border.
-// Negative margins/sticky offset assume the parent .page uses
-// padding: var(--space-4) var(--space-3) on mobile, var(--space-6) var(--space-4) on desktop.
-
 .topSection {
-  position: sticky;
-  top: var(--space-3);
-  z-index: 10;
-  margin: calc(var(--space-4) * -1) calc(var(--space-3) * -1) 0;
-  padding: var(--space-4) var(--space-3) 0;
-  background: var(--color-bg);
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
 
   @media (min-width: 768px) {
-    top: 0;
-    margin: calc(var(--space-6) * -1) calc(var(--space-4) * -1) 0;
-    padding: var(--space-6) var(--space-4) 0;
     gap: var(--space-5);
   }
 }

@@ -5,8 +5,21 @@
   max-width: 480px;
 }
 
-.submit {
-  align-self: flex-start;
+.counterRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-1);
+}
+
+.counter {
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  color: var(--color-fg-tertiary);
+}
+
+.spacer {
+  flex: 1;
 }
 
 .status {

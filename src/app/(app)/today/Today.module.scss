@@ -9,8 +9,6 @@
   height: calc(
     100dvh - var(--shell-tabbar-height) - var(--space-3) * 2 - env(safe-area-inset-bottom)
   );
-  box-sizing: border-box;
-  overflow: hidden;
 
   @media (min-width: 768px) {
     height: calc(100dvh - var(--space-6) * 2);

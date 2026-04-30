@@ -15,7 +15,7 @@ export async function ActivitiesSection({
   if (activities.length === 0) return null;
   return (
     <section className={styles.section}>
-      <h2 className={styles.h2}>Today&apos;s activities</h2>
+      <h2 className={styles.h2}>Completed</h2>
       <div className={styles.activityList}>
         {activities.map((a) => (
           <ActivityRow key={a.id} activity={a} units={units} />

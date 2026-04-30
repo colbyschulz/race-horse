@@ -5,4 +5,7 @@
   padding: var(--space-6) var(--space-4);
   max-width: 680px;
   margin: 0 auto;
+  height: calc(
+    100dvh - var(--shell-tabbar-height) - var(--space-3) * 2 - env(safe-area-inset-bottom)
+  );
 }

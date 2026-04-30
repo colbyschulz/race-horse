@@ -15,7 +15,6 @@ interface Props {
   next: NavTarget;
   today?: NavTarget;
   showToday?: boolean;
-  stickyTop?: number;
 }
 
 function NavBtn({
@@ -56,13 +55,9 @@ export function WeekNavigator({
   next,
   today,
   showToday,
-  stickyTop,
 }: Props) {
   return (
-    <div
-      className={styles.nav}
-      style={stickyTop !== undefined ? { position: "sticky", top: stickyTop } : undefined}
-    >
+    <div className={styles.nav}>
       <div className={styles.left}>
         <NavBtn target={prev} ariaLabel="Previous week" className={styles.arrowBtn}>
           ←

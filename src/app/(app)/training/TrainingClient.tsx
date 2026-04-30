@@ -7,7 +7,6 @@ import { WeekAgendaRows } from "@/components/workouts/WeekAgendaRows";
 import { WorkoutDetailSheet } from "@/components/workouts/WorkoutDetailSheet";
 import { CoachLink } from "@/components/layout/CoachLink";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { StickyTop } from "@/components/layout/StickyTop";
 
 interface Props {
   planTitle: string;
@@ -56,21 +55,19 @@ export function TrainingClient({
 
   return (
     <>
-      <StickyTop>
-        <PageHeader
-          title="Training"
-          subtitle={planTitle}
-          actions={<CoachLink planId={activePlanId} />}
-        />
-        <WeekNavigator
-          weekTitle={weekTitle}
-          weekRange={weekRange}
-          prev={prevHref ? { href: prevHref } : { disabled: true }}
-          next={nextHref ? { href: nextHref } : { disabled: true }}
-          today={{ href: todayHref }}
-          showToday={!isCurrentWeek}
-        />
-      </StickyTop>
+      <PageHeader
+        title="Training"
+        subtitle={planTitle}
+        actions={<CoachLink planId={activePlanId} />}
+      />
+      <WeekNavigator
+        weekTitle={weekTitle}
+        weekRange={weekRange}
+        prev={prevHref ? { href: prevHref } : { disabled: true }}
+        next={nextHref ? { href: nextHref } : { disabled: true }}
+        today={{ href: todayHref }}
+        showToday={!isCurrentWeek}
+      />
       <WeekAgendaRows
         monday={monday}
         byDate={byDate}

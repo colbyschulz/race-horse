@@ -6,7 +6,6 @@ import { UploadDropzone } from "@/components/plans/UploadDropzone";
 import { EmptyState } from "@/components/EmptyState";
 import { InFlightUploadCard } from "@/components/plans/InFlightUploadCard";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { StickyTop } from "@/components/layout/StickyTop";
 import type { PlanWithCounts } from "@/plans/types";
 
 interface Props {
@@ -27,9 +26,7 @@ export function PlansPageClient({ plans, today, planFiles, units }: Props) {
 
   return (
     <div className={styles.page}>
-      <StickyTop>
-        <PageHeader title="Plans" />
-      </StickyTop>
+      <PageHeader title="Plans" />
       <UploadDropzone />
 
       {planFiles.length > 0 && (
