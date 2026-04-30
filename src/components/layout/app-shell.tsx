@@ -1,5 +1,6 @@
 import { auth } from "@/server/auth";
 import { NavLinks } from "./nav-links";
+import { TabBar } from "./tab-bar";
 import styles from "./app-shell.module.scss";
 
 export async function AppShell({ children }: { children: React.ReactNode }) {
@@ -16,9 +17,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
         <NavLinks variant="sidebar" />
       </aside>
       <main className={styles.main}>{children}</main>
-      <div className={styles.tabBar}>
-        <NavLinks variant="tabs" />
-      </div>
+      <TabBar />
     </div>
   );
 }
