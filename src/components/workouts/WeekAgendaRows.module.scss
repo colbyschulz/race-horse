@@ -4,6 +4,10 @@
   overflow-y: scroll;
 }
 
+.row {
+  position: relative;
+}
+
 .row + .row {
   border-top: 1px solid var(--color-border-default);
 }
@@ -12,32 +16,58 @@
   background: var(--color-brown-subtle);
 }
 
-.btn {
+.dayBtn {
+  position: absolute;
+  inset: 0;
   appearance: none;
   background: transparent;
   border: none;
-  width: 100%;
-  text-align: left;
+  padding: 0;
+  cursor: pointer;
+
+  &:disabled {
+    cursor: default;
+  }
+
+  &:not(:disabled):hover {
+    background: color-mix(in srgb, var(--color-brown) 5%, transparent);
+  }
+}
+
+.dayContent {
+  position: relative;
+  pointer-events: none;
+  padding: 13px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.workoutLine {
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  padding: 13px 10px;
-  cursor: pointer;
-  &:disabled {
-    cursor: default;
-    opacity: 1;
-  }
-  &:not(:disabled):hover {
-    opacity: 0.75;
-  }
+}
+
+.activityLine {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.dayCol {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 52px;
+  flex-shrink: 0;
 }
 
 .dayLabel {
   font-size: 0.75rem;
   font-weight: 600;
   color: var(--color-fg-primary);
-  width: 52px;
-  flex-shrink: 0;
 }
 
 .dayLabelToday {
@@ -51,7 +81,6 @@
 }
 
 .now {
-  margin-left: auto;
   font-size: 0.625rem;
   font-weight: 600;
   text-transform: uppercase;
@@ -85,29 +114,8 @@
   margin: 0 1px;
 }
 
-.activityRow {
-  position: relative;
-  display: flex;
-  padding: 0 0 10px calc(60px + var(--space-3));
-  margin-top: -4px;
-}
-
-.activityRowBg {
-  position: absolute;
-  inset: 0;
-  appearance: none;
-  background: transparent;
-  border: none;
-  padding: 0;
-  cursor: pointer;
-
-  &:disabled {
-    cursor: default;
-  }
-}
-
-.activityLink {
-  position: relative;
+.stravaLink {
+  pointer-events: auto;
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
@@ -125,14 +133,11 @@
   flex-shrink: 0;
 }
 
-.activityName {
-  font-size: 0.8125rem;
-  font-weight: 500;
-  color: var(--color-olive);
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.externalArrow {
+  width: 11px;
+  height: 11px;
+  flex-shrink: 0;
+  color: var(--color-fg-tertiary);
 }
 
 .activityMeta {

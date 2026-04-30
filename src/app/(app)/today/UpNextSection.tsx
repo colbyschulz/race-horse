@@ -10,7 +10,7 @@ export async function UpNextSection({
   units: "mi" | "km";
   today: string;
 }) {
-  const workouts = await getNextWorkouts(userId, today, 2);
+  const workouts = await getNextWorkouts(userId, today, 1);
   if (workouts.length === 0) return null;
   return <UpNext workouts={workouts} units={units} />;
 }
