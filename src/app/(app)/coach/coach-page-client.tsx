@@ -44,7 +44,6 @@ export function CoachPageClient({
   const [streaming, setStreaming] = useState<StreamingState | null>(null);
   const [sending, setSending] = useState(false);
   const [clearOpen, setClearOpen] = useState(false);
-  const pageRef = useRef<HTMLDivElement>(null);
   const streamRef = useRef<HTMLDivElement>(null);
   const pinnedRef = useRef(true);
 
@@ -62,41 +61,6 @@ export function CoachPageClient({
     }
     el.addEventListener("scroll", onScroll, { passive: true });
     return () => el.removeEventListener("scroll", onScroll);
-  }, []);
-
-  // iOS PWA: when the keyboard opens, Safari scrolls the document body upward
-  // to bring the focused input into view, pushing the entire layout off-screen.
-  // Fix: lock the body with position:fixed (prevents the scroll), then shrink the
-  // page height to match visualViewport.height so the input stays above the keyboard.
-  useEffect(() => {
-    const el = pageRef.current;
-    const vv = window.visualViewport;
-    // Only needed in PWA standalone mode — regular Safari handles keyboard layout natively
-    const isPWA = window.matchMedia("(display-mode: standalone)").matches;
-    if (!el || !vv || !isPWA) return;
-
-    const initialTop = el.getBoundingClientRect().top;
-
-    // position:fixed prevents iOS from scrolling the document body when the
-    // keyboard opens. Without it, the entire layout is pushed up off-screen.
-    document.body.style.position = "fixed";
-    document.body.style.overflow = "hidden";
-    document.body.style.width = "100%";
-
-    function onResize() {
-      el!.style.height = `${vv!.height - initialTop}px`;
-    }
-
-    vv.addEventListener("resize", onResize);
-    onResize();
-
-    return () => {
-      document.body.style.position = "";
-      document.body.style.overflow = "";
-      document.body.style.width = "";
-      el.style.height = "";
-      vv.removeEventListener("resize", onResize);
-    };
   }, []);
 
   // useLayoutEffect fires before paint — scroll is set before the browser draws the frame,
@@ -221,7 +185,7 @@ export function CoachPageClient({
   }
 
   return (
-    <div className={styles.page} ref={pageRef}>
+    <div className={styles.page}>
       <ContextPill fromRoute={fromRoute} fromLabel={fromLabel} />
       <PageHeader
         title="Coach"
