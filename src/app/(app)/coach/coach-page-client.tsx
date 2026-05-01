@@ -44,8 +44,10 @@ export function CoachPageClient({
   const [streaming, setStreaming] = useState<StreamingState | null>(null);
   const [sending, setSending] = useState(false);
   const [clearOpen, setClearOpen] = useState(false);
+  const pageRef = useRef<HTMLDivElement>(null);
   const streamRef = useRef<HTMLDivElement>(null);
   const pinnedRef = useRef(true);
+  const initialTopRef = useRef(0);
 
   const [buildState, setBuildState] = useState<BuildFormCardState | null>(
     intent === "build" ? { kind: "editable" } : null
@@ -61,6 +63,34 @@ export function CoachPageClient({
     }
     el.addEventListener("scroll", onScroll, { passive: true });
     return () => el.removeEventListener("scroll", onScroll);
+  }, []);
+
+  // Measure page top once before any keyboard events so the resize handler
+  // knows how much shell padding sits above the page element.
+  useLayoutEffect(() => {
+    const el = pageRef.current;
+    if (el) initialTopRef.current = el.getBoundingClientRect().top;
+  }, []);
+
+  // iOS PWA: when the keyboard opens the visual viewport shrinks but dvh doesn't.
+  // On resize, shrink the page to fit the visual viewport and snap the window
+  // scroll back to zero (iOS scrolls it to expose the input).
+  useEffect(() => {
+    const vv = window.visualViewport;
+    const el = pageRef.current;
+    const isPWA = window.matchMedia("(display-mode: standalone)").matches;
+    if (!vv || !el || !isPWA) return;
+
+    function onResize() {
+      el!.style.height = `${vv!.height - initialTopRef.current}px`;
+      window.scrollTo(0, 0);
+    }
+
+    vv.addEventListener("resize", onResize);
+    return () => {
+      vv.removeEventListener("resize", onResize);
+      el.style.height = "";
+    };
   }, []);
 
   // useLayoutEffect fires before paint — scroll is set before the browser draws the frame,
@@ -185,7 +215,7 @@ export function CoachPageClient({
   }
 
   return (
-    <div className={styles.page}>
+    <div className={styles.page} ref={pageRef}>
       <ContextPill fromRoute={fromRoute} fromLabel={fromLabel} />
       <PageHeader
         title="Coach"

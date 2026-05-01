@@ -1,14 +1,5 @@
 "use client";
 import { useState, type KeyboardEvent } from "react";
-
-function lockScroll() { window.scrollTo(0, 0); }
-
-function onFocusLock() {
-  window.addEventListener("scroll", lockScroll);
-}
-function onBlurUnlock() {
-  window.removeEventListener("scroll", lockScroll);
-}
 import { Button } from "@/components/button/button";
 import styles from "./message-input.module.scss";
 
@@ -39,8 +30,6 @@ export function MessageInput({
         value={value}
         onChange={(e) => setValue(e.target.value)}
         onKeyDown={onKeyDown}
-        onFocus={onFocusLock}
-        onBlur={onBlurUnlock}
         placeholder="Ask the coach…"
         rows={2}
         disabled={disabled}
