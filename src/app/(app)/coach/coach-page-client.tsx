@@ -81,14 +81,24 @@ export function CoachPageClient({
     const isPWA = window.matchMedia("(display-mode: standalone)").matches;
     if (!vv || !el || !isPWA) return;
 
+    function lockScroll() { window.scrollTo(0, 0); }
+
     function onResize() {
       el!.style.height = `${vv!.height - initialTopRef.current}px`;
       window.scrollTo(0, 0);
+      // If keyboard is open (viewport shrank), lock window scroll so the
+      // page can't be dragged out of view. Remove lock when keyboard closes.
+      if (vv!.height < window.innerHeight - 100) {
+        window.addEventListener("scroll", lockScroll);
+      } else {
+        window.removeEventListener("scroll", lockScroll);
+      }
     }
 
     vv.addEventListener("resize", onResize);
     return () => {
       vv.removeEventListener("resize", onResize);
+      window.removeEventListener("scroll", lockScroll);
       el.style.height = "";
     };
   }, []);
