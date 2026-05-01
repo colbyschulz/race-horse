@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { after } from "next/server";
-import { auth } from "@/server/auth";
+import { getSession } from "@/lib/get-session";
 import { db } from "@/server/db";
 import { users } from "@/server/db/schema";
 import { eq } from "drizzle-orm";
@@ -13,7 +13,7 @@ import { QueryProvider } from "@/lib/query-client";
 const INITIAL_BACKFILL_DAYS = 90;
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  const session = await auth();
+  const session = await getSession();
   if (!session?.user?.id) redirect("/");
 
   const userId = session.user.id;
@@ -42,7 +42,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     <QueryProvider>
       <PreferencesCapture />
       <SyncStatusBanner initialSynced={!!row?.last_synced_at} />
-      <AppShell>{children}</AppShell>
+      <AppShell userName={session.user.name ?? ""}>{children}</AppShell>
     </QueryProvider>
   );
 }

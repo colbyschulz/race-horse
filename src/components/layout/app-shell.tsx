@@ -1,13 +1,14 @@
-import { auth } from "@/server/auth";
 import { NavLinks } from "./nav-links";
 import { TabBar } from "./tab-bar";
 import { MainContent } from "./main-content";
 import styles from "./app-shell.module.scss";
 
-export async function AppShell({ children }: { children: React.ReactNode }) {
-  const session = await auth();
-  const userName = session?.user?.name ?? "";
+interface AppShellProps {
+  userName: string;
+  children: React.ReactNode;
+}
 
+export function AppShell({ userName, children }: AppShellProps) {
   return (
     <div className={styles.shell}>
       <aside className={styles.sidebar}>
