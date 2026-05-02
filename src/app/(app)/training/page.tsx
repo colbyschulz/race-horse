@@ -1,11 +1,9 @@
-import { Suspense } from "react";
 import { dehydrate, HydrationBoundary, QueryClient } from "@tanstack/react-query";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/get-session";
 import { getActivePlan, getWorkoutsForDateRange } from "@/server/plans/date-queries";
 import { getActivitiesForDateRange } from "@/server/strava/date-queries";
 import { addDays, mondayOf, todayIso, isIsoDate } from "@/lib/dates";
-import { WeekAgendaSkeleton } from "@/components/skeletons/week-agenda-skeleton";
 import { TrainingContent } from "./training-content";
 import styles from "./training.module.scss";
 
@@ -41,9 +39,7 @@ export default async function TrainingPage({
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>
       <div className={styles.page}>
-        <Suspense fallback={<WeekAgendaSkeleton />}>
-          <TrainingContent />
-        </Suspense>
+        <TrainingContent />
       </div>
     </HydrationBoundary>
   );
