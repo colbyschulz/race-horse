@@ -1,69 +1,44 @@
-"use client";
-
 import { Suspense } from "react";
-import { CSRSuspense } from "@/lib/csr-suspense";
-import { todayIso, formatLongDate } from "@/lib/dates";
-import { HeroWorkout } from "./hero-workout";
-import { Activities } from "./activities";
-import { UpNext } from "./up-next";
+import { dehydrate, HydrationBoundary, QueryClient } from "@tanstack/react-query";
+import { redirect } from "next/navigation";
+import { getSession } from "@/lib/get-session";
+import { getActivePlan, getWorkoutsForDateRange, getNextWorkouts } from "@/server/plans/date-queries";
+import { getActivitiesForDateRange } from "@/server/strava/date-queries";
+import { todayIso } from "@/lib/dates";
+import { TodayContent } from "./today-content";
 import { HeroSkeleton } from "@/components/skeletons/hero-skeleton";
-import { ActivitiesSkeleton } from "@/components/skeletons/activities-skeleton";
-import { UpNextSkeleton } from "@/components/skeletons/up-next-skeleton";
-import { EmptyState } from "@/components/empty-state/empty-state";
-import { CoachLink } from "@/components/layout/coach-link";
-import { PageHeader } from "@/components/layout/page-header";
-import { usePreferences } from "@/queries/preferences";
-import { useActivePlan } from "@/queries/plans";
 import styles from "./today.module.scss";
 
-export default function TodayPage() {
-  return (
-    <div className={styles.page}>
-      <CSRSuspense fallback={<HeroSkeleton />}>
-        <TodayContent />
-      </CSRSuspense>
-    </div>
-  );
-}
-
-function TodayContent() {
-  const { data: prefs } = usePreferences();
-  const { data: activePlan } = useActivePlan();
+export default async function TodayPage() {
+  const session = await getSession();
+  if (!session?.user?.id) redirect("/");
+  const userId = session.user.id;
+  const prefs = session.user.preferences;
   const today = todayIso(prefs.timezone);
 
+  const [activePlan, workoutsToday, activitiesToday, nextWorkouts] = await Promise.all([
+    getActivePlan(userId),
+    getWorkoutsForDateRange(userId, today, today),
+    getActivitiesForDateRange(userId, today, today),
+    getNextWorkouts(userId, today, 1),
+  ]);
+
+  const queryClient = new QueryClient();
+  // JSON round-trip serializes Date objects to ISO strings (matches /api/* JSON responses)
+  const s = <T,>(v: T): T => JSON.parse(JSON.stringify(v));
+  queryClient.setQueryData(["preferences"], s(prefs));
+  queryClient.setQueryData(["plans", "active"], s(activePlan));
+  queryClient.setQueryData(["workouts", { from: today, to: today }], s(workoutsToday));
+  queryClient.setQueryData(["activities", { from: today, to: today }], s(activitiesToday));
+  queryClient.setQueryData(["workouts", "next", { after: today, limit: 1 }], s(nextWorkouts));
+
   return (
-    <>
-      <PageHeader
-        title={formatLongDate(today)}
-        subtitle={activePlan?.title}
-        actions={<CoachLink planId={activePlan?.id} />}
-      />
-
-      {!activePlan && (
-        <EmptyState
-          title="No active plan"
-          body="Your training will show up here once you activate a plan."
-          variant="tinted"
-          size="sm"
-          action={{ label: "Go to Plans →", href: "/plans" }}
-        />
-      )}
-
-      {activePlan && (
+    <HydrationBoundary state={dehydrate(queryClient)}>
+      <div className={styles.page}>
         <Suspense fallback={<HeroSkeleton />}>
-          <HeroWorkout units={prefs.units} today={today} />
+          <TodayContent />
         </Suspense>
-      )}
-
-      <Suspense fallback={<ActivitiesSkeleton />}>
-        <Activities units={prefs.units} today={today} />
-      </Suspense>
-
-      {activePlan && (
-        <Suspense fallback={<UpNextSkeleton />}>
-          <UpNext units={prefs.units} today={today} />
-        </Suspense>
-      )}
-    </>
+      </div>
+    </HydrationBoundary>
   );
 }

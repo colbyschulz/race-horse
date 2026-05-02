@@ -1,63 +1,41 @@
-"use client";
-
-import { CSRSuspense } from "@/lib/csr-suspense";
-import { todayIso } from "@/lib/dates";
-import { PlanCard } from "@/components/plans/plan-card";
-import { UploadDropzone } from "@/components/plans/upload-dropzone";
-import { EmptyState } from "@/components/empty-state/empty-state";
-import { InFlightUploadCard } from "@/components/plans/in-flight-upload-card";
+import { Suspense } from "react";
+import { dehydrate, HydrationBoundary, QueryClient } from "@tanstack/react-query";
+import { redirect } from "next/navigation";
+import { getSession } from "@/lib/get-session";
+import { listPlansWithCounts } from "@/server/plans/queries";
+import { listInFlightPlanFiles } from "@/server/plans/files";
 import { PageHeader } from "@/components/layout/page-header";
-import { usePreferences } from "@/queries/preferences";
-import { usePlans, useInFlightPlanFiles } from "@/queries/plans";
+import { UploadDropzone } from "@/components/plans/upload-dropzone";
 import { PlansListSkeleton } from "@/components/skeletons/plans-list-skeleton";
+import { PlansList } from "./plans-content";
 import styles from "./plans.module.scss";
 
-export default function PlansPage() {
-  return (
-    <div className={styles.page}>
-      <PageHeader title="Plans" />
-      <UploadDropzone />
-      <CSRSuspense fallback={<PlansListSkeleton />}>
-        <PlansList />
-      </CSRSuspense>
-    </div>
-  );
-}
+export default async function PlansPage() {
+  const session = await getSession();
+  if (!session?.user?.id) redirect("/");
+  const userId = session.user.id;
+  const prefs = session.user.preferences;
 
-function PlansList() {
-  const { data: prefs } = usePreferences();
-  const { data: plans } = usePlans();
-  const { data: planFiles } = useInFlightPlanFiles();
+  const [plans, planFiles] = await Promise.all([
+    listPlansWithCounts(userId),
+    listInFlightPlanFiles(userId),
+  ]);
 
-  const today = todayIso(prefs.timezone);
-  const sorted = [...plans.filter((p) => p.is_active), ...plans.filter((p) => !p.is_active)];
+  const queryClient = new QueryClient();
+  const s = <T,>(v: T): T => JSON.parse(JSON.stringify(v));
+  queryClient.setQueryData(["preferences"], s(prefs));
+  queryClient.setQueryData(["plans", "list"], s(plans));
+  queryClient.setQueryData(["plans", "files"], s(planFiles));
 
   return (
-    <>
-      {planFiles.length > 0 && (
-        <section className={styles.inflight}>
-          {planFiles.map((f) => (
-            <InFlightUploadCard key={f.id} row={f} />
-          ))}
-        </section>
-      )}
-
-      {plans.length === 0 && planFiles.length === 0 && (
-        <EmptyState
-          title="No plans yet"
-          body="Once the coach is online or upload is wired up, your plans will live here."
-          variant="bordered"
-          size="sm"
-        />
-      )}
-
-      {sorted.length > 0 && (
-        <div className={styles.planList}>
-          {sorted.map((p) => (
-            <PlanCard key={p.id} plan={p} today={today} units={prefs.units} />
-          ))}
-        </div>
-      )}
-    </>
+    <HydrationBoundary state={dehydrate(queryClient)}>
+      <div className={styles.page}>
+        <PageHeader title="Plans" />
+        <UploadDropzone />
+        <Suspense fallback={<PlansListSkeleton />}>
+          <PlansList />
+        </Suspense>
+      </div>
+    </HydrationBoundary>
   );
 }
