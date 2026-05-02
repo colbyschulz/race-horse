@@ -37,6 +37,6 @@ describe("WorkoutDetailSheet", () => {
   it("links Ask coach to /coach?from=/plans/<id>/<date>", () => {
     render(<WorkoutDetailSheet workout={w} planId="p1" units="mi" onClose={() => {}} />);
     const link = screen.getByRole("link", { name: /Ask coach/ });
-    expect(link).toHaveAttribute("href", "/coach?from=%2Fplans%2Fp1%2F2026-04-25");
+    expect(link).toHaveAttribute("href", "/coach?from=%2Fplans%2Fp1&from_label=Tempo%20Run%20%E2%80%94%202026-04-25");
   });
 });

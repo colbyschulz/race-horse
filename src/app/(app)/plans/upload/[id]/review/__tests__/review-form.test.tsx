@@ -104,6 +104,7 @@ describe("ReviewForm", () => {
       />
     );
     fireEvent.click(screen.getByRole("button", { name: /Discard/ }));
+    fireEvent.click(await screen.findByRole("button", { name: /Yes/ }));
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
         "/api/plans/upload/f1",

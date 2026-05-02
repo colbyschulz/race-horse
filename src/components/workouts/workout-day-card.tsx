@@ -1,7 +1,8 @@
 "use client";
 import type { CSSProperties } from "react";
 import { formatDayLabel } from "@/lib/dates";
-import { formatDistance, formatDuration } from "@/lib/format";
+import { formatDistance, formatDuration, formatIntervalSummary } from "@/lib/format";
+import type { IntervalSpec } from "@/types/preferences";
 import { WorkoutBadge } from "./workout-badge";
 import { SportIcon } from "./sport-icon";
 import type { WorkoutRow } from "@/types/plans";
@@ -34,6 +35,8 @@ export function WorkoutDayCard({
   const dur = !isRest ? formatDuration(workout!.duration_seconds) : null;
   const stat = dist ? `${dist} ${units}` : dur;
   const notes = showNotes && !isRest && workout?.notes ? workout.notes : null;
+  const intervals = showNotes && !isRest ? (workout?.intervals ?? null) as IntervalSpec[] | null : null;
+  const intervalSummary = formatIntervalSummary(intervals, units);
 
   const railType = isRest ? "rest" : workout!.type;
   const cardStyle = { "--rail": `var(--color-workout-${railType}-mid)` } as CSSProperties;
@@ -67,9 +70,10 @@ export function WorkoutDayCard({
           )}
         </div>
 
-        {notes && (
+        {(intervalSummary || notes) && (
           <div className={styles.details}>
-            <p className={styles.notes}>{notes}</p>
+            {intervalSummary && <p className={styles.intervals}>{intervalSummary}</p>}
+            {notes && <p className={styles.notes}>{notes}</p>}
           </div>
         )}
       </div>

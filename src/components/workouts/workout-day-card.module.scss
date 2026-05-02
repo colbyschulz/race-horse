@@ -86,6 +86,14 @@
   border-top: 1px solid var(--color-border-subtle);
 }
 
+.intervals {
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  color: var(--color-fg-secondary);
+  line-height: 1.55;
+  margin: 0;
+}
+
 .notes {
   font-family: var(--font-body);
   font-size: 0.75rem;

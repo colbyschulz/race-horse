@@ -187,7 +187,8 @@ describe("get_plan_handler", () => {
 
     const workoutsChain = {
       from: vi.fn().mockReturnThis(),
-      where: vi.fn().mockResolvedValue(workoutRows),
+      where: vi.fn().mockReturnThis(),
+      orderBy: vi.fn().mockResolvedValue(workoutRows),
     };
     mockSelect.mockReturnValue(workoutsChain);
 

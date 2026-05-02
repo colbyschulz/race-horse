@@ -106,7 +106,14 @@ export function formatIntervalSummary(
       iv.target_intensity?.pace && formatPaceRange(iv.target_intensity.pace, units)
         ? ` @ ${formatPaceRange(iv.target_intensity.pace, units)}`
         : "";
-    return `${iv.reps} × ${measure}${pace}`.trim();
+    const rest = iv.rest
+      ? iv.rest.duration_s != null
+        ? ` / ${formatDuration(iv.rest.duration_s, { format: "clock" }) ?? ""} ${iv.rest.type ?? "rest"}`
+        : iv.rest.distance_m != null
+          ? ` / ${formatIntervalDistance(iv.rest.distance_m, iv.rest.display_unit, units)} ${iv.rest.type ?? "rest"}`
+          : ""
+      : "";
+    return `${iv.reps} × ${measure}${pace}${rest}`.trim();
   });
   return parts.join(" + ");
 }
