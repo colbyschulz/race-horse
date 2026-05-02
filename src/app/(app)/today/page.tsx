@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { dehydrate, HydrationBoundary, QueryClient } from "@tanstack/react-query";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/get-session";
@@ -5,6 +6,7 @@ import { getActivePlan, getWorkoutsForDateRange, getNextWorkouts } from "@/serve
 import { getActivitiesForDateRange } from "@/server/strava/date-queries";
 import { todayIso } from "@/lib/dates";
 import { TodayContent } from "./today-content";
+import { HeroSkeleton } from "@/components/skeletons/hero-skeleton";
 import styles from "./today.module.scss";
 
 export default async function TodayPage() {
@@ -33,7 +35,9 @@ export default async function TodayPage() {
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>
       <div className={styles.page}>
-        <TodayContent />
+        <Suspense fallback={<HeroSkeleton />}>
+          <TodayContent />
+        </Suspense>
       </div>
     </HydrationBoundary>
   );

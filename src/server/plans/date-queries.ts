@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { db } from "@/server/db";
 import { plans, workouts } from "@/server/db/schema";
 import { and, asc, eq, gt, gte, lte } from "drizzle-orm";
@@ -5,14 +6,16 @@ import { and, asc, eq, gt, gte, lte } from "drizzle-orm";
 export type WorkoutRow = typeof workouts.$inferSelect;
 export type PlanRow = typeof plans.$inferSelect;
 
-export async function getActivePlan(userId: string): Promise<PlanRow | null> {
+const _getActivePlan = async (userId: string): Promise<PlanRow | null> => {
   const rows = await db
     .select()
     .from(plans)
     .where(and(eq(plans.userId, userId), eq(plans.is_active, true)))
     .limit(1);
   return rows[0] ?? null;
-}
+};
+
+export const getActivePlan = cache(_getActivePlan);
 
 export async function getWorkoutsForDateRange(
   userId: string,
