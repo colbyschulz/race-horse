@@ -24,6 +24,7 @@ export function PlanStatusActions({ plan, today }: Props) {
   const [busy, setBusy] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const status = statusOf(plan, today);
 
@@ -95,6 +96,31 @@ export function PlanStatusActions({ plan, today }: Props) {
         </Button>
         {menuOpen && (
           <div className={styles.dropdown}>
+            <button
+              type="button"
+              className={styles.item}
+              disabled={downloading}
+              onClick={async () => {
+                setDownloading(true);
+                try {
+                  const res = await fetch(`/api/plans/${plan.id}/export`);
+                  const blob = await res.blob();
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement("a");
+                  a.href = url;
+                  a.download = `${plan.title.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}.md`;
+                  a.click();
+                  URL.revokeObjectURL(url);
+                } catch {
+                  alert("Download failed — please try again.");
+                } finally {
+                  setDownloading(false);
+                  setMenuOpen(false);
+                }
+              }}
+            >
+              {downloading ? "Downloading…" : "Download"}
+            </button>
             {status !== "active" && (
               <button
                 type="button"

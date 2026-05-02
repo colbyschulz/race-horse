@@ -74,6 +74,7 @@ export type IntervalSpec = {
   duration_s?: number;
   target_intensity?: TargetIntensity;
   rest?: {
+    type?: string;
     duration_s?: number;
     distance_m?: number;
     display_unit?: "m" | "km" | "mi";

@@ -133,7 +133,7 @@ export function WorkoutDetailSheet({ workout, planId = "", units, onClose }: Pro
                     iv.distance_m != null
                       ? formatIntervalDistance(iv.distance_m, iv.display_unit, units)
                       : null,
-                    formatDuration(iv.duration_s),
+                    formatDuration(iv.duration_s, { format: "clock" }),
                   ]
                     .filter(Boolean)
                     .join(" · ")}
@@ -141,10 +141,10 @@ export function WorkoutDetailSheet({ workout, planId = "", units, onClose }: Pro
                     ? ` @ ${formatPaceRange(iv.target_intensity.pace, units) ?? ""}`
                     : null}
                   {iv.rest?.duration_s != null
-                    ? ` / ${formatDuration(iv.rest.duration_s) ?? ""} rest`
+                    ? ` / ${formatDuration(iv.rest.duration_s, { format: "clock" }) ?? ""} ${iv.rest.type ?? "rest"}`
                     : null}
                   {iv.rest?.distance_m != null
-                    ? ` / ${formatIntervalDistance(iv.rest.distance_m, iv.rest.display_unit, units)} rest`
+                    ? ` / ${formatIntervalDistance(iv.rest.distance_m, iv.rest.display_unit, units)} ${iv.rest.type ?? "rest"}`
                     : null}
                 </li>
               ))}

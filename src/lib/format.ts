@@ -87,7 +87,7 @@ export interface IntervalSummaryInput {
   display_unit?: "m" | "km" | "mi";
   duration_s?: number;
   target_intensity?: { pace?: PaceRangeInput };
-  rest?: { duration_s?: number; distance_m?: number; display_unit?: "m" | "km" | "mi" };
+  rest?: { type?: string; duration_s?: number; distance_m?: number; display_unit?: "m" | "km" | "mi" };
 }
 
 export function formatIntervalSummary(
@@ -100,7 +100,7 @@ export function formatIntervalSummary(
       iv.distance_m != null
         ? formatIntervalDistance(iv.distance_m, iv.display_unit, units)
         : iv.duration_s != null
-          ? (formatDuration(iv.duration_s) ?? "")
+          ? (formatDuration(iv.duration_s, { format: "clock" }) ?? "")
           : "";
     const pace =
       iv.target_intensity?.pace && formatPaceRange(iv.target_intensity.pace, units)

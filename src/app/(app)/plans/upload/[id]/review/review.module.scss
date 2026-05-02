@@ -1,12 +1,19 @@
 // Review page — only review-specific styles. Layout chrome is owned by PlanView.
 
 .page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
   max-width: 720px;
   margin: 0 auto;
   padding: var(--space-4) var(--space-3);
+  height: calc(
+    100dvh - var(--shell-tabbar-height) - var(--space-3) * 2 - env(safe-area-inset-bottom)
+  );
 
   @media (min-width: 768px) {
     padding: var(--space-6) var(--space-4);
+    height: calc(100dvh - var(--space-6) * 2);
   }
 }
 
