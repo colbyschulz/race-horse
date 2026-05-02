@@ -63,12 +63,31 @@ export function formatPaceRange(p: PaceRangeInput, units: Units): string | null 
   return min || max || null;
 }
 
+export function formatIntervalDistance(
+  meters: number,
+  displayUnit: "m" | "km" | "mi" | undefined,
+  userUnits: Units
+): string {
+  if (displayUnit === "m") return `${Math.round(meters)}m`;
+  if (displayUnit === "km") return `${Math.round(meters / 1000)}km`;
+  if (displayUnit === "mi") {
+    const miles = meters / METERS_PER_MILE;
+    const rounded = Math.round(miles * 8) / 8;
+    return `${rounded} mi`;
+  }
+  // Fallback heuristic for rows without display_unit
+  if (meters % 1000 === 0) return `${meters / 1000}km`;
+  if (meters % 100 === 0) return `${Math.round(meters)}m`;
+  return `${metersToUnits(meters, userUnits).toFixed(1)} ${userUnits}`;
+}
+
 export interface IntervalSummaryInput {
   reps: number;
   distance_m?: number;
+  display_unit?: "m" | "km" | "mi";
   duration_s?: number;
   target_intensity?: { pace?: PaceRangeInput };
-  rest?: { duration_s?: number; distance_m?: number };
+  rest?: { duration_s?: number; distance_m?: number; display_unit?: "m" | "km" | "mi" };
 }
 
 export function formatIntervalSummary(
@@ -79,7 +98,7 @@ export function formatIntervalSummary(
   const parts = intervals.map((iv) => {
     const measure =
       iv.distance_m != null
-        ? `${metersToUnits(iv.distance_m, units).toFixed(2).replace(/\.?0+$/, "")} ${units}`
+        ? formatIntervalDistance(iv.distance_m, iv.display_unit, units)
         : iv.duration_s != null
           ? (formatDuration(iv.duration_s) ?? "")
           : "";

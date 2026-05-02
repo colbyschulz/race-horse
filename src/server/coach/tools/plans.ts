@@ -118,6 +118,57 @@ export const updateWorkoutsTool: Tool = {
                     distance_km: { type: "number" },
                     duration_minutes: { type: "number" },
                     notes: { type: "string" },
+                    intervals: {
+                      type: "array",
+                      description: "Structured interval set for quality workouts.",
+                      items: {
+                        type: "object",
+                        properties: {
+                          reps: { type: "number", description: "Number of repetitions." },
+                          distance_m: { type: "number", description: "Distance per rep in metres." },
+                          display_unit: {
+                            type: "string",
+                            enum: ["m", "km", "mi"],
+                            description: "How to display the distance. Match the unit you're thinking in: 1600m → 'm', 1km → 'km', 1 mile → 'mi'.",
+                          },
+                          duration_s: { type: "number", description: "Duration per rep in seconds (alternative to distance_m)." },
+                          target_intensity: {
+                            type: "object",
+                            properties: {
+                              pace: {
+                                type: "object",
+                                properties: {
+                                  min_seconds_per_km: { type: "number" },
+                                  max_seconds_per_km: { type: "number" },
+                                },
+                              },
+                              hr: {
+                                type: "object",
+                                properties: {
+                                  min_bpm: { type: "number" },
+                                  max_bpm: { type: "number" },
+                                  zone: { type: "string" },
+                                },
+                              },
+                              rpe: { type: "number", description: "Rate of perceived exertion, 1–10." },
+                            },
+                          },
+                          rest: {
+                            type: "object",
+                            properties: {
+                              duration_s: { type: "number", description: "Rest duration in seconds." },
+                              distance_m: { type: "number", description: "Rest distance in metres (e.g. jog recovery)." },
+                              display_unit: {
+                                type: "string",
+                                enum: ["m", "km", "mi"],
+                                description: "How to display the rest distance.",
+                              },
+                            },
+                          },
+                        },
+                        required: ["reps"],
+                      },
+                    },
                   },
                   required: ["type"],
                 },
@@ -290,6 +341,7 @@ type UpsertOp = {
     distance_km?: number;
     duration_minutes?: number;
     notes?: string;
+    intervals?: import("@/server/db/schema").IntervalSpec[] | null;
   };
 };
 
@@ -334,6 +386,7 @@ export const update_workouts_handler: ToolHandler<
         duration_seconds:
           op.workout.duration_minutes != null ? op.workout.duration_minutes * 60 : null,
         notes: op.workout.notes ?? "",
+        intervals: op.workout.intervals ?? null,
       });
       upserted++;
     }

@@ -70,9 +70,14 @@ export type TargetIntensity = {
 export type IntervalSpec = {
   reps: number;
   distance_m?: number;
+  display_unit?: "m" | "km" | "mi";
   duration_s?: number;
   target_intensity?: TargetIntensity;
-  rest?: { duration_s?: number; distance_m?: number };
+  rest?: {
+    duration_s?: number;
+    distance_m?: number;
+    display_unit?: "m" | "km" | "mi";
+  };
 };
 
 export const users = pgTable("user", {

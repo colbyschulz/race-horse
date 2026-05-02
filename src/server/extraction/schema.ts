@@ -26,12 +26,14 @@ const TargetIntensityZ = z.object({
 const IntervalSpecZ = z.object({
   reps: z.number().int().positive(),
   distance_m: z.number().optional(),
+  display_unit: z.enum(["m", "km", "mi"]).optional(),
   duration_s: z.number().optional(),
   target_intensity: TargetIntensityZ.optional(),
   rest: z
     .object({
       duration_s: z.number().optional(),
       distance_m: z.number().optional(),
+      display_unit: z.enum(["m", "km", "mi"]).optional(),
     })
     .optional(),
 });

@@ -16,7 +16,8 @@ Conventions:
 - "tentative_start_date": YYYY-MM-DD if the file gave an explicit start (or earliest absolute workout date); otherwise null.
 - Workout types: easy, long, tempo, threshold, intervals, recovery, race, rest, cross.
 - target_intensity may include any of: pace (min/max seconds_per_km), power (min/max watts), hr (min/max bpm or {zone}), rpe (1-10).
-- If this isn't a training plan, set is_training_plan: false and leave the rest as empty defaults: title="", sport="run", mode="indefinite", goal=null, tentative_start_date=null, workouts=[].`;
+- If this isn't a training plan, set is_training_plan: false and leave the rest as empty defaults: title="", sport="run", mode="indefinite", goal=null, tentative_start_date=null, workouts=[].
+- For each interval and its rest, set display_unit to match how the source plan expressed the distance: "m" for metre distances (400m, 800m, 1600m), "km" for kilometre distances (1km, 5km, 10km), "mi" for mile distances (1 mile, half mile, 2 miles). Never convert — preserve the original expression.`;
 
 export async function runExtraction(planFileId: string, userId: string): Promise<void> {
   const row = await getPlanFileById(planFileId, userId);

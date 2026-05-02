@@ -4,6 +4,8 @@ import {
   formatDuration,
   formatPace,
   formatPaceRange,
+  formatIntervalDistance,
+  formatIntervalSummary,
   metersToUnits,
 } from "../format";
 
@@ -86,5 +88,62 @@ describe("formatPaceRange", () => {
     expect(formatPaceRange({ min_seconds_per_km: 330, max_seconds_per_km: 360 }, "km")).toBe(
       "5:30–6:00"
     );
+  });
+});
+
+describe("formatIntervalDistance", () => {
+  it('display_unit "m" → integer meters with m suffix', () => {
+    expect(formatIntervalDistance(1600, "m", "mi")).toBe("1600m");
+    expect(formatIntervalDistance(400, "m", "mi")).toBe("400m");
+  });
+  it('display_unit "km" → integer km with km suffix', () => {
+    expect(formatIntervalDistance(1000, "km", "mi")).toBe("1km");
+    expect(formatIntervalDistance(5000, "km", "mi")).toBe("5km");
+  });
+  it('display_unit "mi" → miles rounded to nearest 1/8', () => {
+    expect(formatIntervalDistance(1609.344, "mi", "mi")).toBe("1 mi");
+    expect(formatIntervalDistance(804.672, "mi", "mi")).toBe("0.5 mi");
+  });
+  it("no display_unit, multiple of 1000 → km heuristic", () => {
+    expect(formatIntervalDistance(3000, undefined, "mi")).toBe("3km");
+    expect(formatIntervalDistance(1000, undefined, "mi")).toBe("1km");
+  });
+  it("no display_unit, multiple of 100 (not 1000) → meters heuristic", () => {
+    expect(formatIntervalDistance(1600, undefined, "mi")).toBe("1600m");
+    expect(formatIntervalDistance(800, undefined, "mi")).toBe("800m");
+  });
+  it("no display_unit, non-round value → user units fallback", () => {
+    // 1500m is divisible by 100 → meters
+    expect(formatIntervalDistance(1500, undefined, "mi")).toBe("1500m");
+    // 1750m is divisible by 50 but not 100 → user units
+    expect(formatIntervalDistance(1750, undefined, "mi")).toBe("1.1 mi");
+    expect(formatIntervalDistance(1750, undefined, "km")).toBe("1.8 km");
+  });
+});
+
+describe("formatIntervalSummary", () => {
+  it("returns null for empty array", () => {
+    expect(formatIntervalSummary([], "mi")).toBeNull();
+  });
+  it("uses display_unit when present", () => {
+    const result = formatIntervalSummary(
+      [{ reps: 5, distance_m: 1600, display_unit: "m" }],
+      "mi"
+    );
+    expect(result).toBe("5 × 1600m");
+  });
+  it("falls back to heuristic when display_unit absent", () => {
+    const result = formatIntervalSummary(
+      [{ reps: 10, distance_m: 1000 }],
+      "mi"
+    );
+    expect(result).toBe("10 × 1km");
+  });
+  it("includes pace range when present", () => {
+    const result = formatIntervalSummary(
+      [{ reps: 5, distance_m: 1600, display_unit: "m", target_intensity: { pace: { min_seconds_per_km: 234, max_seconds_per_km: 240 } } }],
+      "mi"
+    );
+    expect(result).toBe("5 × 1600m @ 6:17–6:26");
   });
 });

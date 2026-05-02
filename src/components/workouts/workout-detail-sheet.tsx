@@ -6,7 +6,7 @@ import { formatLongDate } from "@/lib/dates";
 import type { WorkoutRow } from "@/types/plans";
 import type { TargetIntensity, IntervalSpec } from "@/types/preferences";
 import { Button } from "@/components/button/button";
-import { formatDistance, formatDuration, formatPaceRange, metersToUnits } from "@/lib/format";
+import { formatDistance, formatDuration, formatPaceRange, formatIntervalDistance } from "@/lib/format";
 import { useBodyLock } from "@/lib/use-body-lock";
 import styles from "./workout-detail-sheet.module.scss";
 
@@ -48,7 +48,7 @@ export function WorkoutDetailSheet({ workout, planId = "", units, onClose }: Pro
   const t = hasNotes
     ? ({} as TargetIntensity)
     : ((workout.target_intensity ?? {}) as TargetIntensity);
-  const intervals = hasNotes ? null : ((workout.intervals ?? null) as IntervalSpec[] | null);
+  const intervals = (workout.intervals ?? null) as IntervalSpec[] | null;
   const headline = TYPE_HEADLINE[workout.type] ?? workout.type;
   const coachHref = `/coach?from=${encodeURIComponent(`/plans/${planId}`)}&from_label=${encodeURIComponent(`${headline} — ${workout.date}`)}`;
   const paceText = t.pace ? formatPaceRange(t.pace, units) : null;
@@ -131,7 +131,7 @@ export function WorkoutDetailSheet({ workout, planId = "", units, onClose }: Pro
                   {iv.reps} ×{" "}
                   {[
                     iv.distance_m != null
-                      ? `${metersToUnits(iv.distance_m, units).toFixed(2)} ${units}`
+                      ? formatIntervalDistance(iv.distance_m, iv.display_unit, units)
                       : null,
                     formatDuration(iv.duration_s),
                   ]
@@ -144,7 +144,7 @@ export function WorkoutDetailSheet({ workout, planId = "", units, onClose }: Pro
                     ? ` / ${formatDuration(iv.rest.duration_s) ?? ""} rest`
                     : null}
                   {iv.rest?.distance_m != null
-                    ? ` / ${metersToUnits(iv.rest.distance_m, units).toFixed(2)} ${units} rest`
+                    ? ` / ${formatIntervalDistance(iv.rest.distance_m, iv.rest.display_unit, units)} rest`
                     : null}
                 </li>
               ))}

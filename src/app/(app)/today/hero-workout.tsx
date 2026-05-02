@@ -2,7 +2,7 @@
 
 import { WorkoutBadge, type WorkoutType } from "@/components/workouts/workout-badge";
 import type { TargetIntensity, IntervalSpec } from "@/types/preferences";
-import { formatDistance, formatDuration, formatPaceRange, metersToUnits } from "@/lib/format";
+import { formatDistance, formatDuration, formatPaceRange, formatIntervalDistance } from "@/lib/format";
 import { useWorkouts } from "@/queries/workouts";
 import styles from "./today.module.scss";
 
@@ -28,9 +28,8 @@ export function HeroWorkout({ units, today }: { units: "mi" | "km"; today: strin
   const intensity: TargetIntensity | null = hasNotes
     ? null
     : ((workout.target_intensity as TargetIntensity | null) ?? null);
-  const intervals: IntervalSpec[] | null = hasNotes
-    ? null
-    : ((workout.intervals as IntervalSpec[] | null) ?? null);
+  const intervals: IntervalSpec[] | null =
+    (workout.intervals as IntervalSpec[] | null) ?? null;
   const pace = intensity?.pace ? formatPaceRange(intensity.pace, units) : null;
 
   return (
@@ -100,7 +99,7 @@ export function HeroWorkout({ units, today }: { units: "mi" | "km"; today: strin
                 {iv.reps} ×{" "}
                 {[
                   iv.distance_m != null
-                    ? `${metersToUnits(iv.distance_m, units).toFixed(2)} ${units}`
+                    ? formatIntervalDistance(iv.distance_m, iv.display_unit, units)
                     : null,
                   formatDuration(iv.duration_s),
                 ]
@@ -113,7 +112,7 @@ export function HeroWorkout({ units, today }: { units: "mi" | "km"; today: strin
                   ? ` / ${formatDuration(iv.rest.duration_s) ?? ""} rest`
                   : null}
                 {iv.rest?.distance_m != null
-                  ? ` / ${metersToUnits(iv.rest.distance_m, units).toFixed(2)} ${units} rest`
+                  ? ` / ${formatIntervalDistance(iv.rest.distance_m, iv.rest.display_unit, units)} rest`
                   : null}
               </li>
             ))}

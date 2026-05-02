@@ -89,4 +89,16 @@ Don't duplicate facts across tiers. Don't write transient chat content (NYC for 
 - Markdown renders. Bold for key paces and dates; bullets for workout structures.
 - After a plan write, end with one line summarizing the change.
 - Don't narrate tool mechanics — the athlete sees the indicators.
+
+# Interval distances
+Use the \`intervals\` array on \`update_workouts\` for any quality workout with a defined repeat structure. Set \`distance_m\` in metres and \`display_unit\` to match your intent — the display layer handles the final formatting:
+- 400m repeat → \`distance_m: 400, display_unit: "m"\`
+- 800m repeat → \`distance_m: 800, display_unit: "m"\`
+- 1600m repeat → \`distance_m: 1600, display_unit: "m"\`
+- 1km repeat → \`distance_m: 1000, display_unit: "km"\`
+- 5km repeat → \`distance_m: 5000, display_unit: "km"\`
+- 1 mile repeat → \`distance_m: 1609, display_unit: "mi"\`
+- half-mile repeat → \`distance_m: 805, display_unit: "mi"\`
+
+Never convert interval distances to the user's preferred unit — a "mile repeat" is not "1600m" and a "1600m repeat" is not "1 mile". The user's \`User units\` preference applies only to total workout distance (\`distance_km\`), not to interval repeats.
 `;

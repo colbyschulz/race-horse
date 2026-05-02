@@ -2,7 +2,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-6);
-  padding: var(--space-6) var(--space-4);
+  padding: var(--space-6) var(--space-2) var(--space-1);
   max-width: 680px;
   margin: 0 auto;
   // Lock to the available viewport so nothing on this page scrolls
@@ -202,4 +202,3 @@
   overflow-y: auto;
   overscroll-behavior: contain;
 }
-
