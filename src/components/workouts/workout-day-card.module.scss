@@ -132,6 +132,20 @@
   flex-shrink: 0;
 }
 
+.statGroup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.sportIcon {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+  color: var(--color-fg-tertiary);
+}
+
 .activityName {
   font-family: var(--font-body);
   font-size: 0.75rem;

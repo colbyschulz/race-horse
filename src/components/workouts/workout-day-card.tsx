@@ -3,6 +3,7 @@ import type { CSSProperties } from "react";
 import { formatDayLabel } from "@/lib/dates";
 import { formatDistance, formatDuration } from "@/lib/format";
 import { WorkoutBadge } from "./workout-badge";
+import { SportIcon } from "./sport-icon";
 import type { WorkoutRow } from "@/types/plans";
 import type { Activity } from "@/types/strava";
 import styles from "./workout-day-card.module.scss";
@@ -59,7 +60,10 @@ export function WorkoutDayCard({
             <WorkoutBadge type={isRest ? "rest" : workout!.type} size="sm" />
           </div>
           {!isRest && stat && (
-            <span className={styles.statValue}>{stat}</span>
+            <div className={styles.statGroup}>
+              <SportIcon type={workout!.sport} className={styles.sportIcon} />
+              <span className={styles.statValue}>{stat}</span>
+            </div>
           )}
         </div>
 
