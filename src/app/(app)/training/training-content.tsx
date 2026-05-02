@@ -75,15 +75,17 @@ export function TrainingContent() {
         today={{ href: "/training" }}
         showToday={!isCurrentWeek}
       />
-      <Suspense fallback={<WeekAgendaSkeleton />}>
-        <WeekAgenda
-          monday={monday}
-          sunday={sunday}
-          today={today}
-          units={prefs.units}
-          planId={activePlan.id}
-        />
-      </Suspense>
+      <div className={styles.agendaWrap}>
+        <Suspense fallback={<WeekAgendaSkeleton />}>
+          <WeekAgenda
+            monday={monday}
+            sunday={sunday}
+            today={today}
+            units={prefs.units}
+            planId={activePlan.id}
+          />
+        </Suspense>
+      </div>
     </>
   );
 }

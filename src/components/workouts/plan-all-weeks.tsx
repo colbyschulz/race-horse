@@ -59,6 +59,7 @@ export function PlanAllWeeks({ allWorkouts, units, today, planStartDate }: Props
               units={units}
               isActivePlan={false}
               showWeekTotal
+              showNotes
             />
           </div>
         );

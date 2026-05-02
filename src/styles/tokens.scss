@@ -41,23 +41,40 @@
   --color-olive: #5c6633;
   --color-olive-subtle: #ebefd4;
 
+  // ── Completion strip (logged activity / Strava) ──
+  --color-complete: var(--color-olive);
+  --color-complete-subtle: var(--color-olive-subtle);
+
   // ── Workout type colors ──
+  // Each type has three shades: -bg (badge pill), -mid (accent rail / divider),
+  // and the base var (text + emphasis). They form a tonal ladder from light to dark.
   --color-workout-easy: #5c6633;
   --color-workout-easy-bg: #d8e0b0;
+  --color-workout-easy-mid: #c8d49a;
   --color-workout-long: #2a5e8a;
   --color-workout-long-bg: #c8dae8;
+  --color-workout-long-mid: #a8c4dc;
   --color-workout-tempo: #b87a20;
   --color-workout-tempo-bg: #ecd8a8;
+  --color-workout-tempo-mid: #dcc080;
   --color-workout-threshold: #c4622d;
   --color-workout-threshold-bg: #ebcdb0;
+  --color-workout-threshold-mid: #dba882;
   --color-workout-intervals: #7b3f8a;
   --color-workout-intervals-bg: #ddc8ed;
+  --color-workout-intervals-mid: #c4a0d8;
   --color-workout-recovery: #9b8e7e;
   --color-workout-recovery-bg: #ddd5cb;
+  --color-workout-recovery-mid: #c8bcb0;
   --color-workout-rest: #6e6257;
   --color-workout-rest-bg: #e0d9ce;
+  --color-workout-rest-mid: #c8bfb0;
   --color-workout-race: #b83232;
   --color-workout-race-bg: #edc4c4;
+  --color-workout-race-mid: #d89090;
+  --color-workout-cross: #2a6a6a;
+  --color-workout-cross-bg: #c4dede;
+  --color-workout-cross-mid: #90c4c4;
 
   // ── Shadows ──
   --shadow-sm: 0 2px 8px rgba(30, 26, 20, 0.08);

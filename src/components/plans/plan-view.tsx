@@ -158,6 +158,7 @@ export function PlanView({
             units={units}
             isActivePlan={currentWeek.isActivePlan}
             onDayClick={currentWeek.onWorkoutClick}
+            showNotes
           />
         </div>
       )}

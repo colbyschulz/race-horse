@@ -62,3 +62,32 @@ export function formatPaceRange(p: PaceRangeInput, units: Units): string | null 
   if (min && max) return `${min}–${max}`;
   return min || max || null;
 }
+
+export interface IntervalSummaryInput {
+  reps: number;
+  distance_m?: number;
+  duration_s?: number;
+  target_intensity?: { pace?: PaceRangeInput };
+  rest?: { duration_s?: number; distance_m?: number };
+}
+
+export function formatIntervalSummary(
+  intervals: IntervalSummaryInput[] | null | undefined,
+  units: Units
+): string | null {
+  if (!intervals || intervals.length === 0) return null;
+  const parts = intervals.map((iv) => {
+    const measure =
+      iv.distance_m != null
+        ? `${metersToUnits(iv.distance_m, units).toFixed(2).replace(/\.?0+$/, "")} ${units}`
+        : iv.duration_s != null
+          ? (formatDuration(iv.duration_s) ?? "")
+          : "";
+    const pace =
+      iv.target_intensity?.pace && formatPaceRange(iv.target_intensity.pace, units)
+        ? ` @ ${formatPaceRange(iv.target_intensity.pace, units)}`
+        : "";
+    return `${iv.reps} × ${measure}${pace}`.trim();
+  });
+  return parts.join(" + ");
+}

@@ -9,3 +9,12 @@
     100dvh - var(--shell-tabbar-height) - var(--space-3) * 2 - env(safe-area-inset-bottom)
   );
 }
+
+.agendaWrap {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+  &::-webkit-scrollbar { display: none; }
+}

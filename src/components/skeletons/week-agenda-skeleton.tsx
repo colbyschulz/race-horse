@@ -13,7 +13,7 @@ export function WeekAgendaSkeleton() {
         </div>
       </div>
       {Array.from({ length: 7 }).map((_, i) => (
-        <Skeleton key={i} height={52} borderRadius="var(--radius-md)" />
+        <Skeleton key={i} height={88} borderRadius="var(--radius-lg)" />
       ))}
     </div>
   );

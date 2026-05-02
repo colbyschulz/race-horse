@@ -1,4 +1,5 @@
 "use client";
+import type { CSSProperties } from "react";
 import { addDays, formatDayLabel } from "@/lib/dates";
 import { formatDistance, formatDuration } from "@/lib/format";
 import { WorkoutBadge } from "./workout-badge";
@@ -15,6 +16,7 @@ interface Props {
   isActivePlan: boolean;
   onDayClick?: (date: string) => void;
   showWeekTotal?: boolean;
+  showNotes?: boolean;
 }
 
 export function WeekAgendaRows({
@@ -26,16 +28,16 @@ export function WeekAgendaRows({
   isActivePlan,
   onDayClick,
   showWeekTotal = true,
+  showNotes = false,
 }: Props) {
   const days = Array.from({ length: 7 }, (_, i) => addDays(monday, i));
   let totalMeters = 0;
-  let totalSeconds = 0;
+  let completedMeters = 0;
   for (const d of days) {
     const w = byDate.get(d);
-    if (w) {
-      totalMeters += w.distance_meters == null ? 0 : Number(w.distance_meters);
-      totalSeconds += w.duration_seconds ?? 0;
-    }
+    if (w) totalMeters += w.distance_meters == null ? 0 : Number(w.distance_meters);
+    for (const act of activitiesByDate?.get(d) ?? [])
+      completedMeters += act.distance_meters == null ? 0 : Number(act.distance_meters);
   }
 
   return (
@@ -46,8 +48,19 @@ export function WeekAgendaRows({
         const isToday = isActivePlan && d === today;
         const isRest = !w || w.type === "rest";
         const clickable = !!w && !isRest && !!onDayClick;
+
+        const dist = !isRest && w ? formatDistance(w.distance_meters as string | null, units) : null;
+        const dur = !isRest && w ? formatDuration(w.duration_seconds) : null;
+        const notes = showNotes && !isRest && w?.notes ? w.notes : null;
+        const railType = isRest ? "rest" : w!.type;
+        const cardStyle = { "--rail": `var(--color-workout-${railType}-mid)` } as CSSProperties;
+
         return (
-          <div key={d} className={`${styles.row} ${isToday ? styles.rowToday : ""}`}>
+          <div
+            key={d}
+            className={`${styles.card} ${isToday ? styles.cardToday : ""}`}
+            style={cardStyle}
+          >
             <button
               type="button"
               className={styles.dayBtn}
@@ -55,29 +68,35 @@ export function WeekAgendaRows({
               onClick={() => clickable && onDayClick!(d)}
               aria-label={isRest ? "Rest day" : `View workout for ${formatDayLabel(d)}`}
             />
-            <div className={styles.dayContent}>
-              <div className={styles.workoutLine}>
-                <span className={`${styles.dayLabel} ${isToday ? styles.dayLabelToday : ""}`}>
-                  {formatDayLabel(d)}
-                </span>
-                <WorkoutBadge type={isRest ? "rest" : w!.type} size="sm" />
-                {!isRest && w && (
-                  <span className={styles.meta}>
-                    <span className={styles.metaVal}>
-                      {formatDistance(w.distance_meters as string | null, units) ?? "—"}
-                    </span>
-                    <span className={styles.metaUnit}>{units}</span>
-                    <span className={styles.metaSep}>·</span>
-                    <span className={styles.metaVal}>
-                      {formatDuration(w.duration_seconds) ?? "—"}
-                    </span>
+
+            <div className={styles.body}>
+              <div className={styles.topRow}>
+                <div className={styles.left}>
+                  <span className={`${styles.dayLabel} ${isToday ? styles.dayLabelToday : ""}`}>
+                    {formatDayLabel(d)}
                   </span>
+                  <WorkoutBadge type={isRest ? "rest" : w!.type} size="sm" />
+                </div>
+                {!isRest && (dist || dur) && (
+                  <div className={styles.right}>
+                    <span className={styles.statValue}>{dist ? `${dist} ${units}` : dur}</span>
+                  </div>
                 )}
               </div>
-              {acts.map((act) => (
-                <div key={act.id} className={styles.activityLine}>
+
+              {notes && (
+                <div className={styles.details}>
+                  <p className={styles.notes}>{notes}</p>
+                </div>
+              )}
+            </div>
+
+            {acts.length > 0 && (
+              <div className={`${styles.completion} ${isToday ? styles.completionToday : ""}`}>
+                {acts.map((act) => (
                   <a
-                    className={styles.stravaLink}
+                    key={act.id}
+                    className={styles.activityRow}
                     href={`https://www.strava.com/activities/${act.strava_id}`}
                     target="_blank"
                     rel="noopener noreferrer"
@@ -89,6 +108,7 @@ export function WeekAgendaRows({
                         d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169"
                       />
                     </svg>
+                    <span className={styles.activityName}>{act.name ?? "Activity"}</span>
                     <span className={styles.activityMeta}>
                       {formatDistance(act.distance_meters, units) ?? "—"} {units}
                       {act.moving_time_seconds
@@ -111,19 +131,28 @@ export function WeekAgendaRows({
                       />
                     </svg>
                   </a>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         );
       })}
       {showWeekTotal && totalMeters > 0 && (
         <div className={styles.weekTotal}>
-          <span className={styles.totalLabel}>Week total</span>
-          <span className={styles.totalValue}>
-            {formatDistance(totalMeters, units) ?? "—"} {units} ·{" "}
-            {formatDuration(totalSeconds) ?? "—"}
-          </span>
+          <div className={styles.totalRow}>
+            <span className={styles.totalLabel}>Week total</span>
+            <span className={styles.totalValue}>
+              {formatDistance(totalMeters, units) ?? "—"} {units}
+            </span>
+          </div>
+          {completedMeters > 0 && (
+            <div className={styles.totalRow}>
+              <span className={styles.completedLabel}>Completed</span>
+              <span className={styles.completedValue}>
+                {formatDistance(completedMeters, units) ?? "—"} {units}
+              </span>
+            </div>
+          )}
         </div>
       )}
     </div>
