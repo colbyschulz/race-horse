@@ -1,6 +1,7 @@
 import { NavLinks } from "./nav-links";
 import { TabBar } from "./tab-bar";
 import { MainContent } from "./main-content";
+import { PrefetchOnResume } from "./prefetch-on-resume";
 import styles from "./app-shell.module.scss";
 
 interface AppShellProps {
@@ -18,6 +19,7 @@ export function AppShell({ userName, children }: AppShellProps) {
         </div>
         <NavLinks variant="sidebar" />
       </aside>
+      <PrefetchOnResume />
       <MainContent>{children}</MainContent>
       <TabBar />
     </div>

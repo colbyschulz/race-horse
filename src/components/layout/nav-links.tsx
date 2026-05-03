@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import Link, { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
 import styles from "./app-shell.module.scss";
 
@@ -10,6 +10,15 @@ const LINKS = [
   { href: "/plans", label: "Plans" },
   { href: "/settings", label: "Settings" },
 ] as const;
+
+function NavLinkLabel({ label }: { label: string }) {
+  const { pending } = useLinkStatus();
+  return (
+    <span className={pending ? styles.linkLabelPending : undefined}>
+      {label}
+    </span>
+  );
+}
 
 export function NavLinks({ variant }: { variant: "tabs" | "sidebar" }) {
   const pathname = usePathname();
@@ -23,7 +32,7 @@ export function NavLinks({ variant }: { variant: "tabs" | "sidebar" }) {
             href={link.href}
             className={active ? styles.linkActive : styles.link}
           >
-            {link.label}
+            <NavLinkLabel label={link.label} />
           </Link>
         );
       })}
