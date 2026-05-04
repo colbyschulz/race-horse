@@ -23,22 +23,6 @@ const TargetIntensityZ = z.object({
   rpe: z.number().optional(),
 });
 
-const IntervalSpecZ = z.object({
-  reps: z.number().int().positive(),
-  distance_m: z.number().optional(),
-  display_unit: z.enum(["m", "km", "mi"]).optional(),
-  duration_s: z.number().optional(),
-  target_intensity: TargetIntensityZ.optional(),
-  rest: z
-    .object({
-      type: z.string().optional(),
-      duration_s: z.number().optional(),
-      distance_m: z.number().optional(),
-      display_unit: z.enum(["m", "km", "mi"]).optional(),
-    })
-    .optional(),
-});
-
 const WorkoutTypeZ = z.enum([
   "easy",
   "long",
@@ -72,8 +56,15 @@ export const ExtractedPlanSchema = z.object({
       distance_meters: z.number().nullable(),
       duration_seconds: z.number().int().nullable(),
       target_intensity: TargetIntensityZ.nullable(),
-      intervals: z.array(IntervalSpecZ).nullable(),
       notes: z.string(),
+      secondary: z
+        .object({
+          type: WorkoutTypeZ,
+          distance_meters: z.number().nullable(),
+          duration_seconds: z.number().int().nullable(),
+          notes: z.string(),
+        })
+        .nullable(),
     })
   ),
 });

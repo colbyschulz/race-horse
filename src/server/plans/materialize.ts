@@ -2,27 +2,34 @@ import "server-only";
 
 // src/plans/materialize.ts
 import { addDays } from "@/lib/dates";
-import type { TargetIntensity, IntervalSpec } from "@/server/db/schema";
+import type { TargetIntensity } from "@/server/db/schema";
 import type { Sport } from "./types";
+
+type WorkoutType =
+  | "easy"
+  | "long"
+  | "tempo"
+  | "threshold"
+  | "intervals"
+  | "recovery"
+  | "race"
+  | "rest"
+  | "cross";
 
 export type ExtractedWorkout = {
   day_offset: number;
   sport: Sport;
-  type:
-    | "easy"
-    | "long"
-    | "tempo"
-    | "threshold"
-    | "intervals"
-    | "recovery"
-    | "race"
-    | "rest"
-    | "cross";
+  type: WorkoutType;
   distance_meters: number | null;
   duration_seconds: number | null;
   target_intensity: TargetIntensity | null;
-  intervals: IntervalSpec[] | null;
   notes: string;
+  secondary: {
+    type: WorkoutType;
+    distance_meters: number | null;
+    duration_seconds: number | null;
+    notes: string;
+  } | null;
 };
 
 export type MaterializedWorkout = Omit<ExtractedWorkout, "day_offset"> & {

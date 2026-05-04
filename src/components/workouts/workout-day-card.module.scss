@@ -86,20 +86,39 @@
   border-top: 1px solid var(--color-border-subtle);
 }
 
-.intervals {
-  font-family: var(--font-body);
-  font-size: 0.75rem;
-  color: var(--color-fg-secondary);
-  line-height: 1.55;
-  margin: 0;
-}
-
 .notes {
   font-family: var(--font-body);
   font-size: 0.75rem;
   color: var(--color-fg-tertiary);
   line-height: 1.55;
   margin: 0;
+}
+
+.secondary {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--color-border-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.secondaryRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.secStatValue {
+  font-family: var(--font-display);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--color-fg-secondary);
+  line-height: 1;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .completion {

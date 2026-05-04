@@ -11,6 +11,7 @@ const wk = (day_offset: number, distance_meters: number | null = 5000) => ({
   target_intensity: null,
   intervals: null,
   notes: "",
+  secondary: null,
 });
 
 describe("materializeWorkouts", () => {

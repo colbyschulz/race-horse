@@ -121,37 +121,51 @@ export const HANDLERS: Record<ToolName, ToolHandler> = {
 // ---------------------------------------------------------------------------
 
 export function summarizeToolResult(name: ToolName, result: unknown): string {
-  const r = result as Record<string, number>;
+  const r = result as Record<string, number | undefined>;
   switch (name) {
     case "get_active_plan":
-      return "Read active plan";
+      return "Checked your active plan";
     case "list_plans":
-      return "Listed plans";
+      return "Looked at your plans";
     case "get_plan":
-      return "Read plan";
+      return "Read your plan";
     case "create_plan":
-      return "Created plan";
-    case "update_workouts":
-      return `Updated workouts (${r.upserted ?? 0} upserted, ${r.deleted ?? 0} deleted)`;
+      return "Started a new plan";
+    case "update_workouts": {
+      const upserted = r.upserted ?? 0;
+      const deleted = r.deleted ?? 0;
+      const week = r.week_number;
+      const total = r.total_weeks;
+
+      const parts: string[] = [];
+      if (upserted > 0) parts.push(`added ${upserted} workout${upserted === 1 ? "" : "s"}`);
+      if (deleted > 0) parts.push(`removed ${deleted} workout${deleted === 1 ? "" : "s"}`);
+      const change = parts.length > 0 ? parts.join(", ") : "no changes";
+
+      if (week != null && total != null) {
+        return `Week ${week} of ${total} — ${change}`;
+      }
+      return change.charAt(0).toUpperCase() + change.slice(1);
+    }
     case "set_active_plan":
-      return "Activated plan";
+      return "Made this your active plan";
     case "archive_plan":
       return "Archived plan";
     case "finalize_plan":
       return "Plan ready";
     case "get_recent_activities":
-      return "Read recent activities";
+      return "Pulled your recent activities";
     case "get_activity_laps":
-      return "Read activity laps";
+      return "Read your splits";
     case "update_activity_match":
-      return "Updated activity match";
+      return "Linked workout to activity";
     case "get_athlete_summary":
-      return "Read athlete summary";
+      return "Reviewed your training history";
     case "update_coach_notes":
-      return "Updated general notes";
+      return "Saved a note about you";
     case "update_plan_notes":
-      return "Updated plan notes";
+      return "Saved a note on this plan";
     case "read_uploaded_file":
-      return "Read uploaded file";
+      return "Read your uploaded plan";
   }
 }

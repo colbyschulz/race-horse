@@ -96,11 +96,22 @@ export const createPlanTool: Tool = {
 
 export const updateWorkoutsTool: Tool = {
   name: "update_workouts",
-  description: "Upserts or deletes individual workouts within a plan by date.",
+  description:
+    "Upserts or deletes individual workouts within a plan by date. During cold-start plan builds, call once per week and set week_number + total_weeks so the user sees per-week progress.",
   input_schema: {
     type: "object" as const,
     properties: {
       plan_id: { type: "string", description: "The UUID of the plan to modify." },
+      week_number: {
+        type: "number",
+        description:
+          "1-indexed week number being written. Required for cold-start plan builds; omit for edits to existing plans.",
+      },
+      total_weeks: {
+        type: "number",
+        description:
+          "Total number of weeks in the plan. Required for cold-start plan builds; omit for edits.",
+      },
       operations: {
         type: "array",
         description: "Ordered list of upsert/delete operations.",
@@ -114,61 +125,29 @@ export const updateWorkoutsTool: Tool = {
                 workout: {
                   type: "object",
                   properties: {
-                    type: { type: "string" },
+                    type: {
+                      type: "string",
+                      enum: ["easy", "long", "tempo", "threshold", "intervals", "recovery", "race", "rest", "cross"],
+                      description: "Workout type. Use 'cross' for cross-training (cycling, swimming, etc.) within a run or bike plan — never remove a cross-training day just because it differs from the plan sport.",
+                    },
                     distance_km: { type: "number" },
                     duration_minutes: { type: "number" },
                     notes: { type: "string" },
-                    intervals: {
-                      type: "array",
-                      description: "Structured interval set for quality workouts.",
-                      items: {
-                        type: "object",
-                        properties: {
-                          reps: { type: "number", description: "Number of repetitions." },
-                          distance_m: { type: "number", description: "Distance per rep in metres." },
-                          display_unit: {
-                            type: "string",
-                            enum: ["m", "km", "mi"],
-                            description: "How to display the distance. Match the unit you're thinking in: 1600m → 'm', 1km → 'km', 1 mile → 'mi'.",
-                          },
-                          duration_s: { type: "number", description: "Duration per rep in seconds (alternative to distance_m)." },
-                          target_intensity: {
-                            type: "object",
-                            properties: {
-                              pace: {
-                                type: "object",
-                                properties: {
-                                  min_seconds_per_km: { type: "number" },
-                                  max_seconds_per_km: { type: "number" },
-                                },
-                              },
-                              hr: {
-                                type: "object",
-                                properties: {
-                                  min_bpm: { type: "number" },
-                                  max_bpm: { type: "number" },
-                                  zone: { type: "string" },
-                                },
-                              },
-                              rpe: { type: "number", description: "Rate of perceived exertion, 1–10." },
-                            },
-                          },
-                          rest: {
-                            type: "object",
-                            properties: {
-                              duration_s: { type: "number", description: "Rest duration in seconds." },
-                              distance_m: { type: "number", description: "Rest distance in metres (e.g. jog recovery)." },
-                              display_unit: {
-                                type: "string",
-                                enum: ["m", "km", "mi"],
-                                description: "How to display the rest distance.",
-                              },
-                            },
-                          },
-                        },
-                        required: ["reps"],
-                      },
+                  },
+                  required: ["type"],
+                },
+                secondary: {
+                  type: "object",
+                  description:
+                    "Optional second workout on the same day (doubles — e.g. PM shakeout after a morning intervals session). Rendered as a second row on the day card. Same shape as the primary workout but without intervals.",
+                  properties: {
+                    type: {
+                      type: "string",
+                      enum: ["easy", "long", "tempo", "threshold", "intervals", "recovery", "race", "rest", "cross"],
                     },
+                    distance_km: { type: "number" },
+                    duration_minutes: { type: "number" },
+                    notes: { type: "string" },
                   },
                   required: ["type"],
                 },
@@ -341,8 +320,13 @@ type UpsertOp = {
     distance_km?: number;
     duration_minutes?: number;
     notes?: string;
-    intervals?: import("@/server/db/schema").IntervalSpec[] | null;
   };
+  secondary?: {
+    type: string;
+    distance_km?: number;
+    duration_minutes?: number;
+    notes?: string;
+  } | null;
 };
 
 type DeleteOp = {
@@ -353,9 +337,14 @@ type DeleteOp = {
 type WorkoutOperation = UpsertOp | DeleteOp;
 
 export const update_workouts_handler: ToolHandler<
-  { plan_id: string; operations: WorkoutOperation[] },
-  { upserted: number; deleted: number }
-> = async ({ plan_id, operations }, { userId }) => {
+  {
+    plan_id: string;
+    operations: WorkoutOperation[];
+    week_number?: number;
+    total_weeks?: number;
+  },
+  { upserted: number; deleted: number; week_number?: number; total_weeks?: number }
+> = async ({ plan_id, operations, week_number, total_weeks }, { userId }) => {
   const plan = await getPlanById(plan_id, userId);
   if (!plan || plan.userId !== userId) {
     throw new Error("plan not found or not owned");
@@ -376,6 +365,15 @@ export const update_workouts_handler: ToolHandler<
         .delete(workouts)
         .where(and(eq(workouts.plan_id, plan_id), eq(workouts.date, op.date)));
 
+      const secondary = op.secondary
+        ? {
+            type: op.secondary.type as import("@/server/db/schema").SecondaryWorkout["type"],
+            distance_km: op.secondary.distance_km,
+            duration_minutes: op.secondary.duration_minutes,
+            notes: op.secondary.notes,
+          }
+        : null;
+
       await db.insert(workouts).values({
         plan_id,
         date: op.date,
@@ -386,13 +384,13 @@ export const update_workouts_handler: ToolHandler<
         duration_seconds:
           op.workout.duration_minutes != null ? op.workout.duration_minutes * 60 : null,
         notes: op.workout.notes ?? "",
-        intervals: op.workout.intervals ?? null,
+        secondary,
       });
       upserted++;
     }
   }
 
-  return { upserted, deleted };
+  return { upserted, deleted, week_number, total_weeks };
 };
 
 export const set_active_plan_handler: ToolHandler<{ plan_id: string }, { ok: true }> = async (

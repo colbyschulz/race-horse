@@ -219,7 +219,15 @@ export interface RunInput {
 }
 
 export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
-  const { userId, message, planId = null, fromRoute, planFileId, today } = input;
+  const { userId, message, fromRoute, planFileId, today } = input;
+  // planId is mutable: a cold-start build creates the plan mid-turn via create_plan,
+  // and subsequent tool calls (e.g. update_plan_notes) need the new id in their context.
+  let planId: string | null = input.planId ?? null;
+
+  // Hoisted so the finally block can auto-finalize even if the streaming loop
+  // throws partway through a cold-start build.
+  const createdPlanIds: string[] = [];
+  const finalizedPlanIds = new Set<string>();
 
   try {
     // 1. Load user context (units + coach_notes + active plan summary)
@@ -370,11 +378,6 @@ export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
     // For "done" event message_id, we'll use the stored message id
     let assistantMessageId = "";
 
-    // Track plans the model creates vs. finalizes within this turn so we can
-    // auto-finalize any cold-start plan that was left in 'GENERATING'.
-    const createdPlanIds: string[] = [];
-    const finalizedPlanIds = new Set<string>();
-
     while (true) {
       const stream = client.messages.stream({
         model: input.coldStartBuild ? COACH_BUILD_MODEL : COACH_MODEL,
@@ -514,7 +517,12 @@ export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
 
         if (toolName === "create_plan") {
           const created = resultValue as { plan_id?: string } | null;
-          if (created?.plan_id) createdPlanIds.push(created.plan_id);
+          if (created?.plan_id) {
+            createdPlanIds.push(created.plan_id);
+            // Adopt the new plan as context for subsequent tools in this turn so
+            // update_plan_notes / get_plan / etc. have a planId to bind to.
+            if (planId == null) planId = created.plan_id;
+          }
         } else if (toolName === "finalize_plan") {
           const inp = toolBlock.input as { plan_id?: string } | null;
           if (inp?.plan_id) finalizedPlanIds.add(inp.plan_id);
@@ -541,8 +549,14 @@ export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
       currentMessages = [...currentMessages, { role: "user" as const, content: toolResultContent }];
     }
 
+    yield { type: "done", message_id: assistantMessageId };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    yield { type: "error", error: message };
+  } finally {
     // Auto-finalize any cold-start plan the model created but didn't explicitly
-    // finalize. Without this, a build that "forgets" finalize_plan strands the
+    // finalize — even if the streaming loop threw partway through. Otherwise a
+    // mid-build error (Anthropic stream blip, tool error, etc.) strands the
     // plan in 'GENERATING' forever.
     if (input.coldStartBuild) {
       for (const id of createdPlanIds) {
@@ -554,10 +568,5 @@ export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
         }
       }
     }
-
-    yield { type: "done", message_id: assistantMessageId };
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    yield { type: "error", error: message };
   }
 }

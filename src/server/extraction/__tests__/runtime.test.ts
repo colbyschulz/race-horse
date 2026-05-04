@@ -55,8 +55,8 @@ const validPayload = {
       distance_meters: 5000,
       duration_seconds: null,
       target_intensity: null,
-      intervals: null,
       notes: "",
+      secondary: null,
     },
   ],
 };

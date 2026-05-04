@@ -4,9 +4,9 @@ import Link from "next/link";
 import { WorkoutBadge } from "./workout-badge";
 import { formatLongDate } from "@/lib/dates";
 import type { WorkoutRow } from "@/types/plans";
-import type { TargetIntensity, IntervalSpec } from "@/types/preferences";
+import type { TargetIntensity } from "@/types/preferences";
 import { Button } from "@/components/button/button";
-import { formatDistance, formatDuration, formatPaceRange, formatIntervalDistance } from "@/lib/format";
+import { formatDistance, formatDuration, formatPaceRange } from "@/lib/format";
 import { useBodyLock } from "@/lib/use-body-lock";
 import styles from "./workout-detail-sheet.module.scss";
 
@@ -48,7 +48,6 @@ export function WorkoutDetailSheet({ workout, planId = "", units, onClose }: Pro
   const t = hasNotes
     ? ({} as TargetIntensity)
     : ((workout.target_intensity ?? {}) as TargetIntensity);
-  const intervals = (workout.intervals ?? null) as IntervalSpec[] | null;
   const headline = TYPE_HEADLINE[workout.type] ?? workout.type;
   const coachHref = `/coach?from=${encodeURIComponent(`/plans/${planId}`)}&from_label=${encodeURIComponent(`${headline} — ${workout.date}`)}`;
   const paceText = t.pace ? formatPaceRange(t.pace, units) : null;
@@ -119,36 +118,6 @@ export function WorkoutDetailSheet({ workout, planId = "", units, onClose }: Pro
                 >{`${t.power.min_watts ?? ""}–${t.power.max_watts ?? ""} W`}</span>
               </div>
             )}
-          </div>
-        )}
-
-        {intervals && intervals.length > 0 && (
-          <div className={styles.intervals}>
-            <h3 className={styles.h3}>Intervals</h3>
-            <ul className={styles.intervalList}>
-              {intervals.map((iv, i) => (
-                <li key={i} className={styles.intervalRow}>
-                  {iv.reps} ×{" "}
-                  {[
-                    iv.distance_m != null
-                      ? formatIntervalDistance(iv.distance_m, iv.display_unit, units)
-                      : null,
-                    formatDuration(iv.duration_s, { format: "clock" }),
-                  ]
-                    .filter(Boolean)
-                    .join(" · ")}
-                  {iv.target_intensity?.pace
-                    ? ` @ ${formatPaceRange(iv.target_intensity.pace, units) ?? ""}`
-                    : null}
-                  {iv.rest?.duration_s != null
-                    ? ` / ${formatDuration(iv.rest.duration_s, { format: "clock" }) ?? ""} ${iv.rest.type ?? "rest"}`
-                    : null}
-                  {iv.rest?.distance_m != null
-                    ? ` / ${formatIntervalDistance(iv.rest.distance_m, iv.rest.display_unit, units)} ${iv.rest.type ?? "rest"}`
-                    : null}
-                </li>
-              ))}
-            </ul>
           </div>
         )}
 

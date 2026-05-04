@@ -1,8 +1,7 @@
 "use client";
 import type { CSSProperties } from "react";
 import { formatDayLabel } from "@/lib/dates";
-import { formatDistance, formatDuration, formatIntervalSummary } from "@/lib/format";
-import type { IntervalSpec } from "@/types/preferences";
+import { formatDistance, formatDuration } from "@/lib/format";
 import { WorkoutBadge } from "./workout-badge";
 import { SportIcon } from "./sport-icon";
 import type { WorkoutRow } from "@/types/plans";
@@ -35,8 +34,16 @@ export function WorkoutDayCard({
   const dur = !isRest ? formatDuration(workout!.duration_seconds) : null;
   const stat = dist ? `${dist} ${units}` : dur;
   const notes = showNotes && !isRest && workout?.notes ? workout.notes : null;
-  const intervals = showNotes && !isRest ? (workout?.intervals ?? null) as IntervalSpec[] | null : null;
-  const intervalSummary = formatIntervalSummary(intervals, units);
+
+  // Secondary workout (doubles)
+  const secondary = !isRest ? (workout!.secondary as import("@/server/db/schema").SecondaryWorkout | null | undefined) : null;
+  const secDist = secondary?.distance_km != null
+    ? formatDistance(String(secondary.distance_km * 1000), units)
+    : null;
+  const secDur = secondary?.duration_minutes != null
+    ? formatDuration(secondary.duration_minutes * 60)
+    : null;
+  const secStat = secDist ? `${secDist} ${units}` : secDur;
 
   const railType = isRest ? "rest" : workout!.type;
   const cardStyle = { "--rail": `var(--color-workout-${railType}-mid)` } as CSSProperties;
@@ -70,10 +77,26 @@ export function WorkoutDayCard({
           )}
         </div>
 
-        {(intervalSummary || notes) && (
+        {notes && (
           <div className={styles.details}>
-            {intervalSummary && <p className={styles.intervals}>{intervalSummary}</p>}
-            {notes && <p className={styles.notes}>{notes}</p>}
+            <p className={styles.notes}>{notes}</p>
+          </div>
+        )}
+
+        {secondary && (
+          <div className={styles.secondary}>
+            <div className={styles.secondaryRow}>
+              <WorkoutBadge type={secondary.type} size="sm" />
+              {secStat && (
+                <div className={styles.statGroup}>
+                  <SportIcon type={workout!.sport} className={styles.sportIcon} />
+                  <span className={styles.secStatValue}>{secStat}</span>
+                </div>
+              )}
+            </div>
+            {showNotes && secondary.notes && (
+              <p className={styles.notes}>{secondary.notes}</p>
+            )}
           </div>
         )}
       </div>

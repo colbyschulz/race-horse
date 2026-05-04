@@ -303,7 +303,7 @@ describe("update_workouts_handler", () => {
 
     expect(mockDelete).toHaveBeenCalled();
     expect(mockInsert).toHaveBeenCalled();
-    expect(result).toEqual({ upserted: 1, deleted: 0 });
+    expect(result).toEqual({ upserted: 1, deleted: 0, week_number: undefined, total_weeks: undefined });
   });
 
   it("processes delete operations", async () => {
@@ -322,7 +322,7 @@ describe("update_workouts_handler", () => {
     );
 
     expect(mockDelete).toHaveBeenCalledTimes(1);
-    expect(result).toEqual({ upserted: 0, deleted: 1 });
+    expect(result).toEqual({ upserted: 0, deleted: 1, week_number: undefined, total_weeks: undefined });
   });
 });
 

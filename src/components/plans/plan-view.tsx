@@ -10,6 +10,7 @@ import type { Activity } from "@/types/strava";
 import { mondayOf, addDays, formatDateShort, weekIndexFromStart } from "@/lib/dates";
 import { PlanHeading } from "./plan-heading";
 import { PlanMeta, type GoalLike } from "./plan-meta";
+import { PlanArc } from "./plan-arc";
 import { PlanStats } from "@/app/(app)/plans/[id]/plan-stats";
 import { MileageChart } from "@/app/(app)/plans/[id]/mileage-chart";
 import { WeekNavigator, type NavTarget } from "@/components/workouts/week-navigator";
@@ -23,6 +24,7 @@ interface PlanLike {
   end_date: string | null;
   mode: string;
   goal: GoalLike | null;
+  coach_notes?: string;
 }
 
 export interface CurrentWeek {
@@ -132,6 +134,7 @@ export function PlanView({
               today={today}
             />
             <MileageChart workouts={allWorkouts} units={units} planStartDate={plan.start_date} />
+            {plan.coach_notes && <PlanArc notes={plan.coach_notes} />}
           </>
         )}
         {currentWeek && weekData && (!metaOpen || isDesktop) && (

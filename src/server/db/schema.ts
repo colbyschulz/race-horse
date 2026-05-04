@@ -81,6 +81,14 @@ export type IntervalSpec = {
   };
 };
 
+export type SecondaryWorkout = {
+  type: "easy" | "long" | "tempo" | "threshold" | "intervals" | "recovery" | "race" | "rest" | "cross";
+  distance_km?: number;
+  duration_minutes?: number;
+  notes?: string;
+  intervals?: IntervalSpec[];
+};
+
 export const users = pgTable("user", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name"),
@@ -235,6 +243,7 @@ export const workouts = pgTable(
     target_intensity: jsonb("target_intensity").$type<TargetIntensity>(),
     intervals: jsonb("intervals").$type<IntervalSpec[]>(),
     notes: text("notes").notNull().default(""),
+    secondary: jsonb("secondary").$type<SecondaryWorkout>(),
   },
   (t) => [index("workout_plan_date_idx").on(t.plan_id, t.date)]
 );

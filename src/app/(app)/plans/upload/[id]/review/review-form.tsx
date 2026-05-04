@@ -30,8 +30,18 @@ function toWorkoutRow(w: ExtractedPlan["workouts"][number], date: string, idx: n
     distance_meters: w.distance_meters == null ? null : String(w.distance_meters),
     duration_seconds: w.duration_seconds,
     target_intensity: w.target_intensity,
-    intervals: w.intervals,
+    intervals: null,
     notes: w.notes,
+    secondary: w.secondary
+      ? {
+          type: w.secondary.type,
+          distance_km:
+            w.secondary.distance_meters != null ? w.secondary.distance_meters / 1000 : undefined,
+          duration_minutes:
+            w.secondary.duration_seconds != null ? w.secondary.duration_seconds / 60 : undefined,
+          notes: w.secondary.notes || undefined,
+        }
+      : null,
   };
 }
 

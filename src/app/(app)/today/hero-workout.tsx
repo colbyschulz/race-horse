@@ -1,8 +1,8 @@
 "use client";
 
 import { WorkoutBadge, type WorkoutType } from "@/components/workouts/workout-badge";
-import type { TargetIntensity, IntervalSpec } from "@/types/preferences";
-import { formatDistance, formatDuration, formatPaceRange, formatIntervalDistance } from "@/lib/format";
+import type { TargetIntensity } from "@/types/preferences";
+import { formatDistance, formatDuration, formatPaceRange } from "@/lib/format";
 import { useWorkouts } from "@/queries/workouts";
 import styles from "./today.module.scss";
 
@@ -28,8 +28,6 @@ export function HeroWorkout({ units, today }: { units: "mi" | "km"; today: strin
   const intensity: TargetIntensity | null = hasNotes
     ? null
     : ((workout.target_intensity as TargetIntensity | null) ?? null);
-  const intervals: IntervalSpec[] | null =
-    (workout.intervals as IntervalSpec[] | null) ?? null;
   const pace = intensity?.pace ? formatPaceRange(intensity.pace, units) : null;
 
   return (
@@ -88,35 +86,6 @@ export function HeroWorkout({ units, today }: { units: "mi" | "km"; today: strin
               >{`${intensity.power.min_watts ?? ""}–${intensity.power.max_watts ?? ""} W`}</span>
             </div>
           )}
-        </div>
-      )}
-      {intervals && intervals.length > 0 && (
-        <div className={styles.intervals}>
-          <h3 className={styles.h3}>Intervals</h3>
-          <ul className={styles.intervalList}>
-            {intervals.map((iv, i) => (
-              <li key={i} className={styles.intervalRow}>
-                {iv.reps} ×{" "}
-                {[
-                  iv.distance_m != null
-                    ? formatIntervalDistance(iv.distance_m, iv.display_unit, units)
-                    : null,
-                  formatDuration(iv.duration_s, { format: "clock" }),
-                ]
-                  .filter(Boolean)
-                  .join(" · ")}
-                {iv.target_intensity?.pace
-                  ? ` @ ${formatPaceRange(iv.target_intensity.pace, units) ?? ""}`
-                  : null}
-                {iv.rest?.duration_s != null
-                  ? ` / ${formatDuration(iv.rest.duration_s, { format: "clock" }) ?? ""} ${iv.rest.type ?? "rest"}`
-                  : null}
-                {iv.rest?.distance_m != null
-                  ? ` / ${formatIntervalDistance(iv.rest.distance_m, iv.rest.display_unit, units)} ${iv.rest.type ?? "rest"}`
-                  : null}
-              </li>
-            ))}
-          </ul>
         </div>
       )}
       {workout.notes && <p className={styles.description}>{workout.notes}</p>}

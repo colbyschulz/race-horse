@@ -99,7 +99,7 @@ function PlanWeek({
           prev: prevHref ? { href: prevHref } : { disabled: true },
           next: nextHref ? { href: nextHref } : { disabled: true },
           todayNav: { href: todayHref },
-          showToday: !isCurrentWeek,
+          showToday: !isCurrentWeek && plan.is_active,
           isActivePlan: plan.is_active,
           onWorkoutClick: sheet.open,
         }}

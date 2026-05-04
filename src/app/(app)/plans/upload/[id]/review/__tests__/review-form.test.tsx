@@ -30,6 +30,7 @@ const payload = {
       target_intensity: null,
       intervals: null,
       notes: "",
+      secondary: null,
     },
     {
       day_offset: 6,
@@ -40,6 +41,7 @@ const payload = {
       target_intensity: null,
       intervals: null,
       notes: "",
+      secondary: null,
     },
   ],
 };

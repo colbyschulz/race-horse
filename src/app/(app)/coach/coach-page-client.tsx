@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import styles from "./coach.module.scss";
 import type { StoredMessage, SSEEvent } from "@/types/coach";
 import { consumeStream } from "@/lib/sse";
@@ -25,9 +26,12 @@ interface Props {
   intent?: string;
 }
 
+type StreamItem =
+  | { kind: "text"; text: string }
+  | { kind: "tool"; name: string; summary?: string };
+
 type StreamingState = {
-  text: string;
-  tools: { name: string; summary?: string }[];
+  items: StreamItem[];
   done: boolean;
 };
 
@@ -40,6 +44,7 @@ export function CoachPageClient({
   intent,
 }: Props) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [messages, setMessages] = useState<StoredMessage[]>(initialMessages);
   const [streaming, setStreaming] = useState<StreamingState | null>(null);
   const [sending, setSending] = useState(false);
@@ -70,7 +75,7 @@ export function CoachPageClient({
     const el = streamRef.current;
     if (!el) return;
     el.scrollTop = el.scrollHeight;
-  }, [messages, streaming?.text]);
+  }, [messages, streaming?.items]);
 
   async function reloadHistory() {
     const qs = planId ? `?plan_id=${encodeURIComponent(planId)}` : "";
@@ -80,23 +85,32 @@ export function CoachPageClient({
       // Batch both updates so streaming bubble never disappears before the real message appears.
       setMessages(m);
     }
+    // Coach turns can create plans, edit workouts, or update notes — invalidate
+    // anything plan-shaped so the rest of the app picks up the new state.
+    void queryClient.invalidateQueries({ queryKey: ["plans"] });
+    void queryClient.invalidateQueries({ queryKey: ["coach", "notes"] });
     setStreaming(null);
   }
 
-  function handleSSE(
-    ev: SSEEvent,
-    assembled: { text: string; tools: { name: string; summary?: string }[] }
-  ): void {
+  function handleSSE(ev: SSEEvent, assembled: { items: StreamItem[] }): void {
     if (ev.type === "text-delta") {
-      assembled.text += ev.delta;
-      setStreaming({ text: assembled.text, tools: [...assembled.tools], done: false });
+      const last = assembled.items[assembled.items.length - 1];
+      if (last && last.kind === "text") {
+        last.text += ev.delta;
+      } else {
+        assembled.items.push({ kind: "text", text: ev.delta });
+      }
+      setStreaming({ items: [...assembled.items], done: false });
     } else if (ev.type === "tool-use") {
-      assembled.tools.push({ name: ev.name });
-      setStreaming({ text: assembled.text, tools: [...assembled.tools], done: false });
+      assembled.items.push({ kind: "tool", name: ev.name });
+      setStreaming({ items: [...assembled.items], done: false });
     } else if (ev.type === "tool-result") {
-      const last = assembled.tools.findLast((t) => t.name === ev.name && !t.summary);
+      const last = assembled.items.findLast(
+        (t): t is Extract<StreamItem, { kind: "tool" }> =>
+          t.kind === "tool" && t.name === ev.name && !t.summary
+      );
       if (last) last.summary = ev.result_summary;
-      setStreaming({ text: assembled.text, tools: [...assembled.tools], done: false });
+      setStreaming({ items: [...assembled.items], done: false });
     } else if (ev.type === "done") {
       // Mark done immediately so the working-indicator hides before reloadHistory resolves.
       setStreaming((s) => (s ? { ...s, done: true } : s));
@@ -119,7 +133,7 @@ export function CoachPageClient({
         content: [{ type: "text", text }],
       },
     ]);
-    setStreaming({ text: "", tools: [], done: false });
+    setStreaming({ items: [], done: false });
     try {
       const res = await fetch("/api/coach/chat", {
         method: "POST",
@@ -131,7 +145,7 @@ export function CoachPageClient({
           plan_id: planId ?? null,
         }),
       });
-      const assembled = { text: "", tools: [] as { name: string; summary?: string }[] };
+      const assembled = { items: [] as StreamItem[] };
       await consumeStream(res, (ev) => handleSSE(ev, assembled));
     } catch (err) {
       console.error(err);
@@ -145,14 +159,14 @@ export function CoachPageClient({
   async function buildSubmit(values: BuildFormInput) {
     setSending(true);
     setBuildState({ kind: "submitting", values });
-    setStreaming({ text: "", tools: [], done: false });
+    setStreaming({ items: [], done: false });
     try {
       const res = await fetch("/api/coach/build", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(values),
       });
-      const assembled = { text: "", tools: [] as { name: string; summary?: string }[] };
+      const assembled = { items: [] as StreamItem[] };
       let lockedYet = false;
       await consumeStream(res, (ev) => {
         if (!lockedYet && ev.type === "text-delta") {
@@ -204,29 +218,31 @@ export function CoachPageClient({
         )}
         {streaming && (
           <>
-            {streaming.tools.map((t, i) => (
-              <ToolIndicator key={i} name={t.name} summary={t.summary} />
-            ))}
-            {streaming.text && (
-              <MessageBubble
-                streaming
-                message={{
-                  id: "streaming",
-                  role: "assistant",
-                  plan_id: planId ?? null,
-                  created_at: new Date(),
-                  content: [{ type: "text", text: streaming.text }],
-                }}
-              />
+            {streaming.items.map((item, i) =>
+              item.kind === "tool" ? (
+                <ToolIndicator key={i} name={item.name} summary={item.summary} />
+              ) : (
+                <MessageBubble
+                  key={i}
+                  streaming
+                  message={{
+                    id: `streaming-${i}`,
+                    role: "assistant",
+                    plan_id: planId ?? null,
+                    created_at: new Date(),
+                    content: [{ type: "text", text: item.text }],
+                  }}
+                />
+              )
             )}
             {/* Working-indicator persists across turn boundaries so the user
                 always knows the run is still in flight. Hidden when a tool
                 is in-flight (its pulsing dot is the indicator) or when done. */}
             {!streaming.done &&
-              (streaming.tools.length === 0 ||
-                streaming.tools[streaming.tools.length - 1].summary !== undefined) && (
-                <ThinkingIndicator />
-              )}
+              (() => {
+                const lastTool = streaming.items.findLast((x) => x.kind === "tool");
+                return !lastTool || lastTool.summary !== undefined;
+              })() && <ThinkingIndicator />}
           </>
         )}
       </div>
