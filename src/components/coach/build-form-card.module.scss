@@ -4,50 +4,248 @@
 }
 
 .heading {
-  margin: 0 0 var(--space-3) 0;
+  margin: 0 0 var(--space-4) 0;
   font-size: 1rem;
   font-weight: 700;
 }
 
-.fieldset {
-  border: none;
-  padding: 0;
-  margin: 0 0 var(--space-3) 0;
+// ── Field ────────────────────────────────────────────────────────────────────
 
-  legend {
-    font-weight: 600;
-    margin-bottom: var(--space-2);
-  }
-
-  label {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-1);
-    margin-right: var(--space-3);
-  }
-}
-
-.raceRow {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: var(--space-3);
-  margin-bottom: var(--space-3);
-
-  label {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-1);
-    font-weight: 600;
-  }
-}
-
-.contextLabel {
+.field {
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.fieldLabel {
+  font-family: var(--font-body);
+  font-size: 0.6875rem;
   font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-fg-tertiary);
+}
+
+.raceFields {
+  // no extra margin — each .field handles its own
+}
+
+// ── Toggle pills ─────────────────────────────────────────────────────────────
+
+.toggleGroup {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.togglePill {
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--color-border-default);
+  background: var(--color-bg-surface);
+  color: var(--color-fg-secondary);
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 120ms, background 120ms, color 120ms;
+
+  &:hover:not(.togglePillActive) {
+    border-color: var(--color-brown-mid);
+    color: var(--color-fg-primary);
+  }
+}
+
+.togglePillActive {
+  background: var(--color-brown);
+  color: #fff;
+  border-color: var(--color-brown);
+}
+
+// ── Date picker ──────────────────────────────────────────────────────────────
+
+.dateField {
+  display: flex;
+  flex-direction: column;
+}
+
+.dateTrigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-surface);
+  color: var(--color-fg-primary);
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  text-align: left;
+  cursor: pointer;
+
+  &:focus {
+    outline: none;
+    border-color: var(--color-brown);
+  }
+
+  &::after {
+    content: "▾";
+    color: var(--color-fg-tertiary);
+    font-size: 0.75rem;
+    margin-left: var(--space-2);
+  }
+}
+
+.datePlaceholder {
+  color: var(--color-fg-tertiary);
+}
+
+.cal {
+  margin-top: var(--space-2);
+  padding: var(--space-3);
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  font-family: var(--font-body);
+}
+
+// Inline nav row: [‹]  May 2026  [›]
+.calCaption {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
   margin-bottom: var(--space-3);
 }
+
+.calMonthLabel {
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-fg-primary);
+  min-width: 90px;
+  text-align: center;
+}
+
+.calNavBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border-subtle);
+  background: transparent;
+  color: var(--color-fg-secondary);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--color-bg-subtle);
+  }
+}
+
+// DayPicker grid (root wraps the table)
+.calGrid {
+  // DayPicker root — no extra styles needed
+}
+
+.calTable {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.calWeekdays {
+  // thead row
+}
+
+.calWeekday {
+  padding: var(--space-1) 0;
+  text-align: center;
+  font-family: var(--font-body);
+  font-size: 0.625rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-fg-tertiary);
+
+  abbr {
+    text-decoration: none;
+  }
+}
+
+.calWeek {
+  // tbody row
+}
+
+.calDay {
+  text-align: center;
+  padding: 2px;
+}
+
+.calDayBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  border: none;
+  background: transparent;
+  color: var(--color-fg-primary);
+  font-family: var(--font-body);
+  font-size: 0.8125rem;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--color-bg-subtle);
+  }
+}
+
+// Modifier states — applied to .calDay alongside base class
+
+.calSelected {
+  .calDayBtn {
+    background: var(--color-brown);
+    color: #fff;
+
+    &:hover {
+      background: var(--color-brown-hover);
+    }
+  }
+}
+
+.calToday:not(.calSelected) {
+  .calDayBtn {
+    font-weight: 700;
+    color: var(--color-brown);
+  }
+}
+
+.calOutside {
+  .calDayBtn {
+    color: var(--color-fg-tertiary);
+    opacity: 0.4;
+  }
+}
+
+.calDisabled {
+  .calDayBtn {
+    color: var(--color-fg-tertiary);
+    opacity: 0.35;
+    cursor: not-allowed;
+
+    &:hover {
+      background: transparent;
+    }
+  }
+}
+
+// ── Actions ──────────────────────────────────────────────────────────────────
 
 .actions {
   display: flex;
@@ -55,13 +253,23 @@
   align-items: center;
 }
 
+// ── Locked / summary view ────────────────────────────────────────────────────
+
 .summary {
   list-style: none;
   padding: 0;
   margin: 0 0 var(--space-3) 0;
 
   li {
+    font-family: var(--font-body);
+    font-size: 0.875rem;
+    color: var(--color-fg-secondary);
     margin-bottom: var(--space-1);
+
+    strong {
+      color: var(--color-fg-primary);
+      font-weight: 600;
+    }
   }
 }
 
@@ -69,6 +277,7 @@
   display: flex;
   align-items: center;
   gap: var(--space-2);
+  font-family: var(--font-body);
   color: var(--color-fg-tertiary);
-  font-size: 0.9rem;
+  font-size: 0.875rem;
 }

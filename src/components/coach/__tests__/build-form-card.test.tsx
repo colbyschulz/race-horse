@@ -3,29 +3,29 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import { BuildFormCard } from "../build-form-card";
 
 describe("BuildFormCard", () => {
-  it("renders editable state with sport and goal radios", () => {
+  it("renders editable state with sport and goal toggles", () => {
     render(<BuildFormCard state={{ kind: "editable" }} onSubmit={vi.fn()} onCancel={vi.fn()} />);
-    expect(screen.getByLabelText(/Run/)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Bike/)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Race-targeted/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Indefinite build/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Run" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Bike" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Race-targeted" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Indefinite build" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /build plan/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /cancel/i })).toBeInTheDocument();
   });
 
   it("hides race fields until goal type is race-targeted", () => {
     render(<BuildFormCard state={{ kind: "editable" }} onSubmit={vi.fn()} onCancel={vi.fn()} />);
-    expect(screen.queryByLabelText(/Race date/i)).toBeNull();
-    fireEvent.click(screen.getByLabelText(/Race-targeted/i));
-    expect(screen.getByLabelText(/Race date/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Race distance/i)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /select a date/i })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Race-targeted" }));
+    expect(screen.getByRole("button", { name: /select a date/i })).toBeInTheDocument();
+    expect(screen.getByLabelText(/Race \/ event/i)).toBeInTheDocument();
   });
 
   it("calls onSubmit with the form values when valid", () => {
     const onSubmit = vi.fn();
     render(<BuildFormCard state={{ kind: "editable" }} onSubmit={onSubmit} onCancel={vi.fn()} />);
-    fireEvent.click(screen.getByLabelText(/Run/));
-    fireEvent.click(screen.getByLabelText(/Indefinite build/i));
+    fireEvent.click(screen.getByRole("button", { name: "Run" }));
+    fireEvent.click(screen.getByRole("button", { name: "Indefinite build" }));
     fireEvent.change(screen.getByLabelText(/Goals & context/i), {
       target: { value: "off-season fitness" },
     });
@@ -43,8 +43,8 @@ describe("BuildFormCard", () => {
   it("requires race_date and race_event when race-targeted", () => {
     const onSubmit = vi.fn();
     render(<BuildFormCard state={{ kind: "editable" }} onSubmit={onSubmit} onCancel={vi.fn()} />);
-    fireEvent.click(screen.getByLabelText(/Run/));
-    fireEvent.click(screen.getByLabelText(/Race-targeted/i));
+    fireEvent.click(screen.getByRole("button", { name: "Run" }));
+    fireEvent.click(screen.getByRole("button", { name: "Race-targeted" }));
     fireEvent.click(screen.getByRole("button", { name: /build plan/i }));
     expect(onSubmit).not.toHaveBeenCalled();
   });
