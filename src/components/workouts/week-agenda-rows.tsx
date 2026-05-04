@@ -39,7 +39,7 @@ export function WeekAgendaRows({
   const todayRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    todayRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    todayRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, []);
 
   let totalMeters = 0;

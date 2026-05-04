@@ -19,12 +19,25 @@ Conventions:
 - If this isn't a training plan, set is_training_plan: false and leave the rest as empty defaults: title="", sport="run", mode="indefinite", goal=null, tentative_start_date=null, workouts=[].
 - Doubles (two-a-days): if a day has two distinct sessions (e.g. "AM: 8mi easy. PM: 3mi shakeout"), use the primary workout for the main session and populate \`secondary\` for the second. Set \`secondary.distance_meters\` and/or \`secondary.duration_seconds\` and put any description in \`secondary.notes\`. If the day has only one session, set \`secondary: null\`.
 
+Interval workout notes (CRITICAL — include every element the plan states):
+When type is "intervals", the \`notes\` field must be a complete, human-readable prescription. Include all of the following that the source plan provides:
+- Reps × distance or time (e.g. "6 × 1 km" or "8 × 400 m")
+- Target pace expressed as written in the source (e.g. "@ 5:00/mile" or "@ 3:45/km")
+- Rep time — derive from distance × pace if not stated (e.g. "≈ 75 sec per rep")
+- Rest period — exact time or rule (e.g. "90 sec standing rest" or "jog 200 m recovery")
+- Warm-up and cool-down if the plan specifies them
+- Any other coaching cues the plan includes (stride focus, effort description, etc.)
+Do not abbreviate or paraphrase. Copy the full prescription into notes even if it is long.
+
 Pace extraction (CRITICAL — extract exactly, do not approximate):
 - Always store pace as seconds_per_km, regardless of how the plan expresses it.
 - If the plan gives pace in min:sec per mile, convert precisely: total_seconds_per_mile × (1000 ÷ 1609.344). Examples: 5:00/mi = 300 × 0.6214 = 186 s/km; 5:25/mi = 325 × 0.6214 = 202 s/km; 5:30/mi = 330 × 0.6214 = 205 s/km; 6:00/mi = 360 × 0.6214 = 224 s/km.
 - If the plan gives pace in min:sec per km, convert to total seconds only: 4:30/km = 270 s/km.
 - Extract the exact values stated — do not infer or adjust based on workout type.
-- min_seconds_per_km = the faster (lower) pace; max_seconds_per_km = the slower (higher) pace.`;
+- min_seconds_per_km = the faster (lower) pace; max_seconds_per_km = the slower (higher) pace.
+
+General notes extraction:
+The \`notes\` field for every workout should capture the full coaching intent — not just the headline metric. Include effort descriptions, form cues, purpose statements, and any other detail the plan author wrote for that day. Do not truncate.`;
 
 export async function runExtraction(planFileId: string, userId: string): Promise<void> {
   const row = await getPlanFileById(planFileId, userId);
