@@ -5,10 +5,25 @@ export async function GET() {
 
   const sw = `const CACHE_NAME = 'rh-nav-${version}';
 
+// iOS Safari rejects SW responses with redirected:true. Strip redirect metadata
+// by wrapping in a plain Response so the browser accepts it.
+function cleanNav(response) {
+  if (!response.redirected) return response;
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers: new Headers(response.headers),
+  });
+}
+
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => cache.add('/').catch(() => {}))
+    fetch('/')
+      .then(response => {
+        if (!response.ok) return;
+        return caches.open(CACHE_NAME).then(cache => cache.put('/', cleanNav(response)));
+      })
+      .catch(() => {})
       .then(() => self.skipWaiting())
   );
 });
@@ -29,7 +44,11 @@ self.addEventListener('fetch', (event) => {
     caches.open(CACHE_NAME).then(cache =>
       cache.match(event.request).then(cached => {
         const networkFetch = fetch(event.request).then(response => {
-          if (response.ok) cache.put(event.request, response.clone());
+          if (response.ok) {
+            const clean = cleanNav(response);
+            cache.put(event.request, clean.clone());
+            return clean;
+          }
           return response;
         });
         if (cached) {
