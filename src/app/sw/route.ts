@@ -32,7 +32,11 @@ self.addEventListener('fetch', (event) => {
           if (response.ok) cache.put(event.request, response.clone());
           return response;
         });
-        return cached ?? networkFetch;
+        if (cached) {
+          networkFetch.catch(() => {});
+          return cached;
+        }
+        return networkFetch;
       })
     )
   );
