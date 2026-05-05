@@ -12,5 +12,7 @@ export function useCoachMessages(planId: string | null) {
       fetchJson<{ messages: StoredMessage[] }>(`/api/coach/messages${qs}`).then(
         (d) => d.messages
       ),
+    staleTime: 0,
+    refetchOnMount: "always",
   });
 }

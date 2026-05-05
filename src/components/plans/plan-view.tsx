@@ -1,10 +1,5 @@
 "use client";
-import { useMemo, useState, useSyncExternalStore } from "react";
-
-const subscribeResize = (cb: () => void) => {
-  window.addEventListener("resize", cb);
-  return () => window.removeEventListener("resize", cb);
-};
+import { useMemo, useState } from "react";
 import type { WorkoutRow } from "@/types/plans";
 import type { Activity } from "@/types/strava";
 import { mondayOf, addDays, formatDateShort, weekIndexFromStart } from "@/lib/dates";
@@ -61,7 +56,6 @@ export function PlanView({
   banner,
   currentWeek,
 }: Props) {
-  const isDesktop = useSyncExternalStore(subscribeResize, () => window.innerWidth >= 768, () => false);
   const [metaOverride, setMetaOverride] = useState<boolean | null>(null);
   const metaOpen = metaOverride ?? true;
 
@@ -90,15 +84,6 @@ export function PlanView({
     <>
       <div className={styles.topSection}>
         <PlanHeading title={plan.title} actions={headerActions} subRow={actionsBar} />
-        {/* Desktop: chevron toggle */}
-        <button
-          type="button"
-          className={styles.detailsToggle}
-          onClick={() => setMetaOverride((v) => !(v ?? true))}
-        >
-          Plan details
-          <span className={`${styles.chevron} ${metaOpen ? styles.chevronUp : ""}`}>▾</span>
-        </button>
         <div className={styles.segmentRow}>
           <div className={styles.viewSegment}>
           <button
@@ -118,6 +103,10 @@ export function PlanView({
         </div>
           {subheaderAction && <div className={styles.segmentRowAction}>{subheaderAction}</div>}
         </div>
+      </div>
+
+      <div className={styles.scrollSection}>
+        {banner}
         {metaOpen && (
           <>
             <PlanMeta
@@ -137,34 +126,29 @@ export function PlanView({
             {plan.coach_notes && <PlanArc notes={plan.coach_notes} />}
           </>
         )}
-        {currentWeek && weekData && (!metaOpen || isDesktop) && (
-          <WeekNavigator
-            weekTitle={weekData.weekTitle}
-            weekRange={weekData.weekRange}
-            prev={currentWeek.prev}
-            next={currentWeek.next}
-            today={currentWeek.todayNav}
-            showToday={currentWeek.showToday}
-          />
+        {currentWeek && weekData && !metaOpen && (
+          <>
+            <WeekNavigator
+              weekTitle={weekData.weekTitle}
+              weekRange={weekData.weekRange}
+              prev={currentWeek.prev}
+              next={currentWeek.next}
+              today={currentWeek.todayNav}
+              showToday={currentWeek.showToday}
+            />
+            <WeekAgendaRows
+              monday={currentWeek.monday}
+              byDate={weekData.byDate}
+              activitiesByDate={currentWeek.activitiesByDate}
+              today={today}
+              units={units}
+              isActivePlan={currentWeek.isActivePlan}
+              onDayClick={currentWeek.onWorkoutClick}
+              showNotes
+            />
+          </>
         )}
       </div>
-
-      {banner && <div className={styles.banner}>{banner}</div>}
-
-      {currentWeek && weekData && (!metaOpen || isDesktop) && (
-        <div className={styles.scrollSection}>
-          <WeekAgendaRows
-            monday={currentWeek.monday}
-            byDate={weekData.byDate}
-            activitiesByDate={currentWeek.activitiesByDate}
-            today={today}
-            units={units}
-            isActivePlan={currentWeek.isActivePlan}
-            onDayClick={currentWeek.onWorkoutClick}
-            showNotes
-          />
-        </div>
-      )}
     </>
   );
 }

@@ -549,15 +549,27 @@ export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
       currentMessages = [...currentMessages, { role: "user" as const, content: toolResultContent }];
     }
 
+    // Eagerly finalize before yielding "done" so the client's plan invalidation
+    // sees the completed status rather than racing with the finally block.
+    if (input.coldStartBuild) {
+      for (const id of createdPlanIds) {
+        if (finalizedPlanIds.has(id)) continue;
+        try {
+          await HANDLERS.finalize_plan({ plan_id: id }, { userId, planId, coldStartBuild: true });
+          finalizedPlanIds.add(id);
+        } catch (err) {
+          console.error("auto-finalize failed", id, err);
+        }
+      }
+    }
+
     yield { type: "done", message_id: assistantMessageId };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     yield { type: "error", error: message };
   } finally {
-    // Auto-finalize any cold-start plan the model created but didn't explicitly
-    // finalize — even if the streaming loop threw partway through. Otherwise a
-    // mid-build error (Anthropic stream blip, tool error, etc.) strands the
-    // plan in 'GENERATING' forever.
+    // Safety net: finalize any plan not yet finalized if the loop threw before
+    // reaching the eager finalize above.
     if (input.coldStartBuild) {
       for (const id of createdPlanIds) {
         if (finalizedPlanIds.has(id)) continue;
