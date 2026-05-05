@@ -40,7 +40,7 @@ export function CoachPageClient({
   initialMessages,
   fromRoute,
   fromLabel,
-  planId,
+  planId: initialPlanId,
   planFileId,
   intent,
 }: Props) {
@@ -53,6 +53,11 @@ export function CoachPageClient({
   const [clearOpen, setClearOpen] = useState(false);
   const streamRef = useRef<HTMLDivElement>(null);
   const pinnedRef = useRef(true);
+
+  // planId can change mid-session: a cold-start build pre-creates a stub plan
+  // server-side and emits plan-created over SSE; the URL pivots to /coach?plan_id=NEW
+  // so the conversation continues against that plan.
+  const [planId, setPlanId] = useState<string | null | undefined>(initialPlanId);
 
   const [buildState, setBuildState] = useState<BuildFormCardState | null>(
     intent === "build" ? { kind: "editable" } : null
@@ -95,6 +100,11 @@ export function CoachPageClient({
   }
 
   function handleSSE(ev: SSEEvent, assembled: { items: StreamItem[] }): void {
+    if (ev.type === "plan-created") {
+      setPlanId(ev.plan_id);
+      window.history.replaceState(null, "", `/coach?plan_id=${encodeURIComponent(ev.plan_id)}`);
+      return;
+    }
     if (ev.type === "text-delta") {
       const last = assembled.items[assembled.items.length - 1];
       if (last && last.kind === "text") {
@@ -177,8 +187,9 @@ export function CoachPageClient({
         }
         handleSSE(ev, assembled);
       });
+      // Don't reset the URL — plan-created already pivoted us to /coach?plan_id=NEW,
+      // and the build conversation is now this plan's chat thread.
       setBuildState(null);
-      window.history.replaceState(null, "", "/coach");
     } catch (err) {
       console.error(err);
       alert("Coach error — please try again.");

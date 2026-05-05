@@ -7,7 +7,23 @@ import { fetchStravaPreload } from "@/server/coach/strava-preload";
 import { formatBuildForm, type BuildFormInput } from "@/lib/build-form";
 import { todayIso } from "@/lib/dates";
 import { sseResponse } from "@/lib/sse";
-import type { BuildRequestBody } from "@/server/coach/types";
+import { createPlan } from "@/server/plans/queries";
+import type { BuildRequestBody, SSEEvent } from "@/server/coach/types";
+
+function buildStubTitle(body: BuildRequestBody): string {
+  if (body.goal_type === "race") {
+    return body.race_event?.trim() || "New plan";
+  }
+  return body.sport === "bike" ? "Indefinite bike build" : "Indefinite run build";
+}
+
+async function* prependPlanCreated(
+  planId: string,
+  gen: AsyncGenerator<SSEEvent>
+): AsyncGenerator<SSEEvent> {
+  yield { type: "plan-created", plan_id: planId };
+  yield* gen;
+}
 
 function validate(body: unknown): { ok: true; value: BuildRequestBody } | { ok: false; error: string } {
   if (!body || typeof body !== "object") return { ok: false, error: "body required" };
@@ -97,12 +113,39 @@ export async function POST(req: Request): Promise<Response> {
   const tz = (userRow?.preferences as { timezone?: string } | null)?.timezone;
   const today = todayIso(tz);
 
+  // Pre-create a stub plan so the entire build conversation binds to a single
+  // plan id from message 1. The model populates and finalizes this stub during
+  // the run; create_plan is excluded from cold-start tools.
+  const stub = await createPlan(session.user.id!, {
+    title: buildStubTitle(body),
+    sport: body.sport,
+    mode: body.goal_type === "race" ? "goal" : "indefinite",
+    goal:
+      body.goal_type === "race"
+        ? {
+            race_distance: body.race_event,
+            race_date: body.race_date,
+            target_time: body.target_time,
+          }
+        : undefined,
+    start_date: today,
+    end_date: body.goal_type === "race" ? (body.race_date ?? null) : null,
+    source: "coach_generated",
+    generation_status: "generating",
+  });
+
   const preload = await fetchStravaPreload(session.user.id!);
-  return sseResponse(runCoach({
-    userId: session.user.id!,
-    message,
-    today,
-    stravaPreload: preload,
-    coldStartBuild: true,
-  }));
+  return sseResponse(
+    prependPlanCreated(
+      stub.id,
+      runCoach({
+        userId: session.user.id!,
+        message,
+        today,
+        planId: stub.id,
+        stravaPreload: preload,
+        coldStartBuild: true,
+      })
+    )
+  );
 }

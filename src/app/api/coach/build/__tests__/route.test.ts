@@ -4,8 +4,20 @@ const mockRunCoach = vi.fn();
 vi.mock("@/server/coach/runner", () => ({ runCoach: (...args: unknown[]) => mockRunCoach(...args) }));
 
 const mockFetchPreload = vi.fn();
-vi.mock("@/server/coach/stravaPreload", () => ({
+vi.mock("@/server/coach/strava-preload", () => ({
   fetchStravaPreload: (...args: unknown[]) => mockFetchPreload(...args),
+}));
+
+const mockCreatePlan = vi.fn();
+vi.mock("@/server/plans/queries", () => ({
+  createPlan: (...args: unknown[]) => mockCreatePlan(...args),
+}));
+
+const mockDbSelect = vi.fn();
+vi.mock("@/server/db", () => ({
+  db: {
+    select: (...args: unknown[]) => mockDbSelect(...args),
+  },
 }));
 
 vi.mock("@/server/auth", () => ({
@@ -29,6 +41,10 @@ beforeEach(() => {
   });
   mockRunCoach.mockImplementation(async function* () {
     yield { type: "done", message_id: "m1" };
+  });
+  mockCreatePlan.mockResolvedValue({ id: "stub-plan-id" });
+  mockDbSelect.mockReturnValue({
+    from: () => ({ where: () => ({ limit: () => Promise.resolve([{ preferences: null }]) }) }),
   });
 });
 
@@ -98,15 +114,41 @@ describe("POST /api/coach/build", () => {
     while (!(await reader.read()).done) {}
 
     expect(mockFetchPreload).toHaveBeenCalledWith("u1");
+    expect(mockCreatePlan).toHaveBeenCalledTimes(1);
+    const planArgs = mockCreatePlan.mock.calls[0];
+    expect(planArgs[0]).toBe("u1");
+    expect(planArgs[1]).toMatchObject({
+      title: "Boston Marathon",
+      sport: "run",
+      mode: "goal",
+      end_date: "2026-04-20",
+      generation_status: "generating",
+    });
     expect(mockRunCoach).toHaveBeenCalledTimes(1);
     const args = mockRunCoach.mock.calls[0][0];
     expect(args.userId).toBe("u1");
     expect(args.coldStartBuild).toBe(true);
+    expect(args.planId).toBe("stub-plan-id");
     expect(args.stravaPreload).toBeDefined();
     expect(args.message).toContain("<!-- build_form_request -->");
     expect(args.message).toContain("**Sport:** Run");
     expect(args.message).toContain("Boston Marathon");
     expect(args.message).toContain("**Weekly mileage:** 45 mi");
+  });
+
+  it("emits plan-created as the first SSE event", async () => {
+    const req = new Request("http://test/api/coach/build", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ sport: "run", goal_type: "indefinite" }),
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(200);
+    const text = await new Response(res.body).text();
+    const firstEventLine = text.split("\n\n")[0]?.split("\n").find((l) => l.startsWith("data: "));
+    expect(firstEventLine).toBeDefined();
+    const firstEvent = JSON.parse(firstEventLine!.slice(6));
+    expect(firstEvent).toEqual({ type: "plan-created", plan_id: "stub-plan-id" });
   });
 
   it("returns 400 when weekly_mileage is provided without a valid unit", async () => {

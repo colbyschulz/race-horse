@@ -220,9 +220,23 @@ export interface RunInput {
 
 export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
   const { userId, message, fromRoute, planFileId, today } = input;
-  // planId is mutable: a cold-start build creates the plan mid-turn via create_plan,
-  // and subsequent tool calls (e.g. update_plan_notes) need the new id in their context.
-  let planId: string | null = input.planId ?? null;
+  const planId: string | null = input.planId ?? null;
+
+  // Detect whether this turn is part of a build flow. The caller may pass
+  // coldStartBuild=true (initial build form submission), or this can be a
+  // continuation turn for a plan still in 'generating' status (clarifying-question
+  // replies routed via /api/coach/chat for the same plan).
+  let coldStartBuild = input.coldStartBuild ?? false;
+  if (!coldStartBuild && planId) {
+    const [planRow] = await db
+      .select({ status: plans.generation_status })
+      .from(plans)
+      .where(and(eq(plans.id, planId), eq(plans.userId, userId)))
+      .limit(1);
+    if (planRow?.status === "generating") {
+      coldStartBuild = true;
+    }
+  }
 
   // Hoisted so the finally block can auto-finalize even if the streaming loop
   // throws partway through a cold-start build.
@@ -335,7 +349,7 @@ export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
       fromLabel: routeLabel(fromRoute),
       planFile: planFileSummary,
       stravaPreload: input.stravaPreload ?? null,
-      coldStartBuild: input.coldStartBuild ?? false,
+      coldStartBuild,
     });
 
     // 3. Persist user message
@@ -380,10 +394,10 @@ export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
 
     while (true) {
       const stream = client.messages.stream({
-        model: input.coldStartBuild ? COACH_BUILD_MODEL : COACH_MODEL,
+        model: coldStartBuild ? COACH_BUILD_MODEL : COACH_MODEL,
         max_tokens: 8096,
         system: systemBlocks,
-        tools: input.coldStartBuild ? getColdStartTools(planId) : getTools(planId),
+        tools: coldStartBuild ? getColdStartTools(planId) : getTools(planId),
         messages: withCacheBreakpoint(currentMessages),
       });
 
@@ -503,7 +517,7 @@ export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
             resultValue = await handler(toolBlock.input, {
               userId,
               planId,
-              coldStartBuild: input.coldStartBuild,
+              coldStartBuild,
             });
           } else {
             resultValue = { error: `Unknown tool: ${toolName}` };
@@ -517,12 +531,7 @@ export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
 
         if (toolName === "create_plan") {
           const created = resultValue as { plan_id?: string } | null;
-          if (created?.plan_id) {
-            createdPlanIds.push(created.plan_id);
-            // Adopt the new plan as context for subsequent tools in this turn so
-            // update_plan_notes / get_plan / etc. have a planId to bind to.
-            if (planId == null) planId = created.plan_id;
-          }
+          if (created?.plan_id) createdPlanIds.push(created.plan_id);
         } else if (toolName === "finalize_plan") {
           const inp = toolBlock.input as { plan_id?: string } | null;
           if (inp?.plan_id) finalizedPlanIds.add(inp.plan_id);
@@ -551,8 +560,13 @@ export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
 
     // Eagerly finalize before yielding "done" so the client's plan invalidation
     // sees the completed status rather than racing with the finally block.
-    if (input.coldStartBuild) {
-      for (const id of createdPlanIds) {
+    // The plan being built is `planId` (pre-created stub) plus any extra plans
+    // the model created via create_plan (defensive — create_plan is excluded
+    // from cold-start tools, so this is normally empty).
+    if (coldStartBuild) {
+      const ids = new Set<string>(createdPlanIds);
+      if (planId) ids.add(planId);
+      for (const id of ids) {
         if (finalizedPlanIds.has(id)) continue;
         try {
           await HANDLERS.finalize_plan({ plan_id: id }, { userId, planId, coldStartBuild: true });
@@ -570,8 +584,10 @@ export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
   } finally {
     // Safety net: finalize any plan not yet finalized if the loop threw before
     // reaching the eager finalize above.
-    if (input.coldStartBuild) {
-      for (const id of createdPlanIds) {
+    if (coldStartBuild) {
+      const ids = new Set<string>(createdPlanIds);
+      if (planId) ids.add(planId);
+      for (const id of ids) {
         if (finalizedPlanIds.has(id)) continue;
         try {
           await HANDLERS.finalize_plan({ plan_id: id }, { userId, planId, coldStartBuild: true });
