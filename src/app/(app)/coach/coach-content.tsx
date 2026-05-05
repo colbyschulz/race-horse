@@ -27,6 +27,42 @@ export function CoachContent() {
     return null;
   }, [planIdParam, from]);
 
+  // Build form has no prior conversation — render the form directly with an
+  // empty message list. Once the form is submitted, plan-created pivots us to
+  // /coach?plan_id=NEW and the conversation lives under that plan.
+  if (intent === "build" && !planId) {
+    return (
+      <CoachPageClient
+        initialMessages={[]}
+        fromRoute={from}
+        fromLabel={fromLabelParam}
+        planId={null}
+        planFileId={planFileId}
+        intent={intent}
+      />
+    );
+  }
+
+  return (
+    <CoachWithMessages
+      planId={planId}
+      from={from}
+      fromLabelParam={fromLabelParam}
+      planFileId={planFileId}
+      intent={intent}
+    />
+  );
+}
+
+interface WithMessagesProps {
+  planId: string | null;
+  from: string | undefined;
+  fromLabelParam: string | undefined;
+  planFileId: string | undefined;
+  intent: string | undefined;
+}
+
+function CoachWithMessages({ planId, from, fromLabelParam, planFileId, intent }: WithMessagesProps) {
   const { data: messages } = useCoachMessages(planId);
 
   if (planId === null || fromLabelParam !== undefined) {

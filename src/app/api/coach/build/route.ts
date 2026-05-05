@@ -1,7 +1,7 @@
 import { auth } from "@/server/auth";
 import { db } from "@/server/db";
-import { eq } from "drizzle-orm";
-import { users } from "@/server/db/schema";
+import { eq, and, lt } from "drizzle-orm";
+import { users, plans } from "@/server/db/schema";
 import { runCoach } from "@/server/coach/runner";
 import { fetchStravaPreload } from "@/server/coach/strava-preload";
 import { formatBuildForm, type BuildFormInput } from "@/lib/build-form";
@@ -9,6 +9,8 @@ import { todayIso } from "@/lib/dates";
 import { sseResponse } from "@/lib/sse";
 import { createPlan } from "@/server/plans/queries";
 import type { BuildRequestBody, SSEEvent } from "@/server/coach/types";
+
+const STALE_STUB_THRESHOLD_MS = 60 * 60 * 1000; // 1 hour
 
 function buildStubTitle(body: BuildRequestBody): string {
   if (body.goal_type === "race") {
@@ -112,6 +114,20 @@ export async function POST(req: Request): Promise<Response> {
   const [userRow] = await db.select({ preferences: users.preferences }).from(users).where(eq(users.id, session.user.id!)).limit(1);
   const tz = (userRow?.preferences as { timezone?: string } | null)?.timezone;
   const today = todayIso(tz);
+
+  // Garbage-collect abandoned stubs from prior build flows the user never
+  // finished. Threshold-gated so an in-flight build (just-created stub for a
+  // build that's still running in another tab) is preserved. Cascading FK on
+  // messages.plan_id deletes their conversations too.
+  await db
+    .delete(plans)
+    .where(
+      and(
+        eq(plans.userId, session.user.id!),
+        eq(plans.generation_status, "generating"),
+        lt(plans.created_at, new Date(Date.now() - STALE_STUB_THRESHOLD_MS))
+      )
+    );
 
   // Pre-create a stub plan so the entire build conversation binds to a single
   // plan id from message 1. The model populates and finalizes this stub during

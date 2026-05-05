@@ -14,9 +14,11 @@ vi.mock("@/server/plans/queries", () => ({
 }));
 
 const mockDbSelect = vi.fn();
+const mockDbDelete = vi.fn();
 vi.mock("@/server/db", () => ({
   db: {
     select: (...args: unknown[]) => mockDbSelect(...args),
+    delete: (...args: unknown[]) => mockDbDelete(...args),
   },
 }));
 
@@ -46,6 +48,7 @@ beforeEach(() => {
   mockDbSelect.mockReturnValue({
     from: () => ({ where: () => ({ limit: () => Promise.resolve([{ preferences: null }]) }) }),
   });
+  mockDbDelete.mockReturnValue({ where: () => Promise.resolve() });
 });
 
 describe("POST /api/coach/build", () => {
