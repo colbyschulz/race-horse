@@ -4,7 +4,7 @@ import { BuildFormCard } from "../build-form-card";
 
 describe("BuildFormCard", () => {
   it("renders editable state with sport and goal toggles", () => {
-    render(<BuildFormCard state={{ kind: "editable" }} onSubmit={vi.fn()} onCancel={vi.fn()} />);
+    render(<BuildFormCard state={{ kind: "editable" }} units="mi" onSubmit={vi.fn()} onCancel={vi.fn()} />);
     expect(screen.getByRole("button", { name: "Run" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Bike" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Race-targeted" })).toBeInTheDocument();
@@ -14,7 +14,7 @@ describe("BuildFormCard", () => {
   });
 
   it("hides race fields until goal type is race-targeted", () => {
-    render(<BuildFormCard state={{ kind: "editable" }} onSubmit={vi.fn()} onCancel={vi.fn()} />);
+    render(<BuildFormCard state={{ kind: "editable" }} units="mi" onSubmit={vi.fn()} onCancel={vi.fn()} />);
     expect(screen.queryByRole("button", { name: /select a date/i })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Race-targeted" }));
     expect(screen.getByRole("button", { name: /select a date/i })).toBeInTheDocument();
@@ -23,7 +23,7 @@ describe("BuildFormCard", () => {
 
   it("calls onSubmit with the form values when valid", () => {
     const onSubmit = vi.fn();
-    render(<BuildFormCard state={{ kind: "editable" }} onSubmit={onSubmit} onCancel={vi.fn()} />);
+    render(<BuildFormCard state={{ kind: "editable" }} units="mi" onSubmit={onSubmit} onCancel={vi.fn()} />);
     fireEvent.click(screen.getByRole("button", { name: "Run" }));
     fireEvent.click(screen.getByRole("button", { name: "Indefinite build" }));
     fireEvent.change(screen.getByLabelText(/Goals & context/i), {
@@ -36,13 +36,40 @@ describe("BuildFormCard", () => {
       race_date: undefined,
       race_event: undefined,
       target_time: undefined,
+      weekly_mileage: undefined,
+      weekly_mileage_unit: undefined,
       context: "off-season fitness",
     });
   });
 
+  it("submits weekly mileage with the unit derived from preferences", () => {
+    const onSubmit = vi.fn();
+    render(<BuildFormCard state={{ kind: "editable" }} units="km" onSubmit={onSubmit} onCancel={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: "Run" }));
+    fireEvent.click(screen.getByRole("button", { name: "Indefinite build" }));
+    fireEvent.change(screen.getByLabelText(/Typical weekly mileage/i), {
+      target: { value: "70" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /build plan/i }));
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({ weekly_mileage: 70, weekly_mileage_unit: "km" })
+    );
+  });
+
+  it("submits without weekly mileage when left blank", () => {
+    const onSubmit = vi.fn();
+    render(<BuildFormCard state={{ kind: "editable" }} units="mi" onSubmit={onSubmit} onCancel={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: "Run" }));
+    fireEvent.click(screen.getByRole("button", { name: "Indefinite build" }));
+    fireEvent.click(screen.getByRole("button", { name: /build plan/i }));
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({ weekly_mileage: undefined, weekly_mileage_unit: undefined })
+    );
+  });
+
   it("requires race_date and race_event when race-targeted", () => {
     const onSubmit = vi.fn();
-    render(<BuildFormCard state={{ kind: "editable" }} onSubmit={onSubmit} onCancel={vi.fn()} />);
+    render(<BuildFormCard state={{ kind: "editable" }} units="mi" onSubmit={onSubmit} onCancel={vi.fn()} />);
     fireEvent.click(screen.getByRole("button", { name: "Run" }));
     fireEvent.click(screen.getByRole("button", { name: "Race-targeted" }));
     fireEvent.click(screen.getByRole("button", { name: /build plan/i }));
@@ -56,6 +83,7 @@ describe("BuildFormCard", () => {
           kind: "submitting",
           values: { sport: "run", goal_type: "indefinite" },
         }}
+        units="mi"
         onSubmit={vi.fn()}
         onCancel={vi.fn()}
       />
@@ -75,9 +103,12 @@ describe("BuildFormCard", () => {
             race_date: "2026-04-20",
             race_event: "Boston Marathon",
             target_time: "sub-3:00",
+            weekly_mileage: 45,
+            weekly_mileage_unit: "mi",
             context: "Hilly course",
           },
         }}
+        units="mi"
         onSubmit={vi.fn()}
         onCancel={vi.fn()}
       />
@@ -85,6 +116,7 @@ describe("BuildFormCard", () => {
     expect(screen.queryByText(/loading your training history/i)).toBeNull();
     expect(screen.getByText("Boston Marathon")).toBeInTheDocument();
     expect(screen.getByText("sub-3:00")).toBeInTheDocument();
+    expect(screen.getByText(/45/)).toBeInTheDocument();
     expect(screen.getByText(/Hilly course/)).toBeInTheDocument();
   });
 });

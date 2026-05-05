@@ -16,6 +16,7 @@ import { ThinkingIndicator } from "@/components/coach/thinking-indicator";
 import { MessageInput } from "@/components/coach/message-input";
 import { ClearChatDialog } from "@/components/coach/clear-chat-dialog";
 import { BuildFormCard, type BuildFormCardState } from "@/components/coach/build-form-card";
+import { usePreferences } from "@/queries/preferences";
 
 interface Props {
   initialMessages: StoredMessage[];
@@ -45,6 +46,7 @@ export function CoachPageClient({
 }: Props) {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { data: preferences } = usePreferences();
   const [messages, setMessages] = useState<StoredMessage[]>(initialMessages);
   const [streaming, setStreaming] = useState<StreamingState | null>(null);
   const [sending, setSending] = useState(false);
@@ -214,7 +216,12 @@ export function CoachPageClient({
           <MessageBubble key={m.id} message={m} />
         ))}
         {buildState && (
-          <BuildFormCard state={buildState} onSubmit={buildSubmit} onCancel={buildCancel} />
+          <BuildFormCard
+            state={buildState}
+            units={preferences.units}
+            onSubmit={buildSubmit}
+            onCancel={buildCancel}
+          />
         )}
         {streaming && (
           <>

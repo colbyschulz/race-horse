@@ -15,6 +15,8 @@ describe("formatBuildForm", () => {
       race_date: "2026-04-20",
       race_event: "Boston Marathon",
       target_time: "sub-3:00",
+      weekly_mileage: 45,
+      weekly_mileage_unit: "mi",
       context: "Hilly course. No running Sundays.",
     });
     expect(md.startsWith("<!-- build_form_request -->\n")).toBe(true);
@@ -22,7 +24,26 @@ describe("formatBuildForm", () => {
     expect(md).toContain("- **Sport:** Run");
     expect(md).toContain("- **Goal:** Race — Boston Marathon, 2026-04-20");
     expect(md).toContain("- **Target time:** sub-3:00");
+    expect(md).toContain("- **Weekly mileage:** 45 mi");
     expect(md).toContain("- **Goals & context:** Hilly course. No running Sundays.");
+  });
+
+  it("omits weekly mileage when not provided", () => {
+    const md = formatBuildForm({
+      sport: "run",
+      goal_type: "indefinite",
+    });
+    expect(md).not.toContain("**Weekly mileage:**");
+  });
+
+  it("emits weekly mileage with km unit", () => {
+    const md = formatBuildForm({
+      sport: "run",
+      goal_type: "indefinite",
+      weekly_mileage: 70,
+      weekly_mileage_unit: "km",
+    });
+    expect(md).toContain("- **Weekly mileage:** 70 km");
   });
 
   it("formats an indefinite build with minimal fields", () => {
@@ -69,7 +90,20 @@ describe("parseBuildForm", () => {
       race_date: "2026-04-20",
       race_event: "Boston Marathon",
       target_time: "sub-3:00",
+      weekly_mileage: 45,
+      weekly_mileage_unit: "mi" as const,
       context: "Hilly course. No running Sundays.",
+    };
+    const parsed = parseBuildForm(formatBuildForm(original));
+    expect(parsed).toEqual(original);
+  });
+
+  it("round-trips weekly mileage in km", () => {
+    const original = {
+      sport: "run" as const,
+      goal_type: "indefinite" as const,
+      weekly_mileage: 70,
+      weekly_mileage_unit: "km" as const,
     };
     const parsed = parseBuildForm(formatBuildForm(original));
     expect(parsed).toEqual(original);

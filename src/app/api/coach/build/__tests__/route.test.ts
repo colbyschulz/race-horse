@@ -84,6 +84,8 @@ describe("POST /api/coach/build", () => {
         race_date: "2026-04-20",
         race_event: "Boston Marathon",
         target_time: "sub-3:00",
+        weekly_mileage: 45,
+        weekly_mileage_unit: "mi",
         context: "Hilly course",
       }),
     });
@@ -104,5 +106,31 @@ describe("POST /api/coach/build", () => {
     expect(args.message).toContain("<!-- build_form_request -->");
     expect(args.message).toContain("**Sport:** Run");
     expect(args.message).toContain("Boston Marathon");
+    expect(args.message).toContain("**Weekly mileage:** 45 mi");
+  });
+
+  it("returns 400 when weekly_mileage is provided without a valid unit", async () => {
+    const req = new Request("http://test/api/coach/build", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ sport: "run", goal_type: "indefinite", weekly_mileage: 40 }),
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(400);
+  });
+
+  it("returns 400 when weekly_mileage is negative", async () => {
+    const req = new Request("http://test/api/coach/build", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        sport: "run",
+        goal_type: "indefinite",
+        weekly_mileage: -5,
+        weekly_mileage_unit: "mi",
+      }),
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(400);
   });
 });

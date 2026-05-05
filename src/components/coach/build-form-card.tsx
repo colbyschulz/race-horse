@@ -16,17 +16,19 @@ export type BuildFormCardState =
 
 interface Props {
   state: BuildFormCardState;
+  units: "mi" | "km";
   onSubmit: (values: BuildFormInput) => void;
   onCancel: () => void;
 }
 
 const SPORT_LABEL = { run: "Run", bike: "Bike" } as const;
+const UNIT_LABEL = { mi: "mi", km: "km" } as const;
 
-export function BuildFormCard({ state, onSubmit, onCancel }: Props) {
+export function BuildFormCard({ state, units, onSubmit, onCancel }: Props) {
   if (state.kind !== "editable") {
     return <LockedView values={state.values} showSpinner={state.kind === "submitting"} />;
   }
-  return <EditableForm onSubmit={onSubmit} onCancel={onCancel} />;
+  return <EditableForm units={units} onSubmit={onSubmit} onCancel={onCancel} />;
 }
 
 // ── Toggle pill group ────────────────────────────────────────────────────────
@@ -167,9 +169,11 @@ function DatePickerField({ value, onChange }: { value: string; onChange: (v: str
 // ── Editable form ────────────────────────────────────────────────────────────
 
 function EditableForm({
+  units,
   onSubmit,
   onCancel,
 }: {
+  units: "mi" | "km";
   onSubmit: (values: BuildFormInput) => void;
   onCancel: () => void;
 }) {
@@ -178,18 +182,24 @@ function EditableForm({
   const [raceDate, setRaceDate] = useState("");
   const [raceEvent, setRaceEvent] = useState("");
   const [targetTime, setTargetTime] = useState("");
+  const [weeklyMileage, setWeeklyMileage] = useState("");
   const [context, setContext] = useState("");
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!sport || !goalType) return;
     if (goalType === "race" && (!raceDate.trim() || !raceEvent.trim())) return;
+    const mileageNum = weeklyMileage.trim() === "" ? null : Number(weeklyMileage);
+    const hasMileage =
+      mileageNum != null && Number.isFinite(mileageNum) && mileageNum > 0;
     onSubmit({
       sport,
       goal_type: goalType,
       race_date: goalType === "race" ? raceDate.trim() : undefined,
       race_event: goalType === "race" ? raceEvent.trim() : undefined,
       target_time: targetTime.trim() || undefined,
+      weekly_mileage: hasMileage ? mileageNum : undefined,
+      weekly_mileage_unit: hasMileage ? units : undefined,
       context: context.trim() || undefined,
     });
   }
@@ -259,6 +269,26 @@ function EditableForm({
       )}
 
       <div className={styles.field}>
+        <label className={styles.fieldLabel} htmlFor="weeklyMileage">
+          Typical weekly mileage
+        </label>
+        <div className={styles.mileageRow}>
+          <Input
+            id="weeklyMileage"
+            type="number"
+            inputMode="numeric"
+            min={0}
+            step="any"
+            value={weeklyMileage}
+            onChange={(e) => setWeeklyMileage(e.target.value)}
+            placeholder="40"
+            className={styles.mileageInput}
+          />
+          <span className={styles.mileageUnit}>{UNIT_LABEL[units]}</span>
+        </div>
+      </div>
+
+      <div className={styles.field}>
         <label className={styles.fieldLabel} htmlFor="context">
           Goals &amp; context
         </label>
@@ -267,7 +297,7 @@ function EditableForm({
           rows={3}
           value={context}
           onChange={(e) => setContext(e.target.value)}
-          placeholder="Anything else worth knowing — weekly mileage preferences, race terrain, doubles, days you can't train, prior PBs etc."
+          placeholder="Anything else worth knowing — race terrain, doubles, days you can't train, prior PBs etc."
         />
       </div>
 
@@ -307,6 +337,12 @@ function LockedView({ values, showSpinner }: { values: BuildFormInput; showSpinn
         {values.target_time && (
           <li>
             <strong>Target time:</strong> {values.target_time}
+          </li>
+        )}
+        {typeof values.weekly_mileage === "number" && (
+          <li>
+            <strong>Weekly mileage:</strong> {values.weekly_mileage}{" "}
+            {UNIT_LABEL[values.weekly_mileage_unit ?? "mi"]}
           </li>
         )}
         {values.context && (

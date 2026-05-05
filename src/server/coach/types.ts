@@ -55,5 +55,7 @@ export type BuildRequestBody = {
   race_date?: string; // YYYY-MM-DD, required when goal_type === "race"
   race_event?: string; // required when goal_type === "race"
   target_time?: string; // optional
+  weekly_mileage?: number; // optional; paired with weekly_mileage_unit
+  weekly_mileage_unit?: "mi" | "km";
   context?: string; // optional free-text "Goals & context"
 };

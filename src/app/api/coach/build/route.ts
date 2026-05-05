@@ -30,6 +30,14 @@ function validate(body: unknown): { ok: true; value: BuildRequestBody } | { ok: 
       return { ok: false, error: `${k} must be a string if provided` };
     }
   }
+  if (b.weekly_mileage != null) {
+    if (typeof b.weekly_mileage !== "number" || !Number.isFinite(b.weekly_mileage) || b.weekly_mileage < 0) {
+      return { ok: false, error: "weekly_mileage must be a non-negative number if provided" };
+    }
+    if (b.weekly_mileage_unit !== "mi" && b.weekly_mileage_unit !== "km") {
+      return { ok: false, error: "weekly_mileage_unit must be 'mi' or 'km' when weekly_mileage is provided" };
+    }
+  }
 
   return {
     ok: true,
@@ -39,6 +47,9 @@ function validate(body: unknown): { ok: true; value: BuildRequestBody } | { ok: 
       race_date: typeof b.race_date === "string" ? b.race_date : undefined,
       race_event: typeof b.race_event === "string" ? b.race_event : undefined,
       target_time: typeof b.target_time === "string" ? b.target_time : undefined,
+      weekly_mileage: typeof b.weekly_mileage === "number" ? b.weekly_mileage : undefined,
+      weekly_mileage_unit:
+        b.weekly_mileage_unit === "mi" || b.weekly_mileage_unit === "km" ? b.weekly_mileage_unit : undefined,
       context: typeof b.context === "string" ? b.context : undefined,
     },
   };
@@ -76,6 +87,8 @@ export async function POST(req: Request): Promise<Response> {
     race_date: body.race_date,
     race_event: body.race_event,
     target_time: body.target_time,
+    weekly_mileage: body.weekly_mileage,
+    weekly_mileage_unit: body.weekly_mileage_unit,
     context: body.context,
   };
   const message = formatBuildForm(formInput);

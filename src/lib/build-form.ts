@@ -2,6 +2,7 @@ export const BUILD_FORM_SENTINEL = "<!-- build_form_request -->";
 
 export type BuildFormSport = "run" | "bike";
 export type BuildFormGoal = "race" | "indefinite";
+export type BuildFormUnit = "mi" | "km";
 
 export type BuildFormInput = {
   sport: BuildFormSport;
@@ -9,6 +10,8 @@ export type BuildFormInput = {
   race_date?: string;
   race_event?: string;
   target_time?: string;
+  weekly_mileage?: number;
+  weekly_mileage_unit?: BuildFormUnit;
   context?: string;
 };
 
@@ -33,6 +36,11 @@ export function formatBuildForm(input: BuildFormInput): string {
 
   const tt = input.target_time?.trim();
   if (tt) lines.push(`- **Target time:** ${tt}`);
+
+  if (typeof input.weekly_mileage === "number" && Number.isFinite(input.weekly_mileage)) {
+    const unit = input.weekly_mileage_unit ?? "mi";
+    lines.push(`- **Weekly mileage:** ${input.weekly_mileage} ${unit}`);
+  }
 
   const ctx = input.context?.trim().replace(/\n+/g, " ");
   if (ctx) lines.push(`- **Goals & context:** ${ctx}`);
@@ -81,6 +89,12 @@ export function parseBuildForm(text: string): BuildFormInput | null {
 
   const ttMatch = body.match(/^- \*\*Target time:\*\* (.+)$/m);
   if (ttMatch) out.target_time = ttMatch[1].trim();
+
+  const wmMatch = body.match(/^- \*\*Weekly mileage:\*\* (\d+(?:\.\d+)?) (mi|km)$/m);
+  if (wmMatch) {
+    out.weekly_mileage = Number(wmMatch[1]);
+    out.weekly_mileage_unit = wmMatch[2] as BuildFormUnit;
+  }
 
   const ctxMatch = body.match(/^- \*\*Goals & context:\*\* (.+)$/m);
   if (ctxMatch) out.context = ctxMatch[1].trim();

@@ -30,6 +30,7 @@ export function MessageBubble({
       return (
         <BuildFormCard
           state={{ kind: "locked", values: parsed }}
+          units={parsed.weekly_mileage_unit ?? "mi"}
           onSubmit={() => {}}
           onCancel={() => {}}
         />
