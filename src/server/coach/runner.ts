@@ -570,10 +570,24 @@ export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
       if (planId) ids.add(planId);
       for (const id of ids) {
         if (finalizedPlanIds.has(id)) continue;
-        const [wCnt] = await db.select({ n: count() }).from(workouts).where(eq(workouts.plan_id, id));
-        if ((wCnt?.n ?? 0) === 0) continue; // no workouts yet — still in clarifying-question phase
+        const planWorkouts = await db
+          .select({ date: workouts.date, n: count() })
+          .from(workouts)
+          .where(eq(workouts.plan_id, id));
+        if ((planWorkouts[0]?.n ?? 0) === 0) continue; // no workouts yet — still in clarifying-question phase
+        // Compute first workout date to correct the stub's start_date=today.
+        const allDates = await db
+          .select({ date: workouts.date })
+          .from(workouts)
+          .where(eq(workouts.plan_id, id))
+          .orderBy(workouts.date)
+          .limit(1);
+        const firstWorkoutDate = allDates[0]?.date;
         try {
-          await HANDLERS.finalize_plan({ plan_id: id }, { userId, planId, coldStartBuild: true });
+          await HANDLERS.finalize_plan(
+            { plan_id: id, ...(firstWorkoutDate ? { start_date: firstWorkoutDate } : {}) },
+            { userId, planId, coldStartBuild: true }
+          );
           finalizedPlanIds.add(id);
           // Notify client that the plan is fully built so it can show the CTA.
           // (Explicit finalize_plan tool calls already trigger a tool-use event;
@@ -600,7 +614,17 @@ export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
         try {
           const [wCnt] = await db.select({ n: count() }).from(workouts).where(eq(workouts.plan_id, id));
           if ((wCnt?.n ?? 0) === 0) continue;
-          await HANDLERS.finalize_plan({ plan_id: id }, { userId, planId, coldStartBuild: true });
+          const allDates = await db
+            .select({ date: workouts.date })
+            .from(workouts)
+            .where(eq(workouts.plan_id, id))
+            .orderBy(workouts.date)
+            .limit(1);
+          const firstWorkoutDate = allDates[0]?.date;
+          await HANDLERS.finalize_plan(
+            { plan_id: id, ...(firstWorkoutDate ? { start_date: firstWorkoutDate } : {}) },
+            { userId, planId, coldStartBuild: true }
+          );
         } catch (err) {
           console.error("auto-finalize failed", id, err);
         }

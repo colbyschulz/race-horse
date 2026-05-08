@@ -28,9 +28,18 @@ export function PlanDetailContent({ planId }: PlanDetailContentProps) {
 
   const today = todayIso(prefs.timezone);
 
+  // For inactive (archived) plans cap navigation at the last workout's week.
+  // Without this, indefinite plans (no end_date) default to today and allow
+  // navigating into future empty weeks.
+  const lastWorkoutDate =
+    !plan.is_active && allWorkouts.length > 0
+      ? allWorkouts.reduce((max, w) => (w.date > max ? w.date : max), allWorkouts[0].date)
+      : null;
+  const effectiveEndDate = !plan.is_active ? (lastWorkoutDate ?? plan.end_date) : plan.end_date;
+
   const { firstMonday: planFirstMonday, lastMonday: planLastMonday } = planNavBounds(
     plan.start_date,
-    plan.end_date,
+    effectiveEndDate,
     mondayOf(today)
   );
   const defaultMonday =
@@ -42,7 +51,7 @@ export function PlanDetailContent({ planId }: PlanDetailContentProps) {
 
   const monday = isIsoDate(week) ? mondayOf(week) : defaultMonday;
 
-  const { prevDisabled, nextDisabled } = planNavBounds(plan.start_date, plan.end_date, monday);
+  const { prevDisabled, nextDisabled } = planNavBounds(plan.start_date, effectiveEndDate, monday);
   const isCurrentWeek = monday === mondayOf(today);
 
   return (

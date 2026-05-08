@@ -197,11 +197,16 @@ export const archivePlanTool: Tool = {
 export const finalizePlanTool: Tool = {
   name: "finalize_plan",
   description:
-    "Marks a plan as fully generated (moves it from 'GENERATING' to ready). Also corrects plan metadata if the stub values need updating — pass end_date with the actual last race/workout date, and title if you want to refine the stub title. Cold-start plans are auto-finalized at the end of the turn once workouts have been written — calling this explicitly lets you set the correct end_date and is strongly preferred.",
+    "Marks a plan as fully generated (moves it from 'GENERATING' to ready). Also corrects plan metadata if the stub values need updating — the stub is created with start_date=today which is almost always wrong for future plans. Pass start_date as the first workout date, end_date as the actual last race/workout date, and title if you want to refine the stub title. Cold-start plans are auto-finalized at the end of the turn once workouts have been written — calling this explicitly to set correct dates is strongly preferred.",
   input_schema: {
     type: "object" as const,
     properties: {
       plan_id: { type: "string", description: "The UUID of the plan to mark complete." },
+      start_date: {
+        type: "string",
+        description:
+          "Correct start date in YYYY-MM-DD format. Should be the date of the first workout. The stub is always created with start_date=today, which is wrong for plans that start in the future — always pass this.",
+      },
       end_date: {
         type: "string",
         description:
@@ -508,9 +513,9 @@ export const archive_plan_handler: ToolHandler<{ plan_id: string }, { ok: true }
 };
 
 export const finalize_plan_handler: ToolHandler<
-  { plan_id: string; end_date?: string; title?: string },
+  { plan_id: string; start_date?: string; end_date?: string; title?: string },
   { ok: true }
-> = async ({ plan_id, end_date, title }, { userId }) => {
+> = async ({ plan_id, start_date, end_date, title }, { userId }) => {
   const plan = await getPlanById(plan_id, userId);
   if (!plan || plan.userId !== userId) {
     throw new Error("plan not found or not owned");
@@ -520,6 +525,7 @@ export const finalize_plan_handler: ToolHandler<
     .set({
       generation_status: "complete",
       updated_at: new Date(),
+      ...(start_date ? { start_date } : {}),
       ...(end_date ? { end_date } : {}),
       ...(title ? { title } : {}),
     })

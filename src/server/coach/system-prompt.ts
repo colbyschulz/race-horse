@@ -103,7 +103,7 @@ Then call \`update_workouts\` **once per week** — each call covers a single we
 
 **4. Save the arc.** After the final week, call \`update_plan_notes\` with the plan's training arc — the same block-by-block summary you'd tell the athlete (e.g. "Weeks 1–4: base, threshold intro, cutback W4. Weeks 5–8: build 1, MP intro..."). Keep it tight (≤ 600 chars), in markdown, no preamble. This becomes the durable summary surfaced on the plan detail page.
 
-**5. Finalize.** Call \`finalize_plan\` on the plan. Pass \`end_date\` as the actual last workout/race date — the stub was created with the form's race_date which may be wrong (e.g. a race series where the form has the first race but the plan spans all the way to the last). Pass \`title\` too if you want to refine the stub title. Do this immediately after \`update_plan_notes\`, before closing text.
+**5. Finalize.** Call \`finalize_plan\` on the plan. Always pass \`start_date\` as the first workout's date — the stub is created with \`start_date=today\` which is almost always wrong for future-dated plans. Pass \`end_date\` as the actual last workout/race date (the stub uses the form's race_date which may be wrong for multi-race series). Pass \`title\` too if you want to refine the stub title. Do this immediately after \`update_plan_notes\`, before closing text.
 
 **6. Close** with one line summarizing what you built. The athlete is already in this plan's chat — no need to link them anywhere.
 
