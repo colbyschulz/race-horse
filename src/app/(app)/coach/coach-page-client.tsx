@@ -59,9 +59,38 @@ export function CoachPageClient({
   // so the conversation continues against that plan.
   const [planId, setPlanId] = useState<string | null | undefined>(initialPlanId);
 
+  // Ref tracks the plan_id received mid-stream from plan-created events. Using a ref
+  // rather than state means reloadHistory() avoids the stale-closure problem (state
+  // updates are async; the ref is available immediately in the same event loop turn).
+  // URL update is deferred until after consumeStream so CoachContent never remounts
+  // mid-stream (window.history.replaceState triggers useSearchParams re-render).
+  const receivedPlanIdRef = useRef<string | null>(null);
+
+  // Set when the plan is actually finalized (plan-finalized SSE event or finalize_plan
+  // tool-use seen). Used to gate the "View your plan" CTA so it only appears once
+  // the plan has workouts — not after a clarifying-question turn.
+  const planFinalizedRef = useRef(false);
+
+  // Tracks the in-flight reloadHistory promise so buildSubmit can await it before
+  // calling replaceState — ensuring messages and plan are in the RQ cache before the
+  // component remounts, preventing CoachWithPlanLabel from suspending on mount.
+  const reloadHistoryPromiseRef = useRef<Promise<void> | null>(null);
+
   const [buildState, setBuildState] = useState<BuildFormCardState | null>(
     intent === "build" ? { kind: "editable" } : null
   );
+
+  // Set to the plan ID when a build stream completes, to show a "View plan" CTA.
+  // sessionStorage carries the value across the component remount that follows
+  // window.history.replaceState (which triggers useSearchParams → CoachContent re-render).
+  const [viewPlanId, setViewPlanId] = useState<string | null>(null);
+  useEffect(() => {
+    const id = sessionStorage.getItem("justBuiltPlanId");
+    if (id) {
+      sessionStorage.removeItem("justBuiltPlanId");
+      setViewPlanId(id);
+    }
+  }, []);
 
   useEffect(() => {
     const el = streamRef.current;
@@ -85,12 +114,19 @@ export function CoachPageClient({
   }, [messages, streaming?.items]);
 
   async function reloadHistory() {
-    const qs = planId ? `?plan_id=${encodeURIComponent(planId)}` : "";
+    // Use ref first: on cold-start builds, plan-created fires before done, and
+    // state updates are async so planId state is still null when this runs.
+    const effectivePlanId = receivedPlanIdRef.current ?? planId;
+    const qs = effectivePlanId ? `?plan_id=${encodeURIComponent(effectivePlanId)}` : "";
     const r = await fetch(`/api/coach/messages${qs}`);
     if (r.ok) {
       const { messages: m } = (await r.json()) as { messages: StoredMessage[] };
-      // Batch both updates so streaming bubble never disappears before the real message appears.
       setMessages(m);
+      // Pre-populate RQ cache so the component that remounts after the URL update
+      // (window.history.replaceState fires after consumeStream) sees data instantly.
+      if (effectivePlanId) {
+        queryClient.setQueryData(["coach", "messages", effectivePlanId], m);
+      }
     }
     // Coach turns can create plans, edit workouts, or update notes — invalidate
     // anything plan-shaped so the rest of the app picks up the new state.
@@ -101,9 +137,21 @@ export function CoachPageClient({
 
   function handleSSE(ev: SSEEvent, assembled: { items: StreamItem[] }): void {
     if (ev.type === "plan-created") {
+      receivedPlanIdRef.current = ev.plan_id;
       setPlanId(ev.plan_id);
-      window.history.replaceState(null, "", `/coach?plan_id=${encodeURIComponent(ev.plan_id)}`);
+      // Do NOT call window.history.replaceState here — it triggers useSearchParams()
+      // to update, which causes CoachContent to remount CoachPageClient mid-stream.
+      // URL is updated after consumeStream resolves (see buildSubmit).
       return;
+    }
+    if (ev.type === "plan-finalized") {
+      // Auto-finalize path: server confirmed the plan has workouts and is complete.
+      planFinalizedRef.current = true;
+      return;
+    }
+    if (ev.type === "tool-use" && ev.name === "finalize_plan") {
+      // Explicit finalize_plan call by the coach — plan is about to be finalized.
+      planFinalizedRef.current = true;
     }
     if (ev.type === "text-delta") {
       const last = assembled.items[assembled.items.length - 1];
@@ -126,7 +174,14 @@ export function CoachPageClient({
     } else if (ev.type === "done") {
       // Mark done immediately so the working-indicator hides before reloadHistory resolves.
       setStreaming((s) => (s ? { ...s, done: true } : s));
-      void reloadHistory();
+      // For continuation turns (send(), not buildSubmit): plan finalized in this
+      // stream — show CTA directly since there's no replaceState/remount.
+      if (planFinalizedRef.current && !receivedPlanIdRef.current) {
+        const effectiveId = planId ?? null;
+        if (effectiveId) setViewPlanId(effectiveId);
+        planFinalizedRef.current = false;
+      }
+      reloadHistoryPromiseRef.current = reloadHistory();
     } else if (ev.type === "error") {
       throw new Error(ev.error);
     }
@@ -187,8 +242,38 @@ export function CoachPageClient({
         }
         handleSSE(ev, assembled);
       });
-      // Don't reset the URL — plan-created already pivoted us to /coach?plan_id=NEW,
-      // and the build conversation is now this plan's chat thread.
+      // Wait for reloadHistory to finish so the messages cache is populated before
+      // replaceState. Without this, CoachWithMessages suspends on mount because
+      // useCoachMessages finds no cache entry for the new plan_id.
+      await (reloadHistoryPromiseRef.current ?? Promise.resolve());
+      reloadHistoryPromiseRef.current = null;
+
+      if (receivedPlanIdRef.current) {
+        // Pre-populate the plan cache so CoachWithPlanLabel's usePlan() doesn't
+        // suspend on mount — React 18 keeps stale content visible during a suspended
+        // transition, which makes the locked build card appear frozen.
+        try {
+          const r = await fetch(`/api/plans/${receivedPlanIdRef.current}`);
+          if (r.ok) {
+            const data = (await r.json()) as { plan: unknown };
+            queryClient.setQueryData(["plans", receivedPlanIdRef.current], data.plan);
+          }
+        } catch { /* best-effort */ }
+      }
+
+      // All caches are warm — safe to update the URL now. The remounted component
+      // sees data instantly with no loading flash or suspension.
+      if (receivedPlanIdRef.current) {
+        // Only show the "View your plan" CTA when the plan was actually finalized
+        // (plan has workouts). A clarifying-question turn ends the stream too but
+        // planFinalizedRef stays false, so the button doesn't appear prematurely.
+        if (planFinalizedRef.current) {
+          sessionStorage.setItem("justBuiltPlanId", receivedPlanIdRef.current);
+          planFinalizedRef.current = false;
+        }
+        window.history.replaceState(null, "", `/coach?plan_id=${encodeURIComponent(receivedPlanIdRef.current)}`);
+        receivedPlanIdRef.current = null;
+      }
       setBuildState(null);
     } catch (err) {
       console.error(err);
@@ -264,6 +349,13 @@ export function CoachPageClient({
           </>
         )}
       </div>
+      {viewPlanId && (
+        <div className={styles.viewPlanCta}>
+          <Button href={`/plans/${viewPlanId}`} variant="primary" size="sm">
+            View your plan →
+          </Button>
+        </div>
+      )}
       <MessageInput
         disabled={sending || buildState?.kind === "editable" || buildState?.kind === "submitting"}
         onSend={send}

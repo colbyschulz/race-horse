@@ -350,6 +350,7 @@ export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
       planFile: planFileSummary,
       stravaPreload: input.stravaPreload ?? null,
       coldStartBuild,
+      coldStartPlanId: coldStartBuild ? planId : null,
     });
 
     // 3. Persist user message
@@ -560,17 +561,24 @@ export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
 
     // Eagerly finalize before yielding "done" so the client's plan invalidation
     // sees the completed status rather than racing with the finally block.
-    // The plan being built is `planId` (pre-created stub) plus any extra plans
-    // the model created via create_plan (defensive — create_plan is excluded
-    // from cold-start tools, so this is normally empty).
+    // Guard: only finalize plans that actually have workouts. A clarifying-question
+    // turn writes no workouts; auto-finalizing an empty stub would flip it to
+    // status=complete, causing the next continuation turn to lose coldStartBuild
+    // mode and let the coach read/modify the wrong (existing active) plan.
     if (coldStartBuild) {
       const ids = new Set<string>(createdPlanIds);
       if (planId) ids.add(planId);
       for (const id of ids) {
         if (finalizedPlanIds.has(id)) continue;
+        const [wCnt] = await db.select({ n: count() }).from(workouts).where(eq(workouts.plan_id, id));
+        if ((wCnt?.n ?? 0) === 0) continue; // no workouts yet — still in clarifying-question phase
         try {
           await HANDLERS.finalize_plan({ plan_id: id }, { userId, planId, coldStartBuild: true });
           finalizedPlanIds.add(id);
+          // Notify client that the plan is fully built so it can show the CTA.
+          // (Explicit finalize_plan tool calls already trigger a tool-use event;
+          // this covers the auto-finalize path where the coach didn't call it explicitly.)
+          yield { type: "plan-finalized", plan_id: id };
         } catch (err) {
           console.error("auto-finalize failed", id, err);
         }
@@ -583,13 +591,15 @@ export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
     yield { type: "error", error: message };
   } finally {
     // Safety net: finalize any plan not yet finalized if the loop threw before
-    // reaching the eager finalize above.
+    // reaching the eager finalize above. Same workout-count guard applies.
     if (coldStartBuild) {
       const ids = new Set<string>(createdPlanIds);
       if (planId) ids.add(planId);
       for (const id of ids) {
         if (finalizedPlanIds.has(id)) continue;
         try {
+          const [wCnt] = await db.select({ n: count() }).from(workouts).where(eq(workouts.plan_id, id));
+          if ((wCnt?.n ?? 0) === 0) continue;
           await HANDLERS.finalize_plan({ plan_id: id }, { userId, planId, coldStartBuild: true });
         } catch (err) {
           console.error("auto-finalize failed", id, err);

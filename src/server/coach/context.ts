@@ -26,6 +26,7 @@ export function renderContextPrefix(params: {
   planFile?: PlanFileSummary | null;
   stravaPreload?: StravaPreload | null;
   coldStartBuild?: boolean;
+  coldStartPlanId?: string | null;
 }): string {
   const lines: string[] = [];
   lines.push(`<context>`);
@@ -68,6 +69,10 @@ export function renderContextPrefix(params: {
   if (params.coldStartBuild) {
     lines.push(``);
     lines.push(`Cold-start plan build: true`);
+    if (params.coldStartPlanId) {
+      lines.push(`Plan ID for this build: ${params.coldStartPlanId}`);
+      lines.push(`Use this ID for update_workouts, update_plan_notes, and finalize_plan.`);
+    }
   }
   if (params.stravaPreload) {
     lines.push(``);

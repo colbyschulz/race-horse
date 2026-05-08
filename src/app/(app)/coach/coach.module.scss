@@ -20,3 +20,9 @@
   gap: var(--space-3);
   padding-bottom: var(--space-4);
 }
+
+.viewPlanCta {
+  display: flex;
+  justify-content: center;
+  padding: var(--space-2) 0;
+}

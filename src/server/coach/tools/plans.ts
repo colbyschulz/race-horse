@@ -197,11 +197,20 @@ export const archivePlanTool: Tool = {
 export const finalizePlanTool: Tool = {
   name: "finalize_plan",
   description:
-    "Marks a plan as fully generated (moves it from 'GENERATING' to ready). Cold-start plans are auto-finalized when the turn ends — calling this explicitly is optional, useful only when you want the plan visible mid-stream.",
+    "Marks a plan as fully generated (moves it from 'GENERATING' to ready). Also corrects plan metadata if the stub values need updating — pass end_date with the actual last race/workout date, and title if you want to refine the stub title. Cold-start plans are auto-finalized at the end of the turn once workouts have been written — calling this explicitly lets you set the correct end_date and is strongly preferred.",
   input_schema: {
     type: "object" as const,
     properties: {
       plan_id: { type: "string", description: "The UUID of the plan to mark complete." },
+      end_date: {
+        type: "string",
+        description:
+          "Correct end date in YYYY-MM-DD format. Required when the actual plan end differs from the stub (e.g. a race series where the form's race_date is the first race but the plan runs through the last race).",
+      },
+      title: {
+        type: "string",
+        description: "Refined plan title, if the stub title needs updating.",
+      },
     },
     required: ["plan_id"],
   },
@@ -211,9 +220,27 @@ export const finalizePlanTool: Tool = {
 // Handlers
 // ---------------------------------------------------------------------------
 
+function mapWorkout(w: typeof workouts.$inferSelect) {
+  const m = w.distance_meters != null ? parseFloat(w.distance_meters) : null;
+  return {
+    id: w.id,
+    date: w.date,
+    type: w.type,
+    distance_mi: m != null ? Math.round((m / 1609.344) * 10) / 10 : null,
+    distance_km: m != null ? Math.round((m / 1000) * 10) / 10 : null,
+    duration_minutes: w.duration_seconds != null ? Math.round(w.duration_seconds / 60) : null,
+    notes: w.notes,
+    secondary: w.secondary,
+  };
+}
+
 export const get_active_plan_handler: ToolHandler<
   Record<string, never>,
-  { plan: typeof plans.$inferSelect | null; workouts: (typeof workouts.$inferSelect)[] }
+  {
+    plan: typeof plans.$inferSelect | null;
+    workouts: ReturnType<typeof mapWorkout>[];
+    weekly_totals: { week_start: string; total_mi: number; total_km: number }[];
+  }
 > = async (_input, { userId }) => {
   const activePlans = await db
     .select()
@@ -223,12 +250,30 @@ export const get_active_plan_handler: ToolHandler<
 
   const plan = activePlans[0] ?? null;
   if (!plan) {
-    return { plan: null, workouts: [] };
+    return { plan: null, workouts: [], weekly_totals: [] };
   }
 
-  const planWorkouts = await db.select().from(workouts).where(eq(workouts.plan_id, plan.id));
+  const planWorkouts = await db.select().from(workouts).where(eq(workouts.plan_id, plan.id)).orderBy(workouts.date);
 
-  return { plan, workouts: planWorkouts };
+  const weekTotals: Record<string, number> = {};
+  for (const w of planWorkouts) {
+    const meters = w.distance_meters != null ? parseFloat(w.distance_meters) : 0;
+    const d = new Date(`${w.date}T12:00:00`);
+    const daysToMon = (d.getDay() + 6) % 7;
+    const mon = new Date(d);
+    mon.setDate(d.getDate() - daysToMon);
+    const key = mon.toISOString().slice(0, 10);
+    weekTotals[key] = (weekTotals[key] ?? 0) + meters;
+  }
+  const weekly_totals = Object.entries(weekTotals)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([week_start, meters]) => ({
+      week_start,
+      total_mi: Math.round((meters / 1609.344) * 10) / 10,
+      total_km: Math.round((meters / 1000) * 10) / 10,
+    }));
+
+  return { plan, workouts: planWorkouts.map(mapWorkout), weekly_totals };
 };
 
 export const list_plans_handler: ToolHandler<
@@ -247,12 +292,12 @@ export const get_plan_handler: ToolHandler<
       id: string;
       date: string;
       type: string;
-      distance_meters: string | null;
-      duration_seconds: number | null;
+      distance_mi: number | null;
+      distance_km: number | null;
+      duration_minutes: number | null;
       notes: string;
-      target_intensity: unknown;
-      intervals: unknown;
     }[];
+    weekly_totals: { week_start: string; total_mi: number; total_km: number }[];
   }
 > = async ({ plan_id }, { userId }) => {
   const plan = await getPlanById(plan_id, userId);
@@ -268,14 +313,46 @@ export const get_plan_handler: ToolHandler<
       distance_meters: workouts.distance_meters,
       duration_seconds: workouts.duration_seconds,
       notes: workouts.notes,
-      target_intensity: workouts.target_intensity,
-      intervals: workouts.intervals,
     })
     .from(workouts)
     .where(eq(workouts.plan_id, plan_id))
     .orderBy(workouts.date);
 
-  return { plan, workouts: planWorkouts };
+  // Pre-compute distances in both units so the coach never has to do the conversion
+  const mapped = planWorkouts.map((w) => {
+    const m = w.distance_meters != null ? parseFloat(w.distance_meters) : null;
+    return {
+      id: w.id,
+      date: w.date,
+      type: w.type,
+      distance_mi: m != null ? Math.round((m / 1609.344) * 10) / 10 : null,
+      distance_km: m != null ? Math.round((m / 1000) * 10) / 10 : null,
+      duration_minutes: w.duration_seconds != null ? Math.round(w.duration_seconds / 60) : null,
+      notes: w.notes,
+    };
+  });
+
+  // Compute weekly totals (week = Mon–Sun, keyed by the Monday date)
+  const weekTotals: Record<string, number> = {};
+  for (const w of planWorkouts) {
+    const meters = w.distance_meters != null ? parseFloat(w.distance_meters) : 0;
+    const d = new Date(`${w.date}T12:00:00`);
+    const day = d.getDay(); // 0=Sun…6=Sat
+    const daysToMon = (day + 6) % 7;
+    const mon = new Date(d);
+    mon.setDate(d.getDate() - daysToMon);
+    const key = mon.toISOString().slice(0, 10);
+    weekTotals[key] = (weekTotals[key] ?? 0) + meters;
+  }
+  const weekly_totals = Object.entries(weekTotals)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([week_start, meters]) => ({
+      week_start,
+      total_mi: Math.round((meters / 1609.344) * 10) / 10,
+      total_km: Math.round((meters / 1000) * 10) / 10,
+    }));
+
+  return { plan, workouts: mapped, weekly_totals };
 };
 
 export const create_plan_handler: ToolHandler<
@@ -336,6 +413,8 @@ type DeleteOp = {
 
 type WorkoutOperation = UpsertOp | DeleteOp;
 
+const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
+
 export const update_workouts_handler: ToolHandler<
   {
     plan_id: string;
@@ -343,7 +422,13 @@ export const update_workouts_handler: ToolHandler<
     week_number?: number;
     total_weeks?: number;
   },
-  { upserted: number; deleted: number; week_number?: number; total_weeks?: number }
+  {
+    upserted: number;
+    deleted: number;
+    week_number?: number;
+    total_weeks?: number;
+    days: { date: string; day: string; type: string }[];
+  }
 > = async ({ plan_id, operations, week_number, total_weeks }, { userId }) => {
   const plan = await getPlanById(plan_id, userId);
   if (!plan || plan.userId !== userId) {
@@ -352,6 +437,7 @@ export const update_workouts_handler: ToolHandler<
 
   let upserted = 0;
   let deleted = 0;
+  const days: { date: string; day: string; type: string }[] = [];
 
   for (const op of operations) {
     if (op.op === "delete") {
@@ -387,10 +473,14 @@ export const update_workouts_handler: ToolHandler<
         secondary,
       });
       upserted++;
+
+      // Include day name so the coach can verify date→day mapping after each call
+      const dayName = DAY_NAMES[new Date(`${op.date}T12:00:00`).getDay()];
+      days.push({ date: op.date, day: dayName, type: op.workout.type });
     }
   }
 
-  return { upserted, deleted, week_number, total_weeks };
+  return { upserted, deleted, week_number, total_weeks, days };
 };
 
 export const set_active_plan_handler: ToolHandler<{ plan_id: string }, { ok: true }> = async (
@@ -417,17 +507,22 @@ export const archive_plan_handler: ToolHandler<{ plan_id: string }, { ok: true }
   return { ok: true };
 };
 
-export const finalize_plan_handler: ToolHandler<{ plan_id: string }, { ok: true }> = async (
-  { plan_id },
-  { userId }
-) => {
+export const finalize_plan_handler: ToolHandler<
+  { plan_id: string; end_date?: string; title?: string },
+  { ok: true }
+> = async ({ plan_id, end_date, title }, { userId }) => {
   const plan = await getPlanById(plan_id, userId);
   if (!plan || plan.userId !== userId) {
     throw new Error("plan not found or not owned");
   }
   await db
     .update(plans)
-    .set({ generation_status: "complete", updated_at: new Date() })
+    .set({
+      generation_status: "complete",
+      updated_at: new Date(),
+      ...(end_date ? { end_date } : {}),
+      ...(title ? { title } : {}),
+    })
     .where(and(eq(plans.id, plan_id), eq(plans.userId, userId)));
   return { ok: true };
 };

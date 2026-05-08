@@ -40,6 +40,7 @@ export type SSEEvent =
   | { type: "tool-use"; name: ToolName; input: unknown }
   | { type: "tool-result"; name: ToolName; result_summary: string }
   | { type: "plan-created"; plan_id: string }
+  | { type: "plan-finalized"; plan_id: string }
   | { type: "done"; message_id: string }
   | { type: "error"; error: string };
 
