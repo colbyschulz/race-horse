@@ -156,6 +156,39 @@ describe("get_active_plan_handler", () => {
     expect(result.plan).toEqual(plan);
     expect(result.workouts).toEqual(workoutRows);
   });
+
+  it("includes secondary (doubles) distance in weekly_totals", async () => {
+    const plan = makePlan();
+    const workoutRow = {
+      id: "w1",
+      plan_id: PLAN_ID,
+      date: "2026-06-03",
+      type: "easy",
+      distance_meters: "8000",
+      duration_seconds: null,
+      notes: "",
+      secondary: { type: "easy", distance_km: 3 },
+    };
+
+    const plansChain = {
+      from: vi.fn().mockReturnThis(),
+      where: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockResolvedValue([plan]),
+    };
+    const workoutsChain = {
+      from: vi.fn().mockReturnThis(),
+      where: vi.fn().mockReturnThis(),
+      orderBy: vi.fn().mockResolvedValue([workoutRow]),
+    };
+    mockSelect.mockReturnValueOnce(plansChain).mockReturnValueOnce(workoutsChain);
+
+    const result = await get_active_plan_handler({} as never, ctx);
+
+    // 8km primary + 3km secondary = 11km, not just the primary's 8km.
+    expect(result.weekly_totals).toEqual([
+      { week_start: "2026-06-01", total_mi: 6.8, total_km: 11 },
+    ]);
+  });
 });
 
 describe("list_plans_handler", () => {
@@ -197,6 +230,36 @@ describe("get_plan_handler", () => {
     expect(getPlanById).toHaveBeenCalledWith(PLAN_ID, USER_ID);
     expect(result.plan).toEqual(plan);
     expect(result.workouts).toEqual(workoutRows);
+  });
+
+  it("includes secondary (doubles) distance in weekly_totals", async () => {
+    const plan = makePlan();
+    const workoutRow = {
+      id: "w1",
+      plan_id: PLAN_ID,
+      date: "2026-06-03",
+      type: "easy",
+      distance_meters: "8000",
+      duration_seconds: null,
+      notes: "",
+      secondary: { type: "easy", distance_km: 3 },
+    };
+
+    vi.mocked(getPlanById).mockResolvedValue(plan as never);
+
+    const workoutsChain = {
+      from: vi.fn().mockReturnThis(),
+      where: vi.fn().mockReturnThis(),
+      orderBy: vi.fn().mockResolvedValue([workoutRow]),
+    };
+    mockSelect.mockReturnValue(workoutsChain);
+
+    const result = await get_plan_handler({ plan_id: PLAN_ID }, ctx);
+
+    // 8km primary + 3km secondary = 11km, not just the primary's 8km.
+    expect(result.weekly_totals).toEqual([
+      { week_start: "2026-06-01", total_mi: 6.8, total_km: 11 },
+    ]);
   });
 
   it("throws when plan not found", async () => {

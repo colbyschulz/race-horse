@@ -246,6 +246,29 @@ function mapWorkout(w: typeof workouts.$inferSelect) {
   };
 }
 
+function computeWeeklyTotals(
+  rows: Pick<typeof workouts.$inferSelect, "date" | "distance_meters" | "secondary">[]
+): { week_start: string; total_mi: number; total_km: number }[] {
+  const weekTotals: Record<string, number> = {};
+  for (const w of rows) {
+    let meters = w.distance_meters != null ? parseFloat(w.distance_meters) : 0;
+    if (w.secondary?.distance_km != null) meters += w.secondary.distance_km * 1000;
+    const d = new Date(`${w.date}T12:00:00`);
+    const daysToMon = (d.getDay() + 6) % 7;
+    const mon = new Date(d);
+    mon.setDate(d.getDate() - daysToMon);
+    const key = mon.toISOString().slice(0, 10);
+    weekTotals[key] = (weekTotals[key] ?? 0) + meters;
+  }
+  return Object.entries(weekTotals)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([week_start, meters]) => ({
+      week_start,
+      total_mi: Math.round((meters / 1609.344) * 10) / 10,
+      total_km: Math.round((meters / 1000) * 10) / 10,
+    }));
+}
+
 export const get_active_plan_handler: ToolHandler<
   Record<string, never>,
   {
@@ -267,25 +290,11 @@ export const get_active_plan_handler: ToolHandler<
 
   const planWorkouts = await db.select().from(workouts).where(eq(workouts.plan_id, plan.id)).orderBy(workouts.date);
 
-  const weekTotals: Record<string, number> = {};
-  for (const w of planWorkouts) {
-    const meters = w.distance_meters != null ? parseFloat(w.distance_meters) : 0;
-    const d = new Date(`${w.date}T12:00:00`);
-    const daysToMon = (d.getDay() + 6) % 7;
-    const mon = new Date(d);
-    mon.setDate(d.getDate() - daysToMon);
-    const key = mon.toISOString().slice(0, 10);
-    weekTotals[key] = (weekTotals[key] ?? 0) + meters;
-  }
-  const weekly_totals = Object.entries(weekTotals)
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([week_start, meters]) => ({
-      week_start,
-      total_mi: Math.round((meters / 1609.344) * 10) / 10,
-      total_km: Math.round((meters / 1000) * 10) / 10,
-    }));
-
-  return { plan, workouts: planWorkouts.map(mapWorkout), weekly_totals };
+  return {
+    plan,
+    workouts: planWorkouts.map(mapWorkout),
+    weekly_totals: computeWeeklyTotals(planWorkouts),
+  };
 };
 
 export const list_plans_handler: ToolHandler<
@@ -300,15 +309,7 @@ export const get_plan_handler: ToolHandler<
   { plan_id: string },
   {
     plan: typeof plans.$inferSelect;
-    workouts: {
-      id: string;
-      date: string;
-      type: string;
-      distance_mi: number | null;
-      distance_km: number | null;
-      duration_minutes: number | null;
-      notes: string;
-    }[];
+    workouts: ReturnType<typeof mapWorkout>[];
     weekly_totals: { week_start: string; total_mi: number; total_km: number }[];
   }
 > = async ({ plan_id }, { userId }) => {
@@ -318,53 +319,16 @@ export const get_plan_handler: ToolHandler<
   }
 
   const planWorkouts = await db
-    .select({
-      id: workouts.id,
-      date: workouts.date,
-      type: workouts.type,
-      distance_meters: workouts.distance_meters,
-      duration_seconds: workouts.duration_seconds,
-      notes: workouts.notes,
-    })
+    .select()
     .from(workouts)
     .where(eq(workouts.plan_id, plan_id))
     .orderBy(workouts.date);
 
-  // Pre-compute distances in both units so the coach never has to do the conversion
-  const mapped = planWorkouts.map((w) => {
-    const m = w.distance_meters != null ? parseFloat(w.distance_meters) : null;
-    return {
-      id: w.id,
-      date: w.date,
-      type: w.type,
-      distance_mi: m != null ? Math.round((m / 1609.344) * 10) / 10 : null,
-      distance_km: m != null ? Math.round((m / 1000) * 10) / 10 : null,
-      duration_minutes: w.duration_seconds != null ? Math.round(w.duration_seconds / 60) : null,
-      notes: w.notes,
-    };
-  });
-
-  // Compute weekly totals (week = Mon–Sun, keyed by the Monday date)
-  const weekTotals: Record<string, number> = {};
-  for (const w of planWorkouts) {
-    const meters = w.distance_meters != null ? parseFloat(w.distance_meters) : 0;
-    const d = new Date(`${w.date}T12:00:00`);
-    const day = d.getDay(); // 0=Sun…6=Sat
-    const daysToMon = (day + 6) % 7;
-    const mon = new Date(d);
-    mon.setDate(d.getDate() - daysToMon);
-    const key = mon.toISOString().slice(0, 10);
-    weekTotals[key] = (weekTotals[key] ?? 0) + meters;
-  }
-  const weekly_totals = Object.entries(weekTotals)
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([week_start, meters]) => ({
-      week_start,
-      total_mi: Math.round((meters / 1609.344) * 10) / 10,
-      total_km: Math.round((meters / 1000) * 10) / 10,
-    }));
-
-  return { plan, workouts: mapped, weekly_totals };
+  return {
+    plan,
+    workouts: planWorkouts.map(mapWorkout),
+    weekly_totals: computeWeeklyTotals(planWorkouts),
+  };
 };
 
 export const create_plan_handler: ToolHandler<
