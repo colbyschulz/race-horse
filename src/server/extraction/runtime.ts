@@ -17,7 +17,7 @@ Conventions:
 - Workout types: easy, long, tempo, threshold, intervals, recovery, race, rest, cross.
 - target_intensity may include any of: pace (min/max seconds_per_km), power (min/max watts), hr (min/max bpm or {zone}), rpe (1-10).
 - If this isn't a training plan, set is_training_plan: false and leave the rest as empty defaults: title="", sport="run", mode="indefinite", goal=null, tentative_start_date=null, workouts=[].
-- Doubles (two-a-days): if a day has two distinct sessions (e.g. "AM: 8mi easy. PM: 3mi shakeout"), use the primary workout for the main session and populate \`secondary\` for the second. Set \`secondary.distance_meters\` and/or \`secondary.duration_seconds\` and put any description in \`secondary.notes\`. If the day has only one session, set \`secondary: null\`.
+- Doubles (two-a-days): if a day has two distinct sessions (e.g. "AM: 8mi easy. PM: 3mi shakeout"), use the primary workout for the main session and populate \`secondary\` for the second. The primary workout's \`distance_meters\`/\`duration_seconds\` must be ONLY that first session's own numbers (8mi in the example) — never the combined day total (11mi) — since the UI sums primary + secondary for the displayed total automatically. Set \`secondary.distance_meters\` and/or \`secondary.duration_seconds\` to the second session's own numbers only, and put any description in \`secondary.notes\`. If the day has only one session, set \`secondary: null\`.
 
 Interval workout notes (CRITICAL — include every element the plan states):
 When type is "intervals", the \`notes\` field must be a complete, human-readable prescription. Include all of the following that the source plan provides:

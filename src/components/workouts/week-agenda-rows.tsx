@@ -47,7 +47,10 @@ export function WeekAgendaRows({
   let bikeCompletedMeters = 0;
   for (const d of days) {
     const w = byDate.get(d);
-    if (w) totalMeters += w.distance_meters == null ? 0 : Number(w.distance_meters);
+    if (w) {
+      totalMeters += w.distance_meters == null ? 0 : Number(w.distance_meters);
+      if (w.secondary?.distance_km != null) totalMeters += w.secondary.distance_km * 1000;
+    }
     for (const act of activitiesByDate?.get(d) ?? []) {
       const m = act.distance_meters == null ? 0 : Number(act.distance_meters);
       if (isBike(act.type)) bikeCompletedMeters += m;

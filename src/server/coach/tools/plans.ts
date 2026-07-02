@@ -130,7 +130,11 @@ export const updateWorkoutsTool: Tool = {
                       enum: ["easy", "long", "tempo", "threshold", "intervals", "recovery", "race", "rest", "cross"],
                       description: "Workout type. Use 'cross' for cross-training (cycling, swimming, etc.) within a run or bike plan — never remove a cross-training day just because it differs from the plan sport.",
                     },
-                    distance_km: { type: "number" },
+                    distance_km: {
+                      type: "number",
+                      description:
+                        "Distance for THIS session only. On a doubles day, this is the primary session alone — never the combined day total (that gets summed automatically for display).",
+                    },
                     duration_minutes: { type: "number" },
                     notes: { type: "string" },
                   },
@@ -145,7 +149,10 @@ export const updateWorkoutsTool: Tool = {
                       type: "string",
                       enum: ["easy", "long", "tempo", "threshold", "intervals", "recovery", "race", "rest", "cross"],
                     },
-                    distance_km: { type: "number" },
+                    distance_km: {
+                      type: "number",
+                      description: "Distance for this second session only — not the combined day total.",
+                    },
                     duration_minutes: { type: "number" },
                     notes: { type: "string" },
                   },
