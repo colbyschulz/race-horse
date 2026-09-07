@@ -72,12 +72,14 @@ describe("listRecentActivities", () => {
       {
         id: "a1",
         start_date: new Date("2026-04-20T10:00:00Z"),
+        name: "Tempo Tuesday",
         type: "Run",
         distance_meters: "10000",
         moving_time_seconds: 3600,
         avg_hr: "145",
         avg_pace_seconds_per_km: "360",
         avg_power_watts: null,
+        matched_workout_id: null,
       },
     ];
     fromChain.orderBy.mockResolvedValueOnce(dbRows);
@@ -88,12 +90,14 @@ describe("listRecentActivities", () => {
     expect(result[0]).toEqual({
       id: "a1",
       start_date: new Date("2026-04-20T10:00:00Z"),
+      name: "Tempo Tuesday",
       type: "Run",
       distance_meters: 10000,
       moving_time_seconds: 3600,
       avg_hr: 145,
       avg_pace_seconds_per_km: 360,
       avg_power_watts: null,
+      matched_workout_id: null,
     });
     expect(fromChain.where).toHaveBeenCalled();
     expect(fromChain.orderBy).toHaveBeenCalled();

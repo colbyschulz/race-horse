@@ -27,9 +27,7 @@ interface Props {
   intent?: string;
 }
 
-type StreamItem =
-  | { kind: "text"; text: string }
-  | { kind: "tool"; name: string; summary?: string };
+type StreamItem = { kind: "text"; text: string } | { kind: "tool"; name: string; summary?: string };
 
 type StreamingState = {
   items: StreamItem[];
@@ -208,6 +206,7 @@ export function CoachPageClient({
         body: JSON.stringify({
           message: text,
           from_route: fromRoute,
+          from_label: fromLabel,
           plan_file_id: planFileId ?? undefined,
           plan_id: planId ?? null,
         }),
@@ -258,7 +257,9 @@ export function CoachPageClient({
             const data = (await r.json()) as { plan: unknown };
             queryClient.setQueryData(["plans", receivedPlanIdRef.current], data.plan);
           }
-        } catch { /* best-effort */ }
+        } catch {
+          /* best-effort */
+        }
       }
 
       // All caches are warm — safe to update the URL now. The remounted component
@@ -271,7 +272,11 @@ export function CoachPageClient({
           sessionStorage.setItem("justBuiltPlanId", receivedPlanIdRef.current);
           planFinalizedRef.current = false;
         }
-        window.history.replaceState(null, "", `/coach?plan_id=${encodeURIComponent(receivedPlanIdRef.current)}`);
+        window.history.replaceState(
+          null,
+          "",
+          `/coach?plan_id=${encodeURIComponent(receivedPlanIdRef.current)}`
+        );
         receivedPlanIdRef.current = null;
       }
       setBuildState(null);

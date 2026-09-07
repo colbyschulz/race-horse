@@ -13,10 +13,11 @@ vi.mock("@/server/plans/queries", () => ({
 }));
 
 // Use vi.hoisted so variables are available at mock-factory evaluation time
-const { mockSelect, mockInsert, mockDelete } = vi.hoisted(() => ({
+const { mockSelect, mockInsert, mockDelete, mockUpdate } = vi.hoisted(() => ({
   mockSelect: vi.fn(),
   mockInsert: vi.fn(),
   mockDelete: vi.fn(),
+  mockUpdate: vi.fn(),
 }));
 
 vi.mock("@/server/db", () => ({
@@ -24,8 +25,9 @@ vi.mock("@/server/db", () => ({
     select: mockSelect,
     insert: mockInsert,
     delete: mockDelete,
+    update: mockUpdate,
     transaction: <T>(cb: (tx: unknown) => Promise<T>) =>
-      cb({ select: mockSelect, insert: mockInsert, delete: mockDelete }),
+      cb({ select: mockSelect, insert: mockInsert, delete: mockDelete, update: mockUpdate }),
   },
 }));
 
@@ -130,13 +132,15 @@ describe("get_active_plan_handler", () => {
     };
     mockSelect.mockReturnValue(selectChain);
 
-    const result = await get_active_plan_handler({} as never, ctx);
-    expect(result).toEqual({ plan: null, workouts: [] });
+    const result = await get_active_plan_handler({}, ctx);
+    expect(result).toEqual({ plan: null, workouts: [], weekly_totals: [] });
   });
 
-  it("returns plan and workouts when active plan exists", async () => {
+  it("returns plan and workouts (with day-of-week) when active plan exists", async () => {
     const plan = makePlan();
-    const workoutRows = [{ id: "w1", plan_id: PLAN_ID, date: "2026-01-01" }];
+    const workoutRows = [
+      { id: "w1", plan_id: PLAN_ID, date: "2026-01-01", type: "easy", distance_meters: "8000" },
+    ];
 
     // First call: select plans
     const plansChain = {
@@ -144,17 +148,22 @@ describe("get_active_plan_handler", () => {
       where: vi.fn().mockReturnThis(),
       limit: vi.fn().mockResolvedValue([plan]),
     };
-    // Second call: select workouts (no .limit)
+    // Second call: select workouts (ordered)
     const workoutsChain = {
       from: vi.fn().mockReturnThis(),
-      where: vi.fn().mockResolvedValue(workoutRows),
+      where: vi.fn().mockReturnThis(),
+      orderBy: vi.fn().mockResolvedValue(workoutRows),
     };
 
     mockSelect.mockReturnValueOnce(plansChain).mockReturnValueOnce(workoutsChain);
 
-    const result = await get_active_plan_handler({} as never, ctx);
+    const result = await get_active_plan_handler({}, ctx);
     expect(result.plan).toEqual(plan);
-    expect(result.workouts).toEqual(workoutRows);
+    expect(result.workouts).toHaveLength(1);
+    // 2026-01-01 is a Thursday — the coach verifies day placement from this.
+    expect(result.workouts[0]).toMatchObject({ id: "w1", date: "2026-01-01", day: "Thu" });
+    // No `today` in ctx → whole plan.
+    expect(result.window?.note).toBe("All workouts returned.");
   });
 
   it("includes secondary (doubles) distance in weekly_totals", async () => {
@@ -214,7 +223,7 @@ describe("get_plan_handler", () => {
 
   it("returns plan and workouts when plan belongs to user", async () => {
     const plan = makePlan();
-    const workoutRows = [{ id: "w1", plan_id: PLAN_ID }];
+    const workoutRows = [{ id: "w1", plan_id: PLAN_ID, date: "2026-01-01", type: "easy" }];
 
     vi.mocked(getPlanById).mockResolvedValue(plan as never);
 
@@ -229,7 +238,56 @@ describe("get_plan_handler", () => {
 
     expect(getPlanById).toHaveBeenCalledWith(PLAN_ID, USER_ID);
     expect(result.plan).toEqual(plan);
-    expect(result.workouts).toEqual(workoutRows);
+    expect(result.workouts).toHaveLength(1);
+    expect(result.workouts[0]).toMatchObject({ id: "w1", date: "2026-01-01", day: "Thu" });
+  });
+
+  it("defaults to a window around today but keeps whole-plan weekly totals", async () => {
+    const plan = makePlan();
+    const workoutRows = [
+      { id: "w1", plan_id: PLAN_ID, date: "2026-01-05", type: "easy", distance_meters: "10000" },
+      { id: "w2", plan_id: PLAN_ID, date: "2026-03-05", type: "long", distance_meters: "20000" },
+    ];
+    vi.mocked(getPlanById).mockResolvedValue(plan as never);
+    mockSelect.mockReturnValue({
+      from: vi.fn().mockReturnThis(),
+      where: vi.fn().mockReturnThis(),
+      orderBy: vi.fn().mockResolvedValue(workoutRows),
+    });
+
+    const result = await get_plan_handler({ plan_id: PLAN_ID }, { ...ctx, today: "2026-03-01" });
+
+    // Default window: 14 days back through 28 days ahead of today.
+    expect(result.window).toMatchObject({
+      from: "2026-02-15",
+      to: "2026-03-29",
+      workouts_in_window: 1,
+      total_workouts: 2,
+    });
+    expect(result.workouts.map((w) => w.id)).toEqual(["w2"]);
+    // Weekly totals still span the whole plan.
+    expect(result.weekly_totals.map((w) => w.week_start)).toEqual(["2026-01-05", "2026-03-02"]);
+  });
+
+  it("honours an explicit from/to window", async () => {
+    const plan = makePlan();
+    const workoutRows = [
+      { id: "w1", plan_id: PLAN_ID, date: "2026-01-05", type: "easy", distance_meters: "10000" },
+      { id: "w2", plan_id: PLAN_ID, date: "2026-03-05", type: "long", distance_meters: "20000" },
+    ];
+    vi.mocked(getPlanById).mockResolvedValue(plan as never);
+    mockSelect.mockReturnValue({
+      from: vi.fn().mockReturnThis(),
+      where: vi.fn().mockReturnThis(),
+      orderBy: vi.fn().mockResolvedValue(workoutRows),
+    });
+
+    const result = await get_plan_handler(
+      { plan_id: PLAN_ID, from: "2026-01-01", to: "2026-01-31" },
+      { ...ctx, today: "2026-03-01" }
+    );
+    expect(result.workouts.map((w) => w.id)).toEqual(["w1"]);
+    expect(result.window).toMatchObject({ from: "2026-01-01", to: "2026-01-31" });
   });
 
   it("includes secondary (doubles) distance in weekly_totals", async () => {
@@ -335,20 +393,28 @@ describe("update_workouts_handler", () => {
     ).rejects.toThrow("plan not found or not owned");
   });
 
-  it("processes upsert operations (delete + insert)", async () => {
-    const plan = makePlan();
-    vi.mocked(getPlanById).mockResolvedValue(plan as never);
-
-    const deleteWhere = vi.fn().mockResolvedValue(undefined);
-    const deleteFrom = vi.fn().mockReturnValue({ where: deleteWhere });
-    mockDelete.mockReturnValue({ where: deleteWhere });
-
+  /** Wires select (existing-row lookup), delete, insert, update mocks for one op. */
+  function wireWriteMocks(existingRows: unknown[]) {
+    mockSelect.mockReturnValue({
+      from: vi.fn().mockReturnThis(),
+      where: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockResolvedValue(existingRows),
+    });
+    mockDelete.mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) });
     const insertValues = vi.fn().mockReturnValue({
       returning: vi.fn().mockResolvedValue([]),
-      // also make it thenable for plain insert
       then: (resolve: (v: unknown) => unknown) => Promise.resolve(undefined).then(resolve),
     });
     mockInsert.mockReturnValue({ values: insertValues });
+    const updateSet = vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) });
+    mockUpdate.mockReturnValue({ set: updateSet });
+    return { insertValues, updateSet };
+  }
+
+  it("processes upsert operations (delete + insert) and echoes the day-of-week", async () => {
+    const plan = makePlan();
+    vi.mocked(getPlanById).mockResolvedValue(plan as never);
+    wireWriteMocks([]);
 
     const result = await update_workouts_handler(
       {
@@ -366,7 +432,122 @@ describe("update_workouts_handler", () => {
 
     expect(mockDelete).toHaveBeenCalled();
     expect(mockInsert).toHaveBeenCalled();
-    expect(result).toEqual({ upserted: 1, deleted: 0, week_number: undefined, total_weeks: undefined });
+    // 2026-03-01 is a Sunday.
+    expect(result).toEqual({
+      upserted: 1,
+      deleted: 0,
+      week_number: undefined,
+      total_weeks: undefined,
+      days: [{ date: "2026-03-01", day: "Sun", type: "easy", secondary: null }],
+    });
+  });
+
+  it("keeps an existing second session when the upsert omits `secondary`", async () => {
+    const plan = makePlan();
+    vi.mocked(getPlanById).mockResolvedValue(plan as never);
+    const existingSecondary = { type: "easy", distance_km: 5, notes: "PM shakeout" };
+    const { insertValues } = wireWriteMocks([
+      {
+        id: "w1",
+        plan_id: PLAN_ID,
+        date: "2026-03-01",
+        type: "intervals",
+        secondary: existingSecondary,
+      },
+    ]);
+
+    const result = await update_workouts_handler(
+      {
+        plan_id: PLAN_ID,
+        operations: [
+          { op: "upsert", date: "2026-03-01", workout: { type: "tempo", distance_km: 12 } },
+        ],
+      },
+      ctx
+    );
+
+    expect(insertValues).toHaveBeenCalledWith(
+      expect.objectContaining({ type: "tempo", secondary: existingSecondary })
+    );
+    expect(result.days[0]).toMatchObject({ type: "tempo", secondary: "easy" });
+  });
+
+  it("removes the second session when the upsert passes `secondary: null`", async () => {
+    const plan = makePlan();
+    vi.mocked(getPlanById).mockResolvedValue(plan as never);
+    const { insertValues } = wireWriteMocks([
+      {
+        id: "w1",
+        plan_id: PLAN_ID,
+        date: "2026-03-01",
+        type: "intervals",
+        secondary: { type: "easy", distance_km: 5 },
+      },
+    ]);
+
+    await update_workouts_handler(
+      {
+        plan_id: PLAN_ID,
+        operations: [
+          { op: "upsert", date: "2026-03-01", workout: { type: "tempo" }, secondary: null },
+        ],
+      },
+      ctx
+    );
+
+    expect(insertValues).toHaveBeenCalledWith(expect.objectContaining({ secondary: null }));
+  });
+
+  it("set_secondary updates only the second session in place", async () => {
+    const plan = makePlan();
+    vi.mocked(getPlanById).mockResolvedValue(plan as never);
+    const { updateSet } = wireWriteMocks([
+      { id: "w1", plan_id: PLAN_ID, date: "2026-03-01", type: "intervals", secondary: null },
+    ]);
+
+    const result = await update_workouts_handler(
+      {
+        plan_id: PLAN_ID,
+        operations: [
+          {
+            op: "set_secondary",
+            date: "2026-03-01",
+            secondary: { type: "recovery", distance_km: 4, notes: "PM easy" },
+          },
+        ],
+      },
+      ctx
+    );
+
+    expect(mockDelete).not.toHaveBeenCalled();
+    expect(mockInsert).not.toHaveBeenCalled();
+    expect(updateSet).toHaveBeenCalledWith({
+      secondary: {
+        type: "recovery",
+        distance_km: 4,
+        duration_minutes: undefined,
+        notes: "PM easy",
+      },
+    });
+    expect(result.days[0]).toMatchObject({ type: "intervals", secondary: "recovery" });
+  });
+
+  it("set_secondary on an empty day is skipped with a warning", async () => {
+    const plan = makePlan();
+    vi.mocked(getPlanById).mockResolvedValue(plan as never);
+    wireWriteMocks([]);
+
+    const result = await update_workouts_handler(
+      {
+        plan_id: PLAN_ID,
+        operations: [{ op: "set_secondary", date: "2026-03-01", secondary: { type: "easy" } }],
+      },
+      ctx
+    );
+
+    expect(mockUpdate).not.toHaveBeenCalled();
+    expect(result.upserted).toBe(0);
+    expect(result.warnings?.[0]).toMatch(/no primary workout/);
   });
 
   it("processes delete operations", async () => {
@@ -385,7 +566,13 @@ describe("update_workouts_handler", () => {
     );
 
     expect(mockDelete).toHaveBeenCalledTimes(1);
-    expect(result).toEqual({ upserted: 0, deleted: 1, week_number: undefined, total_weeks: undefined });
+    expect(result).toEqual({
+      upserted: 0,
+      deleted: 1,
+      week_number: undefined,
+      total_weeks: undefined,
+      days: [],
+    });
   });
 });
 

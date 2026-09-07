@@ -5,12 +5,14 @@ import { eq, and, gte, desc, sql } from "drizzle-orm";
 type ActivitySummary = {
   id: string;
   start_date: Date;
+  name: string;
   type: string;
   distance_meters: number | null;
   moving_time_seconds: number | null;
   avg_hr: number | null;
   avg_pace_seconds_per_km: number | null;
   avg_power_watts: number | null;
+  matched_workout_id: string | null;
 };
 
 type VolumeRollup = {
@@ -28,12 +30,14 @@ export async function listRecentActivities(
     .select({
       id: activities.id,
       start_date: activities.start_date,
+      name: activities.name,
       type: activities.type,
       distance_meters: activities.distance_meters,
       moving_time_seconds: activities.moving_time_seconds,
       avg_hr: activities.avg_hr,
       avg_pace_seconds_per_km: activities.avg_pace_seconds_per_km,
       avg_power_watts: activities.avg_power_watts,
+      matched_workout_id: activities.matched_workout_id,
     })
     .from(activities)
     .where(
@@ -47,6 +51,7 @@ export async function listRecentActivities(
   return rows.map((r) => ({
     id: r.id,
     start_date: r.start_date,
+    name: r.name,
     type: r.type,
     distance_meters: r.distance_meters != null ? Number(r.distance_meters) : null,
     moving_time_seconds: r.moving_time_seconds,
@@ -54,6 +59,7 @@ export async function listRecentActivities(
     avg_pace_seconds_per_km:
       r.avg_pace_seconds_per_km != null ? Number(r.avg_pace_seconds_per_km) : null,
     avg_power_watts: r.avg_power_watts != null ? Number(r.avg_power_watts) : null,
+    matched_workout_id: r.matched_workout_id ?? null,
   }));
 }
 

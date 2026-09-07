@@ -38,12 +38,14 @@ describe("fetchStravaPreload", () => {
       {
         id: "a1",
         start_date: new Date("2026-04-20"),
+        name: "Morning Run",
         type: "Run",
         distance_meters: 10000,
         moving_time_seconds: 3000,
         avg_hr: 150,
         avg_pace_seconds_per_km: 300,
         avg_power_watts: null,
+        matched_workout_id: null,
       },
     ]);
 

@@ -22,7 +22,7 @@ A personal training-plan tracker with an AI coach. Build and manage running and 
 | Database | Neon (serverless Postgres) |
 | ORM | Drizzle ORM |
 | Auth | NextAuth.js (OAuth via Strava) |
-| AI | Anthropic Claude (claude-opus-4-6) |
+| AI | Anthropic Claude (Sonnet 5 for chat, Opus 5 for plan builds and deep planning) |
 | Data fetching | TanStack Query (React Query) |
 | Deployment | Vercel (serverless) |
 

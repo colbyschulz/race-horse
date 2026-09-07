@@ -153,6 +153,26 @@
   line-height: 1.5;
   margin: 0;
 }
+.secondary {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border-subtle);
+}
+.secondaryHead {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.secondaryStatValue {
+  font-family: var(--font-display);
+  font-size: 1.125rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  color: var(--color-fg-primary);
+}
 .footer {
   display: flex;
   align-items: center;

@@ -52,6 +52,13 @@ export function WorkoutDetailSheet({ workout, planId = "", units, onClose }: Pro
   const coachHref = `/coach?from=${encodeURIComponent(`/plans/${planId}`)}&from_label=${encodeURIComponent(`${headline} — ${workout.date}`)}`;
   const paceText = t.pace ? formatPaceRange(t.pace, units) : null;
 
+  // Second session (doubles)
+  const secondary = workout.secondary ?? null;
+  const secDist =
+    secondary?.distance_km != null ? formatDistance(secondary.distance_km * 1000, units) : null;
+  const secDur =
+    secondary?.duration_minutes != null ? formatDuration(secondary.duration_minutes * 60) : null;
+
   return (
     <>
       <div data-testid="sheet-backdrop" className={styles.backdrop} onClick={onClose} />
@@ -122,6 +129,27 @@ export function WorkoutDetailSheet({ workout, planId = "", units, onClose }: Pro
         )}
 
         {workout.notes && <p className={styles.notes}>{workout.notes}</p>}
+
+        {secondary && (
+          <section className={styles.secondary} aria-label="Second session">
+            <div className={styles.secondaryHead}>
+              <span className={styles.h3}>Second session</span>
+              <WorkoutBadge type={secondary.type} size="sm" />
+            </div>
+            <div className={styles.statRow}>
+              <div className={styles.stat}>
+                <span className={styles.secondaryStatValue}>{secDist ?? "—"}</span>
+                <span className={styles.statUnit}>{units}</span>
+              </div>
+              <div className={styles.statDivider} />
+              <div className={styles.stat}>
+                <span className={styles.secondaryStatValue}>{secDur ?? "—"}</span>
+                <span className={styles.statUnit}>time</span>
+              </div>
+            </div>
+            {secondary.notes && <p className={styles.notes}>{secondary.notes}</p>}
+          </section>
+        )}
 
         <div className={styles.footer}>
           {planId && (

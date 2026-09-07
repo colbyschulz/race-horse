@@ -45,6 +45,7 @@ export async function POST(req: Request): Promise<Response> {
       message: body.message,
       planId: body.plan_id ?? null,
       fromRoute: body.from_route,
+      fromLabel: typeof body.from_label === "string" ? body.from_label.slice(0, 200) : undefined,
       planFileId: body.plan_file_id,
       today,
     })

@@ -1,9 +1,10 @@
 import "server-only";
 
 import type { Anthropic } from "@anthropic-ai/sdk";
-import { eq, and } from "drizzle-orm";
+import { eq, and, gte, lte } from "drizzle-orm";
 import { db } from "@/server/db";
 import { plans, workouts } from "@/server/db/schema";
+import type { SecondaryWorkout } from "@/server/db/schema";
 import {
   listPlansWithCounts,
   getPlanById,
@@ -11,9 +12,31 @@ import {
   setActivePlan,
   archivePlan,
 } from "@/server/plans/queries";
+import { addDays } from "@/lib/dates";
 import type { ToolHandler } from "../types";
 
 type Tool = Anthropic.Messages.Tool;
+
+// Default read window when the caller doesn't pass from/to. Weekly totals for
+// the whole plan are always included, so the coach still sees the arc.
+export const PLAN_READ_LOOKBACK_DAYS = 14;
+export const PLAN_READ_LOOKAHEAD_DAYS = 28;
+
+const WORKOUT_TYPES = [
+  "easy",
+  "long",
+  "tempo",
+  "threshold",
+  "intervals",
+  "recovery",
+  "race",
+  "rest",
+  "cross",
+] as const;
+
+const WINDOW_DESCRIPTION =
+  `Optional YYYY-MM-DD bounds for the workouts returned. Omit both to get the default window (${PLAN_READ_LOOKBACK_DAYS} days back through ${PLAN_READ_LOOKAHEAD_DAYS} days ahead of today). ` +
+  `Weekly totals for the WHOLE plan are always returned regardless of the window, so widen the window only for the weeks you intend to read or edit.`;
 
 // ---------------------------------------------------------------------------
 // Tool definitions
@@ -21,10 +44,14 @@ type Tool = Anthropic.Messages.Tool;
 
 export const getActivePlanTool: Tool = {
   name: "get_active_plan",
-  description: "Returns the user's currently active training plan and its workouts.",
+  description:
+    "Returns the user's currently active training plan, its workouts inside a date window (each with its day-of-week), and weekly totals for the whole plan.",
   input_schema: {
     type: "object" as const,
-    properties: {},
+    properties: {
+      from: { type: "string", description: WINDOW_DESCRIPTION },
+      to: { type: "string", description: "See `from`." },
+    },
     required: [],
   },
 };
@@ -41,7 +68,8 @@ export const listPlansTool: Tool = {
 
 export const getPlanTool: Tool = {
   name: "get_plan",
-  description: "Returns a specific training plan and all its workouts by plan ID.",
+  description:
+    "Returns a specific training plan by ID, its workouts inside a date window (each with its day-of-week), and weekly totals for the whole plan. Pass from/to to read exactly the weeks you need — reading the whole plan is expensive and rarely necessary.",
   input_schema: {
     type: "object" as const,
     properties: {
@@ -49,6 +77,8 @@ export const getPlanTool: Tool = {
         type: "string",
         description: "The UUID of the plan to retrieve.",
       },
+      from: { type: "string", description: WINDOW_DESCRIPTION },
+      to: { type: "string", description: "See `from`." },
     },
     required: ["plan_id"],
   },
@@ -94,10 +124,26 @@ export const createPlanTool: Tool = {
   },
 };
 
+const SECONDARY_SCHEMA = {
+  type: "object",
+  description:
+    "Second session on the same day (doubles — e.g. PM shakeout after AM intervals). Rendered as its own row; the day's displayed total is primary + secondary, computed automatically.",
+  properties: {
+    type: { type: "string", enum: [...WORKOUT_TYPES] },
+    distance_km: {
+      type: "number",
+      description: "Distance for this second session only — not the combined day total.",
+    },
+    duration_minutes: { type: "number" },
+    notes: { type: "string" },
+  },
+  required: ["type"],
+} as const;
+
 export const updateWorkoutsTool: Tool = {
   name: "update_workouts",
   description:
-    "Upserts or deletes individual workouts within a plan by date. During cold-start plan builds, call once per week and set week_number + total_weeks so the user sees per-week progress.",
+    "Upserts or deletes workouts within a plan by date. Operations: `upsert` replaces the day's primary session (omit `secondary` to KEEP an existing second session, pass `secondary: null` to remove it, or pass an object to set it); `set_secondary` changes only the second session on a day that already has a primary; `delete` removes the whole day. During cold-start plan builds, call once per week and set week_number + total_weeks so the user sees per-week progress. The result echoes each written date with its day-of-week — check it.",
   input_schema: {
     type: "object" as const,
     properties: {
@@ -114,7 +160,7 @@ export const updateWorkoutsTool: Tool = {
       },
       operations: {
         type: "array",
-        description: "Ordered list of upsert/delete operations.",
+        description: "Ordered list of operations.",
         items: {
           oneOf: [
             {
@@ -127,8 +173,9 @@ export const updateWorkoutsTool: Tool = {
                   properties: {
                     type: {
                       type: "string",
-                      enum: ["easy", "long", "tempo", "threshold", "intervals", "recovery", "race", "rest", "cross"],
-                      description: "Workout type. Use 'cross' for cross-training (cycling, swimming, etc.) within a run or bike plan — never remove a cross-training day just because it differs from the plan sport.",
+                      enum: [...WORKOUT_TYPES],
+                      description:
+                        "Workout type. Use 'cross' for cross-training (cycling, swimming, etc.) within a run or bike plan — never remove a cross-training day just because it differs from the plan sport.",
                     },
                     distance_km: {
                       type: "number",
@@ -141,25 +188,27 @@ export const updateWorkoutsTool: Tool = {
                   required: ["type"],
                 },
                 secondary: {
-                  type: "object",
+                  oneOf: [SECONDARY_SCHEMA, { type: "null" }],
                   description:
-                    "Optional second workout on the same day (doubles — e.g. PM shakeout after a morning intervals session). Rendered as a second row on the day card. Same shape as the primary workout but without intervals.",
-                  properties: {
-                    type: {
-                      type: "string",
-                      enum: ["easy", "long", "tempo", "threshold", "intervals", "recovery", "race", "rest", "cross"],
-                    },
-                    distance_km: {
-                      type: "number",
-                      description: "Distance for this second session only — not the combined day total.",
-                    },
-                    duration_minutes: { type: "number" },
-                    notes: { type: "string" },
-                  },
-                  required: ["type"],
+                    "Omit to keep the day's existing second session. Pass null to remove it. Pass an object to set/replace it.",
                 },
               },
               required: ["op", "date", "workout"],
+            },
+            {
+              type: "object",
+              properties: {
+                op: { type: "string", enum: ["set_secondary"] },
+                date: {
+                  type: "string",
+                  description: "YYYY-MM-DD — must already have a primary workout.",
+                },
+                secondary: {
+                  oneOf: [SECONDARY_SCHEMA, { type: "null" }],
+                  description: "The new second session, or null to remove it.",
+                },
+              },
+              required: ["op", "date", "secondary"],
             },
             {
               type: "object",
@@ -232,11 +281,19 @@ export const finalizePlanTool: Tool = {
 // Handlers
 // ---------------------------------------------------------------------------
 
+const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+function dayName(iso: string): string {
+  return DAY_NAMES[new Date(`${iso}T12:00:00`).getDay()];
+}
+
 function mapWorkout(w: typeof workouts.$inferSelect) {
   const m = w.distance_meters != null ? parseFloat(w.distance_meters) : null;
   return {
     id: w.id,
     date: w.date,
+    day: dayName(w.date),
     type: w.type,
     distance_mi: m != null ? Math.round((m / 1609.344) * 10) / 10 : null,
     distance_km: m != null ? Math.round((m / 1000) * 10) / 10 : null,
@@ -269,14 +326,79 @@ function computeWeeklyTotals(
     }));
 }
 
+type ReadWindow = {
+  from: string | null;
+  to: string | null;
+  workouts_in_window: number;
+  total_workouts: number;
+  note: string;
+};
+
+/**
+ * Resolves the read window. Explicit from/to win; otherwise a default window
+ * around `today`; if there's no `today` in context (tests, legacy callers),
+ * the whole plan is returned.
+ */
+function resolveWindow(
+  input: { from?: string; to?: string },
+  today: string | undefined
+): { from: string | null; to: string | null } {
+  const from = input.from && ISO_DATE.test(input.from) ? input.from : null;
+  const to = input.to && ISO_DATE.test(input.to) ? input.to : null;
+  if (from || to) return { from, to };
+  if (!today) return { from: null, to: null };
+  return {
+    from: addDays(today, -PLAN_READ_LOOKBACK_DAYS),
+    to: addDays(today, PLAN_READ_LOOKAHEAD_DAYS),
+  };
+}
+
+async function readPlanWorkouts(
+  planId: string,
+  window: { from: string | null; to: string | null }
+): Promise<{
+  workouts: ReturnType<typeof mapWorkout>[];
+  weekly_totals: ReturnType<typeof computeWeeklyTotals>;
+  window: ReadWindow;
+}> {
+  const all = await db
+    .select()
+    .from(workouts)
+    .where(eq(workouts.plan_id, planId))
+    .orderBy(workouts.date);
+
+  const inWindow = all.filter(
+    (w) =>
+      (window.from == null || w.date >= window.from) && (window.to == null || w.date <= window.to)
+  );
+
+  const note =
+    window.from == null && window.to == null
+      ? "All workouts returned."
+      : `Workouts limited to ${window.from ?? "plan start"} through ${window.to ?? "plan end"}. Weekly totals cover the whole plan. Pass from/to to read other weeks.`;
+
+  return {
+    workouts: inWindow.map(mapWorkout),
+    weekly_totals: computeWeeklyTotals(all),
+    window: {
+      from: window.from,
+      to: window.to,
+      workouts_in_window: inWindow.length,
+      total_workouts: all.length,
+      note,
+    },
+  };
+}
+
 export const get_active_plan_handler: ToolHandler<
-  Record<string, never>,
+  { from?: string; to?: string },
   {
     plan: typeof plans.$inferSelect | null;
     workouts: ReturnType<typeof mapWorkout>[];
     weekly_totals: { week_start: string; total_mi: number; total_km: number }[];
+    window?: ReadWindow;
   }
-> = async (_input, { userId }) => {
+> = async (input, { userId, today }) => {
   const activePlans = await db
     .select()
     .from(plans)
@@ -288,13 +410,8 @@ export const get_active_plan_handler: ToolHandler<
     return { plan: null, workouts: [], weekly_totals: [] };
   }
 
-  const planWorkouts = await db.select().from(workouts).where(eq(workouts.plan_id, plan.id)).orderBy(workouts.date);
-
-  return {
-    plan,
-    workouts: planWorkouts.map(mapWorkout),
-    weekly_totals: computeWeeklyTotals(planWorkouts),
-  };
+  const read = await readPlanWorkouts(plan.id, resolveWindow(input ?? {}, today));
+  return { plan, ...read };
 };
 
 export const list_plans_handler: ToolHandler<
@@ -306,29 +423,21 @@ export const list_plans_handler: ToolHandler<
 };
 
 export const get_plan_handler: ToolHandler<
-  { plan_id: string },
+  { plan_id: string; from?: string; to?: string },
   {
     plan: typeof plans.$inferSelect;
     workouts: ReturnType<typeof mapWorkout>[];
     weekly_totals: { week_start: string; total_mi: number; total_km: number }[];
+    window: ReadWindow;
   }
-> = async ({ plan_id }, { userId }) => {
-  const plan = await getPlanById(plan_id, userId);
+> = async (input, { userId, today }) => {
+  const plan = await getPlanById(input.plan_id, userId);
   if (!plan || plan.userId !== userId) {
     throw new Error("plan not found or not owned");
   }
 
-  const planWorkouts = await db
-    .select()
-    .from(workouts)
-    .where(eq(workouts.plan_id, plan_id))
-    .orderBy(workouts.date);
-
-  return {
-    plan,
-    workouts: planWorkouts.map(mapWorkout),
-    weekly_totals: computeWeeklyTotals(planWorkouts),
-  };
+  const read = await readPlanWorkouts(input.plan_id, resolveWindow(input, today));
+  return { plan, ...read };
 };
 
 export const create_plan_handler: ToolHandler<
@@ -365,6 +474,13 @@ export const create_plan_handler: ToolHandler<
   return { plan_id: newPlan.id };
 };
 
+type SecondaryInput = {
+  type: string;
+  distance_km?: number;
+  duration_minutes?: number;
+  notes?: string;
+};
+
 type UpsertOp = {
   op: "upsert";
   date: string;
@@ -374,12 +490,14 @@ type UpsertOp = {
     duration_minutes?: number;
     notes?: string;
   };
-  secondary?: {
-    type: string;
-    distance_km?: number;
-    duration_minutes?: number;
-    notes?: string;
-  } | null;
+  /** undefined = keep existing; null = remove; object = set. */
+  secondary?: SecondaryInput | null;
+};
+
+type SetSecondaryOp = {
+  op: "set_secondary";
+  date: string;
+  secondary: SecondaryInput | null;
 };
 
 type DeleteOp = {
@@ -387,9 +505,17 @@ type DeleteOp = {
   date: string;
 };
 
-type WorkoutOperation = UpsertOp | DeleteOp;
+type WorkoutOperation = UpsertOp | SetSecondaryOp | DeleteOp;
 
-const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
+function toSecondary(input: SecondaryInput | null | undefined): SecondaryWorkout | null {
+  if (!input) return null;
+  return {
+    type: input.type as SecondaryWorkout["type"],
+    distance_km: input.distance_km,
+    duration_minutes: input.duration_minutes,
+    notes: input.notes,
+  };
+}
 
 export const update_workouts_handler: ToolHandler<
   {
@@ -403,7 +529,8 @@ export const update_workouts_handler: ToolHandler<
     deleted: number;
     week_number?: number;
     total_weeks?: number;
-    days: { date: string; day: string; type: string }[];
+    days: { date: string; day: string; type: string; secondary?: string | null }[];
+    warnings?: string[];
   }
 > = async ({ plan_id, operations, week_number, total_weeks }, { userId }) => {
   const plan = await getPlanById(plan_id, userId);
@@ -413,28 +540,64 @@ export const update_workouts_handler: ToolHandler<
 
   let upserted = 0;
   let deleted = 0;
-  const days: { date: string; day: string; type: string }[] = [];
+  const days: { date: string; day: string; type: string; secondary?: string | null }[] = [];
+  const warnings: string[] = [];
 
   for (const op of operations) {
+    if (!ISO_DATE.test(op.date)) {
+      warnings.push(`Skipped ${op.op} — invalid date "${op.date}" (expected YYYY-MM-DD).`);
+      continue;
+    }
+
     if (op.op === "delete") {
       await db
         .delete(workouts)
         .where(and(eq(workouts.plan_id, plan_id), eq(workouts.date, op.date)));
       deleted++;
-    } else if (op.op === "upsert") {
-      // No unique constraint on (plan_id, date) — use delete + insert
+      continue;
+    }
+
+    // Both upsert and set_secondary need the current row (if any).
+    const existingRows = await db
+      .select()
+      .from(workouts)
+      .where(and(eq(workouts.plan_id, plan_id), eq(workouts.date, op.date)))
+      .limit(1);
+    const existing = existingRows[0] ?? null;
+
+    if (op.op === "set_secondary") {
+      if (!existing) {
+        warnings.push(
+          `Skipped set_secondary on ${op.date} — no primary workout exists that day. Use upsert instead.`
+        );
+        continue;
+      }
+      const secondary = toSecondary(op.secondary);
+      await db
+        .update(workouts)
+        .set({ secondary })
+        .where(and(eq(workouts.plan_id, plan_id), eq(workouts.date, op.date)));
+      upserted++;
+      days.push({
+        date: op.date,
+        day: dayName(op.date),
+        type: existing.type,
+        secondary: secondary?.type ?? null,
+      });
+      continue;
+    }
+
+    if (op.op === "upsert") {
+      // undefined → keep what's there; null → remove; object → replace.
+      const secondary: SecondaryWorkout | null =
+        op.secondary === undefined
+          ? ((existing?.secondary as SecondaryWorkout | null | undefined) ?? null)
+          : toSecondary(op.secondary);
+
+      // No unique constraint on (plan_id, date) — use delete + insert.
       await db
         .delete(workouts)
         .where(and(eq(workouts.plan_id, plan_id), eq(workouts.date, op.date)));
-
-      const secondary = op.secondary
-        ? {
-            type: op.secondary.type as import("@/server/db/schema").SecondaryWorkout["type"],
-            distance_km: op.secondary.distance_km,
-            duration_minutes: op.secondary.duration_minutes,
-            notes: op.secondary.notes,
-          }
-        : null;
 
       await db.insert(workouts).values({
         plan_id,
@@ -451,12 +614,23 @@ export const update_workouts_handler: ToolHandler<
       upserted++;
 
       // Include day name so the coach can verify date→day mapping after each call
-      const dayName = DAY_NAMES[new Date(`${op.date}T12:00:00`).getDay()];
-      days.push({ date: op.date, day: dayName, type: op.workout.type });
+      days.push({
+        date: op.date,
+        day: dayName(op.date),
+        type: op.workout.type,
+        secondary: secondary?.type ?? null,
+      });
     }
   }
 
-  return { upserted, deleted, week_number, total_weeks, days };
+  return {
+    upserted,
+    deleted,
+    week_number,
+    total_weeks,
+    days,
+    ...(warnings.length > 0 ? { warnings } : {}),
+  };
 };
 
 export const set_active_plan_handler: ToolHandler<{ plan_id: string }, { ok: true }> = async (
@@ -503,3 +677,12 @@ export const finalize_plan_handler: ToolHandler<
     .where(and(eq(plans.id, plan_id), eq(plans.userId, userId)));
   return { ok: true };
 };
+
+// Kept for callers that want a date-range query without the mapping layer.
+export async function listPlanWorkoutsBetween(planId: string, from: string, to: string) {
+  return db
+    .select()
+    .from(workouts)
+    .where(and(eq(workouts.plan_id, planId), gte(workouts.date, from), lte(workouts.date, to)))
+    .orderBy(workouts.date);
+}

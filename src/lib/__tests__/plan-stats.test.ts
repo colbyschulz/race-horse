@@ -63,4 +63,23 @@ describe("computePlanStats", () => {
     expect(stats.totalDistance).toBeCloseTo(5000 / 1609.344);
     expect(stats.longestRun?.distance).toBeCloseTo(5000 / 1609.344);
   });
+  it("counts the secondary (doubles) session in totals and peak week, not in longest run", () => {
+    const double = {
+      date: "2026-04-21",
+      distance_meters: "8000",
+      duration_seconds: null,
+      type: "intervals",
+      secondary: { type: "easy", distance_km: 5 },
+    } as never;
+    const workouts = [w("2026-04-20", 10000), double, w("2026-04-27", 12000)];
+    const stats = computePlanStats(workouts, "km");
+    // 10 + 8 + 5 + 12
+    expect(stats.totalDistance).toBeCloseTo(35);
+    // Week of Apr 20: 10 + 8 + 5 = 23 > 12
+    expect(stats.peakWeek?.distance).toBeCloseTo(23);
+    expect(stats.peakWeek?.mondayIso).toBe("2026-04-20");
+    // Longest single session is the 12 km, not the 13 km double day.
+    expect(stats.longestRun?.distance).toBeCloseTo(12);
+    expect(weeklyMileage(workouts, "km")[0].miles).toBeCloseTo(23);
+  });
 });

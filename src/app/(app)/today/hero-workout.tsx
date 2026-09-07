@@ -30,6 +30,14 @@ export function HeroWorkout({ units, today }: { units: "mi" | "km"; today: strin
     : ((workout.target_intensity as TargetIntensity | null) ?? null);
   const pace = intensity?.pace ? formatPaceRange(intensity.pace, units) : null;
 
+  // Second session (doubles)
+  const secondary = workout.secondary ?? null;
+  const secDist =
+    secondary?.distance_km != null ? formatDistance(secondary.distance_km * 1000, units) : null;
+  const secDur =
+    secondary?.duration_minutes != null ? formatDuration(secondary.duration_minutes * 60) : null;
+  const secStat = [secDist ? `${secDist} ${units}` : null, secDur].filter(Boolean).join(" · ");
+
   return (
     <article className={styles.hero}>
       <div className={styles.heroHead}>
@@ -89,6 +97,16 @@ export function HeroWorkout({ units, today }: { units: "mi" | "km"; today: strin
         </div>
       )}
       {workout.notes && <p className={styles.description}>{workout.notes}</p>}
+      {secondary && (
+        <section className={styles.heroSecondary} aria-label="Second session">
+          <div className={styles.heroSecondaryHead}>
+            <span className={styles.lbl}>Second session</span>
+            <WorkoutBadge type={secondary.type} size="sm" />
+            {secStat && <span className={styles.heroSecondaryStat}>{secStat}</span>}
+          </div>
+          {secondary.notes && <p className={styles.description}>{secondary.notes}</p>}
+        </section>
+      )}
     </article>
   );
 }

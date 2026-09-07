@@ -74,6 +74,18 @@ export async function GET(_req: Request, ctx: Ctx): Promise<NextResponse | Respo
       .join(" — ");
     lines.push(`**${fmtDate(w.date)}** — ${details}`);
     if (w.notes) lines.push(w.notes);
+    if (w.secondary) {
+      const sec = w.secondary;
+      const secDetails = [
+        sec.type,
+        sec.distance_km != null ? fmtMeters(sec.distance_km * 1000) : null,
+        sec.duration_minutes != null ? fmtSeconds(sec.duration_minutes * 60) : null,
+      ]
+        .filter(Boolean)
+        .join(" — ");
+      lines.push(`_Second session:_ ${secDetails}`);
+      if (sec.notes) lines.push(sec.notes);
+    }
     lines.push("");
   }
 

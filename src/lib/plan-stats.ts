@@ -17,10 +17,26 @@ function metersToUnits(m: number, units: "mi" | "km"): number {
   return units === "mi" ? m / 1609.344 : m / 1000;
 }
 
+/** Primary session distance in meters (0 when unset). */
+function primaryMeters(w: WorkoutRow): number {
+  return w.distance_meters == null ? 0 : Number(w.distance_meters);
+}
+
+/** Secondary (doubles) session distance in meters (0 when unset). */
+function secondaryMeters(w: WorkoutRow): number {
+  const km = w.secondary?.distance_km;
+  return km == null ? 0 : km * 1000;
+}
+
+/** Whole-day distance: primary + secondary. */
+export function dayMeters(w: WorkoutRow): number {
+  return primaryMeters(w) + secondaryMeters(w);
+}
+
 export function weeklyMileage(workouts: WorkoutRow[], units: "mi" | "km"): WeeklyMileage[] {
   const buckets = new Map<string, number>();
   for (const w of workouts) {
-    const meters = w.distance_meters == null ? 0 : Number(w.distance_meters);
+    const meters = dayMeters(w);
     if (meters <= 0) continue;
     const monday = mondayOf(w.date);
     buckets.set(monday, (buckets.get(monday) ?? 0) + meters);
@@ -37,19 +53,17 @@ export function computePlanStats(workouts: WorkoutRow[], units: "mi" | "km"): Pl
   if (workouts.length === 0) {
     return { totalDistance: 0, peakWeek: null, longestRun: null, weeksCount: 0 };
   }
-  const totalMeters = workouts.reduce(
-    (s, w) => s + (w.distance_meters == null ? 0 : Number(w.distance_meters)),
-    0
-  );
+  const totalMeters = workouts.reduce((s, w) => s + dayMeters(w), 0);
   const weekly = weeklyMileage(workouts, units);
   const peak = weekly.reduce<WeeklyMileage | null>(
     (best, w) => (best == null || w.miles > best.miles ? w : best),
     null
   );
+  // Longest single session — a double's two sessions are considered separately.
   let longest: { dateIso: string; meters: number } | null = null;
   for (const w of workouts) {
-    if (w.distance_meters == null) continue;
-    const m = Number(w.distance_meters);
+    const m = Math.max(primaryMeters(w), secondaryMeters(w));
+    if (m <= 0) continue;
     if (longest == null || m > longest.meters) longest = { dateIso: w.date, meters: m };
   }
   return {

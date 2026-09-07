@@ -28,12 +28,18 @@ export type ToolName =
   | "get_athlete_summary"
   | "update_coach_notes"
   | "update_plan_notes"
-  | "read_uploaded_file";
+  | "read_uploaded_file"
+  | "request_deep_planning";
 
-export type ToolHandler<I = unknown, O = unknown> = (
-  input: I,
-  ctx: { userId: string; planId?: string | null; coldStartBuild?: boolean }
-) => Promise<O>;
+export type ToolContext = {
+  userId: string;
+  planId?: string | null;
+  coldStartBuild?: boolean;
+  /** YYYY-MM-DD in the athlete's timezone. Used for default read windows. */
+  today?: string;
+};
+
+export type ToolHandler<I = unknown, O = unknown> = (input: I, ctx: ToolContext) => Promise<O>;
 
 export type SSEEvent =
   | { type: "text-delta"; delta: string }
@@ -47,6 +53,7 @@ export type SSEEvent =
 export type ChatRequestBody = {
   message: string;
   from_route?: string; // e.g. "/today", "/training", "/plans"
+  from_label?: string; // e.g. "Threshold — 2026-09-10" when opened from a workout sheet
   plan_file_id?: string;
   plan_id?: string | null;
 };

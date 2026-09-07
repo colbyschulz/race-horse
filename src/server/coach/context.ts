@@ -16,6 +16,9 @@ type PlanFileSummary = {
   extraction_error: string | null;
 };
 
+export const RECENT_TRAINING_OPEN = "<recent_training>";
+export const RECENT_TRAINING_CLOSE = "</recent_training>";
+
 export function renderContextPrefix(params: {
   today: string;
   units: "mi" | "km";
@@ -23,10 +26,16 @@ export function renderContextPrefix(params: {
   coachNotes: string;
   planCoachNotes?: string;
   fromLabel: string | null;
+  /** Free-text detail from the client, e.g. the workout the athlete tapped. */
+  fromDetail?: string | null;
   planFile?: PlanFileSummary | null;
   stravaPreload?: StravaPreload | null;
   coldStartBuild?: boolean;
   coldStartPlanId?: string | null;
+  /** Pre-rendered planned-vs-actual block (see recent-training.ts). */
+  recentTraining?: string | null;
+  /** Set when the previous turn escalated to deep planning. */
+  deepPlanning?: boolean;
 }): string {
   const lines: string[] = [];
   lines.push(`<context>`);
@@ -39,7 +48,7 @@ export function renderContextPrefix(params: {
     const a = params.activePlan;
     const wks = a.weeks_left == null ? "indefinite" : `${a.weeks_left} weeks left`;
     lines.push(
-      `Active plan: ${a.title} — ${wks}, ${a.completed} / ${a.workout_count} workouts done`
+      `Active plan: ${a.title} — ${wks}, ${a.completed} / ${a.workout_count} workout days elapsed`
     );
   }
   if (params.coachNotes.trim()) {
@@ -54,7 +63,14 @@ export function renderContextPrefix(params: {
   }
   if (params.fromLabel) {
     lines.push(``);
-    lines.push(`User opened coach from: ${params.fromLabel}`);
+    const detail = params.fromDetail?.trim();
+    lines.push(
+      `User opened coach from: ${params.fromLabel}${detail ? ` — specifically: ${detail}` : ""}`
+    );
+  }
+  if (params.deepPlanning) {
+    lines.push(``);
+    lines.push(`Deep planning mode: active (carried over from the previous turn).`);
   }
   if (params.planFile) {
     lines.push(``);
@@ -91,6 +107,12 @@ export function renderContextPrefix(params: {
       lines.push(``);
       lines.push(`Strava history: minimal`);
     }
+  }
+  if (params.recentTraining?.trim()) {
+    lines.push(``);
+    lines.push(RECENT_TRAINING_OPEN);
+    lines.push(params.recentTraining.trim());
+    lines.push(RECENT_TRAINING_CLOSE);
   }
   lines.push(`</context>`);
   return lines.join("\n");

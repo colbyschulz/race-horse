@@ -4,7 +4,19 @@ const mockAuth = vi.fn();
 vi.mock("@/server/auth", () => ({ auth: () => mockAuth() }));
 
 const mockRunCoach = vi.fn();
-vi.mock("@/server/coach/runner", () => ({ runCoach: (...args: unknown[]) => mockRunCoach(...args) }));
+vi.mock("@/server/coach/runner", () => ({
+  runCoach: (...args: unknown[]) => mockRunCoach(...args),
+}));
+
+// The route reads the user's timezone preference before starting the coach.
+vi.mock("@/server/db", () => {
+  const chain = {
+    from: vi.fn().mockReturnThis(),
+    where: vi.fn().mockReturnThis(),
+    limit: vi.fn().mockResolvedValue([{ preferences: { timezone: "UTC" } }]),
+  };
+  return { db: { select: vi.fn(() => chain) } };
+});
 
 import { POST } from "../route";
 

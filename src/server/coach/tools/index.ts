@@ -46,9 +46,13 @@ import {
 // Files
 import { readUploadedFileTool, read_uploaded_file_handler } from "./files";
 
+// Escalation
+import { requestDeepPlanningTool, request_deep_planning_handler } from "./deep";
+
 // ---------------------------------------------------------------------------
 // Tool definitions
 // ---------------------------------------------------------------------------
+// Order is part of the cache prefix — keep it stable.
 
 const BASE_TOOLS: Anthropic.Messages.Tool[] = [
   getActivePlanTool,
@@ -66,6 +70,7 @@ const BASE_TOOLS: Anthropic.Messages.Tool[] = [
   update_coach_notes,
   { type: "web_search_20260209", name: "web_search" } as unknown as Anthropic.Messages.Tool,
   readUploadedFileTool,
+  requestDeepPlanningTool,
 ];
 
 /** Returns the tool list for a conversation. Plan-context adds update_plan_notes. */
@@ -76,7 +81,8 @@ export function getTools(planId: string | null): Anthropic.Messages.Tool[] {
 // During a cold-start build the plan stub is pre-created and provided as
 // planId, so the coach only needs to populate it. Strip plan-read,
 // plan-management, and plan-creation tools so the model can't accidentally
-// read or modify the existing active plan or spin up a parallel stub.
+// read or modify the existing active plan or spin up a parallel stub. Builds
+// already run on the deep model, so the escalation hatch is stripped too.
 const COLD_START_EXCLUDED = new Set([
   "get_active_plan",
   "list_plans",
@@ -84,6 +90,7 @@ const COLD_START_EXCLUDED = new Set([
   "create_plan",
   "set_active_plan",
   "archive_plan",
+  "request_deep_planning",
 ]);
 export function getColdStartTools(planId: string | null): Anthropic.Messages.Tool[] {
   return getTools(planId).filter((t) => !COLD_START_EXCLUDED.has(t.name));
@@ -116,6 +123,7 @@ export const HANDLERS: Record<ToolName, ToolHandler> = {
   update_coach_notes: update_coach_notes_handler as AnyHandler,
   update_plan_notes: update_plan_notes_handler as AnyHandler,
   read_uploaded_file: read_uploaded_file_handler as AnyHandler,
+  request_deep_planning: request_deep_planning_handler as AnyHandler,
 };
 
 // ---------------------------------------------------------------------------
@@ -140,7 +148,7 @@ export function summarizeToolResult(name: ToolName, result: unknown): string {
       const total = r.total_weeks;
 
       const parts: string[] = [];
-      if (upserted > 0) parts.push(`added ${upserted} workout${upserted === 1 ? "" : "s"}`);
+      if (upserted > 0) parts.push(`updated ${upserted} workout${upserted === 1 ? "" : "s"}`);
       if (deleted > 0) parts.push(`removed ${deleted} workout${deleted === 1 ? "" : "s"}`);
       const change = parts.length > 0 ? parts.join(", ") : "no changes";
 
@@ -169,5 +177,7 @@ export function summarizeToolResult(name: ToolName, result: unknown): string {
       return "Saved a note on this plan";
     case "read_uploaded_file":
       return "Read your uploaded plan";
+    case "request_deep_planning":
+      return "Switched to deep planning";
   }
 }

@@ -89,14 +89,20 @@ export async function listPlansWithCounts(userId: string): Promise<PlanWithCount
       plan_id: workouts.plan_id,
       date: workouts.date,
       distance_meters: workouts.distance_meters,
+      secondary: workouts.secondary,
     })
     .from(workouts)
     .where(inArray(workouts.plan_id, planIds));
 
-  const byPlan = new Map<string, { date: string; distance_meters: string | null }[]>();
+  type Row = { date: string; distance_meters: string | null; secondary_km: number | null };
+  const byPlan = new Map<string, Row[]>();
   for (const w of workoutRows) {
     const arr = byPlan.get(w.plan_id) ?? [];
-    arr.push({ date: w.date, distance_meters: w.distance_meters });
+    arr.push({
+      date: w.date,
+      distance_meters: w.distance_meters,
+      secondary_km: w.secondary?.distance_km ?? null,
+    });
     byPlan.set(w.plan_id, arr);
   }
 
@@ -105,11 +111,16 @@ export async function listPlansWithCounts(userId: string): Promise<PlanWithCount
     const weekBuckets = new Map<string, number>();
     let longest_run_meters = 0;
     for (const w of ws) {
-      if (!w.distance_meters) continue;
-      const m = Number(w.distance_meters);
+      const primary = w.distance_meters ? Number(w.distance_meters) : 0;
+      // Doubles: the second session counts toward the week; the longest run is
+      // the longest single session, not the day total.
+      const secondary = w.secondary_km != null ? w.secondary_km * 1000 : 0;
+      const dayTotal = primary + secondary;
+      if (dayTotal <= 0) continue;
       const monday = mondayOf(w.date);
-      weekBuckets.set(monday, (weekBuckets.get(monday) ?? 0) + m);
-      if (m > longest_run_meters) longest_run_meters = m;
+      weekBuckets.set(monday, (weekBuckets.get(monday) ?? 0) + dayTotal);
+      const longestSession = Math.max(primary, secondary);
+      if (longestSession > longest_run_meters) longest_run_meters = longestSession;
     }
     const max_weekly_meters = weekBuckets.size > 0 ? Math.max(...weekBuckets.values()) : 0;
     return { ...plan, max_weekly_meters, longest_run_meters };

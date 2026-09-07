@@ -1,12 +1,22 @@
 import { eq, and, sql, count } from "drizzle-orm";
 import { db } from "@/server/db";
 import { users, plans, workouts } from "@/server/db/schema";
-import { getAnthropic, COACH_MODEL, COACH_BUILD_MODEL } from "./anthropic";
+import {
+  getAnthropic,
+  COACH_MODEL,
+  COACH_BUILD_MODEL,
+  COACH_DEEP_MODEL,
+  COACH_BUILD_EFFORT,
+  COACH_DEEP_EFFORT,
+  COACH_CHAT_MAX_TOKENS,
+  COACH_BUILD_MAX_TOKENS,
+} from "./anthropic";
 import { COACH_SYSTEM_PROMPT } from "./system-prompt";
-import { renderContextPrefix } from "./context";
+import { renderContextPrefix, RECENT_TRAINING_OPEN, RECENT_TRAINING_CLOSE } from "./context";
 import { routeLabel } from "@/lib/route-label";
 import { loadHistory, appendMessage } from "./messages";
 import { getTools, getColdStartTools, HANDLERS, summarizeToolResult } from "./tools/index";
+import { fetchRecentTraining, renderRecentTraining } from "./recent-training";
 import type { SSEEvent, ToolName, ContentBlock } from "./types";
 import type { Anthropic } from "@anthropic-ai/sdk";
 import type { StravaPreload } from "./strava-preload";
@@ -27,7 +37,10 @@ const KNOWN_TOOLS = new Set([
   "update_coach_notes",
   "update_plan_notes",
   "read_uploaded_file",
+  "request_deep_planning",
 ]);
+
+const DEEP_PLANNING_TOOL = "request_deep_planning";
 
 // Block types the Anthropic API accepts from us. Built-in/server tools like
 // code_execution use non-standard types (e.g. "server_tool_use" with IDs
@@ -42,14 +55,19 @@ const ALLOWED_BLOCK_TYPES = new Set([
   "redacted_thinking",
 ]);
 
+// One-hour cache entries. Coach conversations are human-paced — the athlete
+// replies minutes to hours later — so the default 5-minute TTL was almost
+// always cold by the next message and the whole history was re-billed at full
+// price. The 1h write costs 2x (vs 1.25x) and pays for itself on the first
+// prevented miss.
+const CACHE_1H = { type: "ephemeral", ttl: "1h" } as const;
+
 /**
  * Strip tool_use/tool_result pairs for tools not in our known set, plus any
  * non-standard block types (e.g. "server_tool_use" from built-in code_execution).
  * The API rejects any tool_use that lacks a matching result block.
  */
 function stripUnknownToolBlocks(msgs: Anthropic.MessageParam[]): Anthropic.MessageParam[] {
-  // Collect IDs of blocks to remove: standard tool_use with unknown names,
-  // plus any non-standard block type (server_tool_use, etc.)
   const unknownIds = new Set<string>();
   for (const m of msgs) {
     if (!Array.isArray(m.content)) continue;
@@ -58,8 +76,6 @@ function stripUnknownToolBlocks(msgs: Anthropic.MessageParam[]): Anthropic.Messa
       if (block.type === "tool_use" && block.id && block.name && !KNOWN_TOOLS.has(block.name)) {
         unknownIds.add(block.id);
       }
-      // Non-standard types (server_tool_use, etc.) — collect id so we can
-      // also remove any referencing result blocks
       if (!ALLOWED_BLOCK_TYPES.has(block.type) && block.id) {
         unknownIds.add(block.id);
       }
@@ -71,11 +87,8 @@ function stripUnknownToolBlocks(msgs: Anthropic.MessageParam[]): Anthropic.Messa
       if (!Array.isArray(m.content)) return m;
       const content = m.content.filter((b) => {
         const block = b as { type: string; id?: string; tool_use_id?: string };
-        // Drop any non-standard block type entirely
         if (!ALLOWED_BLOCK_TYPES.has(block.type)) return false;
-        // Drop standard tool_use blocks whose name isn't in KNOWN_TOOLS
         if (block.type === "tool_use" && block.id && unknownIds.has(block.id)) return false;
-        // Drop tool_result blocks that reference a stripped tool_use
         if (block.type === "tool_result" && block.tool_use_id && unknownIds.has(block.tool_use_id))
           return false;
         return true;
@@ -115,8 +128,6 @@ function sanitizeMessages(msgs: Anthropic.MessageParam[]): Anthropic.MessagePara
         const allAccountedFor = toolUseIds.every((id) => resultIds.has(id));
 
         if (!allAccountedFor) {
-          // Drop this broken assistant turn and skip the next user turn too
-          // if it consists only of tool_results (it's the orphaned result side).
           i++;
           if (
             next &&
@@ -131,7 +142,6 @@ function sanitizeMessages(msgs: Anthropic.MessageParam[]): Anthropic.MessagePara
       }
     }
 
-    // Drop orphaned tool_result user turns with no preceding tool_use.
     if (m.role === "user") {
       const hasToolResult = content.some((b) => (b as { type: string }).type === "tool_result");
       if (hasToolResult) {
@@ -151,19 +161,43 @@ function sanitizeMessages(msgs: Anthropic.MessageParam[]): Anthropic.MessagePara
   return out;
 }
 
+/** A "human" turn: a user message carrying at least one text block (not just tool results). */
+function isHumanMessage(m: Anthropic.MessageParam): boolean {
+  if (m.role !== "user") return false;
+  if (typeof m.content === "string") return true;
+  return m.content.some((b) => (b as { type: string }).type === "text");
+}
+
+function lastHumanIndex(msgs: Anthropic.MessageParam[]): number {
+  for (let i = msgs.length - 1; i >= 0; i--) if (isHumanMessage(msgs[i])) return i;
+  return -1;
+}
+
 const TOOL_CONTENT_LIMIT = 3000;
-const TOOL_INTACT_WINDOW = 8; // keep last N messages fully intact
+const RECENT_TRAINING_ELIDED = `${RECENT_TRAINING_OPEN}(elided — superseded by the latest message)${RECENT_TRAINING_CLOSE}`;
+const RECENT_TRAINING_RE = new RegExp(
+  `${RECENT_TRAINING_OPEN}[\\s\\S]*?${RECENT_TRAINING_CLOSE}`,
+  "g"
+);
 
 /**
- * Truncate large tool_use inputs and tool_result content in old history.
- * The model doesn't need the full JSON of a plan build that happened 10 turns ago —
- * only recent tool exchanges need their full payload. Keeps token counts manageable.
+ * Shrink history that precedes the current human message:
+ *  - large tool_use inputs / tool_result payloads are truncated (the model
+ *    doesn't need the full JSON of a plan read from three turns ago), and
+ *  - stale planned-vs-actual blocks are elided (the latest message carries a
+ *    fresh one).
+ *
+ * The boundary is the last human message rather than a sliding "last N
+ * messages" window: a sliding window rewrites a different message every turn,
+ * which broke the prompt cache at that point on every request. With this rule,
+ * a given message is rewritten exactly once (when the next human turn arrives)
+ * and is byte-stable afterwards.
  */
-function trimOldToolContent(messages: Anthropic.MessageParam[]): Anthropic.MessageParam[] {
-  if (messages.length <= TOOL_INTACT_WINDOW) return messages;
-  // Keep last TOOL_INTACT_WINDOW messages intact; truncate tool payloads in older history
+function compactOlderHistory(messages: Anthropic.MessageParam[]): Anthropic.MessageParam[] {
+  const boundary = lastHumanIndex(messages);
+  if (boundary <= 0) return messages;
   return messages.map((m, i) => {
-    if (i >= messages.length - TOOL_INTACT_WINDOW) return m;
+    if (i >= boundary) return m;
     if (!Array.isArray(m.content)) return m;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const content = m.content.map((block: any) => {
@@ -177,6 +211,10 @@ function trimOldToolContent(messages: Anthropic.MessageParam[]): Anthropic.Messa
         const text = JSON.stringify(block.input);
         if (text.length <= TOOL_CONTENT_LIMIT) return block;
         return { ...block, input: { _truncated: text.slice(0, TOOL_CONTENT_LIMIT) + "…" } };
+      }
+      if (block.type === "text" && m.role === "user" && typeof block.text === "string") {
+        if (!block.text.includes(RECENT_TRAINING_OPEN)) return block;
+        return { ...block, text: block.text.replace(RECENT_TRAINING_RE, RECENT_TRAINING_ELIDED) };
       }
       return block;
     });
@@ -201,10 +239,63 @@ function withCacheBreakpoint(messages: Anthropic.MessageParam[]): Anthropic.Mess
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const last = content[content.length - 1] as any;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    content[content.length - 1] = { ...last, cache_control: { type: "ephemeral" } } as any;
+    content[content.length - 1] = { ...last, cache_control: CACHE_1H } as any;
     out[out.length - 2] = { ...target, content };
   }
   return out;
+}
+
+/**
+ * True when the previous human turn escalated to deep planning: the coach
+ * called `request_deep_planning` somewhere between the previous human message
+ * and the current one. The escalation covers "the rest of this turn and the
+ * athlete's next turn", so the next turn is detected here from history.
+ */
+function deepPlanningCarriedOver(messages: Anthropic.MessageParam[]): boolean {
+  const last = lastHumanIndex(messages);
+  if (last <= 0) return false;
+  let prev = -1;
+  for (let i = last - 1; i >= 0; i--) {
+    if (isHumanMessage(messages[i])) {
+      prev = i;
+      break;
+    }
+  }
+  if (prev < 0) return false;
+  for (let i = prev + 1; i < last; i++) {
+    const m = messages[i];
+    if (m.role !== "assistant" || !Array.isArray(m.content)) continue;
+    for (const b of m.content) {
+      const block = b as { type: string; name?: string };
+      if (block.type === "tool_use" && block.name === DEEP_PLANNING_TOOL) return true;
+    }
+  }
+  return false;
+}
+
+type Route = "chat" | "build" | "deep";
+
+function routeConfig(route: Route): {
+  model: string;
+  max_tokens: number;
+  effort: "high" | null;
+} {
+  switch (route) {
+    case "build":
+      return {
+        model: COACH_BUILD_MODEL,
+        max_tokens: COACH_BUILD_MAX_TOKENS,
+        effort: COACH_BUILD_EFFORT,
+      };
+    case "deep":
+      return {
+        model: COACH_DEEP_MODEL,
+        max_tokens: COACH_BUILD_MAX_TOKENS,
+        effort: COACH_DEEP_EFFORT,
+      };
+    default:
+      return { model: COACH_MODEL, max_tokens: COACH_CHAT_MAX_TOKENS, effort: null };
+  }
 }
 
 export interface RunInput {
@@ -212,6 +303,8 @@ export interface RunInput {
   message: string;
   planId?: string | null;
   fromRoute?: string;
+  /** Free-text detail about where the athlete came from, e.g. the workout they tapped. */
+  fromLabel?: string;
   planFileId?: string;
   today: string; // YYYY-MM-DD
   stravaPreload?: StravaPreload | null;
@@ -219,7 +312,7 @@ export interface RunInput {
 }
 
 export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
-  const { userId, message, fromRoute, planFileId, today } = input;
+  const { userId, message, fromRoute, fromLabel, planFileId, today } = input;
   const planId: string | null = input.planId ?? null;
 
   // Detect whether this turn is part of a build flow. The caller may pass
@@ -265,6 +358,7 @@ export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
         id: plans.id,
         title: plans.title,
         mode: plans.mode,
+        sport: plans.sport,
         end_date: plans.end_date,
       })
       .from(plans)
@@ -281,7 +375,6 @@ export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
     } | null = null;
 
     if (activePlan) {
-      // Count total and completed workouts
       const [workoutCounts] = await db
         .select({
           total: count(),
@@ -309,15 +402,36 @@ export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
       };
     }
 
-    // Plan-specific coach notes
+    // Plan-specific coach notes + sport (for the planned-vs-actual block)
     let planCoachNotes = "";
+    let conversationPlan: { id: string; sport: "run" | "bike" } | null = null;
     if (planId) {
       const [planRow] = await db
-        .select({ coach_notes: plans.coach_notes })
+        .select({ coach_notes: plans.coach_notes, sport: plans.sport })
         .from(plans)
         .where(and(eq(plans.id, planId), eq(plans.userId, userId)))
         .limit(1);
       planCoachNotes = planRow?.coach_notes ?? "";
+      if (planRow) conversationPlan = { id: planId, sport: planRow.sport };
+    } else if (activePlan) {
+      conversationPlan = { id: activePlan.id, sport: activePlan.sport };
+    }
+
+    // Planned vs actual for the last 14 days (+ next 7 planned). Skipped during
+    // cold-start builds — the plan is still empty and the Strava preload covers it.
+    let recentTraining: string | null = null;
+    if (!coldStartBuild && conversationPlan) {
+      try {
+        const rt = await fetchRecentTraining({
+          userId,
+          planId: conversationPlan.id,
+          sport: conversationPlan.sport,
+          today,
+        });
+        recentTraining = renderRecentTraining(rt, units);
+      } catch (err) {
+        console.error("recent training fetch failed", err);
+      }
     }
 
     let planFileSummary: {
@@ -339,7 +453,24 @@ export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
       }
     }
 
-    // 2. Build context prefix
+    // 2. Decide the route before rendering context (the prefix mentions carried-over deep mode).
+    const priorHistory = await loadHistory(userId, planId);
+    const priorMessages: Anthropic.MessageParam[] = priorHistory.map((m) => ({
+      role: m.role,
+      content: m.content as Anthropic.ContentBlockParam[],
+    }));
+    // The current human message hasn't been appended yet, so the "previous
+    // turn" is everything after the last human message in prior history.
+    const carriedOver =
+      !coldStartBuild &&
+      deepPlanningCarriedOver([
+        ...priorMessages,
+        { role: "user", content: [{ type: "text", text: "" }] },
+      ]);
+
+    let route: Route = coldStartBuild ? "build" : carriedOver ? "deep" : "chat";
+
+    // 3. Build context prefix
     const contextPrefix = renderContextPrefix({
       today,
       units,
@@ -347,13 +478,16 @@ export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
       coachNotes,
       planCoachNotes,
       fromLabel: routeLabel(fromRoute),
+      fromDetail: fromLabel ?? null,
       planFile: planFileSummary,
       stravaPreload: input.stravaPreload ?? null,
       coldStartBuild,
       coldStartPlanId: coldStartBuild ? planId : null,
+      recentTraining,
+      deepPlanning: route === "deep",
     });
 
-    // 3. Persist user message
+    // 4. Persist user message
     await appendMessage(
       userId,
       "user",
@@ -361,49 +495,54 @@ export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
       planId
     );
 
-    // 4. Reload full history
+    // 5. Reload full history
     const history = await loadHistory(userId, planId);
 
-    // Build Anthropic messages array from history, stripping any trailing
-    // incomplete tool_use/tool_result exchange from a previous crashed run.
     const rawMessages: Anthropic.MessageParam[] = history.map((m) => ({
       role: m.role,
       content: m.content as Anthropic.ContentBlockParam[],
     }));
-    const anthropicMessages = trimOldToolContent(
+    const anthropicMessages = compactOlderHistory(
       sanitizeMessages(stripUnknownToolBlocks(rawMessages))
     );
 
-    // 5. Call Anthropic SDK with streaming
+    // 6. Call Anthropic SDK with streaming
     const client = getAnthropic();
 
-    // System prompt with cache_control at end
+    // System prompt with cache_control at end (1h TTL; see CACHE_1H).
     const systemBlocks: Anthropic.Messages.TextBlockParam[] = [
       {
         type: "text",
         text: COACH_SYSTEM_PROMPT,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        cache_control: { type: "ephemeral" } as any,
+        cache_control: CACHE_1H as any,
       },
     ];
 
-    // We'll do an agentic loop: keep calling the API until stop_reason != "tool_use"
-    let currentMessages = [...anthropicMessages];
+    const tools = coldStartBuild ? getColdStartTools(planId) : getTools(planId);
 
-    // For "done" event message_id, we'll use the stored message id
+    let currentMessages = [...anthropicMessages];
     let assistantMessageId = "";
+    let apiCalls = 0;
 
     while (true) {
+      const cfg = routeConfig(route);
+      apiCalls++;
+
       const stream = client.messages.stream({
-        model: coldStartBuild ? COACH_BUILD_MODEL : COACH_MODEL,
-        max_tokens: 8096,
+        model: cfg.model,
+        max_tokens: cfg.max_tokens,
+        // Adaptive thinking on every route. Sonnet 5 / Opus 5 accept this as
+        // the only "on" mode; Opus 5 would think by default anyway. Effort
+        // is pinned per route (a mid-conversation effort change breaks the
+        // messages cache) — chat leaves it at the model default.
+        thinking: { type: "adaptive" },
+        ...(cfg.effort ? { output_config: { effort: cfg.effort } } : {}),
         system: systemBlocks,
-        tools: coldStartBuild ? getColdStartTools(planId) : getTools(planId),
+        tools,
         messages: withCacheBreakpoint(currentMessages),
       });
 
-      // Accumulate content blocks for this turn
-      const turnBlocks: ContentBlock[] = [];
       // Track tool use blocks being built: index -> partial block
       const toolUseMap = new Map<number, { id: string; name: string; inputJson: string }>();
 
@@ -429,31 +568,37 @@ export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
               entry.inputJson += delta.partial_json;
             }
           }
-        } else if (event.type === "content_block_stop") {
-          const entry = toolUseMap.get(event.index);
-          if (entry) {
-            // Finalize tool use block
-            let parsedInput: unknown = {};
-            try {
-              parsedInput = JSON.parse(entry.inputJson || "{}");
-            } catch {
-              parsedInput = {};
-            }
-            turnBlocks.push({
-              type: "tool_use",
-              id: entry.id,
-              name: entry.name,
-              input: parsedInput,
-            });
-          }
+          // thinking_delta / signature_delta: not surfaced; the final message
+          // carries the complete blocks and they're persisted from there.
         } else if (event.type === "message_delta") {
           stopReason = event.delta.stop_reason ?? null;
         }
       }
 
-      // Collect text blocks from the final message
       const finalMsg = await stream.finalMessage();
-      // Build turn blocks from final message content (authoritative)
+
+      // Usage logging — the only ground truth for cost and cache health.
+      // cache_read_input_tokens should dominate input_tokens on a warm loop.
+      const usage = (finalMsg.usage ?? {}) as unknown as Record<string, unknown>;
+      console.log(
+        JSON.stringify({
+          evt: "coach_usage",
+          model: finalMsg.model ?? cfg.model,
+          route,
+          call: apiCalls,
+          plan_id: planId,
+          cold_start: coldStartBuild,
+          stop_reason: finalMsg.stop_reason,
+          input_tokens: usage.input_tokens ?? 0,
+          cache_creation_input_tokens: usage.cache_creation_input_tokens ?? 0,
+          cache_read_input_tokens: usage.cache_read_input_tokens ?? 0,
+          output_tokens: usage.output_tokens ?? 0,
+        })
+      );
+
+      // Build turn blocks from final message content (authoritative). Thinking
+      // blocks are kept — they must be replayed unchanged on later requests
+      // (the API drops what a different model can't read, unbilled).
       const finalTurnBlocks: ContentBlock[] = finalMsg.content.map((block) => {
         if (block.type === "text") {
           return { type: "text", text: block.text };
@@ -465,7 +610,6 @@ export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
             input: block.input,
           };
         }
-        // fallback
         return block as ContentBlock;
       });
 
@@ -477,8 +621,14 @@ export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
         );
       }
 
+      if (effectiveStopReason === "refusal") {
+        throw new Error(
+          "The coach declined to answer that request. Try rephrasing or narrowing it."
+        );
+      }
+
       if (effectiveStopReason !== "tool_use") {
-        // Final turn — persist assistant message (text only, no tool_use blocks)
+        // Final turn — persist assistant message
         const storedMsg = await appendMessage(userId, "assistant", finalTurnBlocks, planId);
         assistantMessageId = storedMsg.id;
         break;
@@ -495,13 +645,11 @@ export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
       // Persist intermediate assistant turn (with tool_use blocks) so history stays valid
       await appendMessage(userId, "assistant", finalTurnBlocks as ContentBlock[], planId);
 
-      // Add assistant turn to in-memory messages
       currentMessages = [
         ...currentMessages,
         { role: "assistant" as const, content: finalTurnBlocks as Anthropic.ContentBlockParam[] },
       ];
 
-      // Process each tool call and build tool_result blocks
       const toolResultContent: Anthropic.ToolResultBlockParam[] = [];
 
       for (const toolBlock of toolUseBlocks) {
@@ -511,7 +659,6 @@ export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
         yield { type: "tool-use", name: toolName, input: toolBlock.input };
 
         let resultValue: unknown;
-        let resultText: string;
 
         try {
           if (handler) {
@@ -519,6 +666,7 @@ export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
               userId,
               planId,
               coldStartBuild,
+              today,
             });
           } else {
             resultValue = { error: `Unknown tool: ${toolName}` };
@@ -528,7 +676,7 @@ export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
           // persisted and history stays valid for subsequent requests.
           resultValue = { error: err instanceof Error ? err.message : String(err) };
         }
-        resultText = JSON.stringify(resultValue);
+        const resultText = JSON.stringify(resultValue);
 
         if (toolName === "create_plan") {
           const created = resultValue as { plan_id?: string } | null;
@@ -536,6 +684,10 @@ export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
         } else if (toolName === "finalize_plan") {
           const inp = toolBlock.input as { plan_id?: string } | null;
           if (inp?.plan_id) finalizedPlanIds.add(inp.plan_id);
+        } else if (toolName === DEEP_PLANNING_TOOL && route === "chat") {
+          // Rest of this turn runs on the deep model. The next human turn is
+          // picked up from history by deepPlanningCarriedOver().
+          route = "deep";
         }
 
         const summary =
@@ -555,7 +707,6 @@ export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
       // Persist tool results as a user turn so history stays valid across requests
       await appendMessage(userId, "user", toolResultContent as ContentBlock[], planId);
 
-      // Add tool results as user message in-memory
       currentMessages = [...currentMessages, { role: "user" as const, content: toolResultContent }];
     }
 
@@ -574,8 +725,7 @@ export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
           .select({ date: workouts.date, n: count() })
           .from(workouts)
           .where(eq(workouts.plan_id, id));
-        if ((planWorkouts[0]?.n ?? 0) === 0) continue; // no workouts yet — still in clarifying-question phase
-        // Compute first workout date to correct the stub's start_date=today.
+        if ((planWorkouts[0]?.n ?? 0) === 0) continue;
         const allDates = await db
           .select({ date: workouts.date })
           .from(workouts)
@@ -586,12 +736,9 @@ export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
         try {
           await HANDLERS.finalize_plan(
             { plan_id: id, ...(firstWorkoutDate ? { start_date: firstWorkoutDate } : {}) },
-            { userId, planId, coldStartBuild: true }
+            { userId, planId, coldStartBuild: true, today }
           );
           finalizedPlanIds.add(id);
-          // Notify client that the plan is fully built so it can show the CTA.
-          // (Explicit finalize_plan tool calls already trigger a tool-use event;
-          // this covers the auto-finalize path where the coach didn't call it explicitly.)
           yield { type: "plan-finalized", plan_id: id };
         } catch (err) {
           console.error("auto-finalize failed", id, err);
@@ -612,7 +759,10 @@ export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
       for (const id of ids) {
         if (finalizedPlanIds.has(id)) continue;
         try {
-          const [wCnt] = await db.select({ n: count() }).from(workouts).where(eq(workouts.plan_id, id));
+          const [wCnt] = await db
+            .select({ n: count() })
+            .from(workouts)
+            .where(eq(workouts.plan_id, id));
           if ((wCnt?.n ?? 0) === 0) continue;
           const allDates = await db
             .select({ date: workouts.date })
@@ -623,7 +773,7 @@ export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
           const firstWorkoutDate = allDates[0]?.date;
           await HANDLERS.finalize_plan(
             { plan_id: id, ...(firstWorkoutDate ? { start_date: firstWorkoutDate } : {}) },
-            { userId, planId, coldStartBuild: true }
+            { userId, planId, coldStartBuild: true, today }
           );
         } catch (err) {
           console.error("auto-finalize failed", id, err);

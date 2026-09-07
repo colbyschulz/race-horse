@@ -59,6 +59,41 @@ describe("renderContextPrefix", () => {
   });
 });
 
+describe("renderContextPrefix recent training / from detail / deep planning", () => {
+  it("wraps the recent-training block in tags and appends the from detail", () => {
+    const out = renderContextPrefix({
+      today: "2026-09-07",
+      units: "mi",
+      activePlan: null,
+      coachNotes: "",
+      fromLabel: "Plan detail (plan id: abc)",
+      fromDetail: "Threshold — 2026-09-10",
+      recentTraining:
+        "Recent training — planned vs actual\n2026-09-06 Sun | planned: long 16.0 mi | actual: none",
+      deepPlanning: true,
+    });
+    expect(out).toContain(
+      "User opened coach from: Plan detail (plan id: abc) — specifically: Threshold — 2026-09-10"
+    );
+    expect(out).toContain("<recent_training>\nRecent training — planned vs actual");
+    expect(out).toContain("actual: none\n</recent_training>");
+    expect(out).toContain("Deep planning mode: active");
+  });
+
+  it("omits those sections when absent", () => {
+    const out = renderContextPrefix({
+      today: "2026-09-07",
+      units: "mi",
+      activePlan: null,
+      coachNotes: "",
+      fromLabel: "Today view",
+    });
+    expect(out).not.toContain("specifically:");
+    expect(out).not.toContain("<recent_training>");
+    expect(out).not.toContain("Deep planning mode");
+  });
+});
+
 describe("renderContextPrefix planFile branch", () => {
   it("includes file-help block when planFile is provided", () => {
     const out = renderContextPrefix({

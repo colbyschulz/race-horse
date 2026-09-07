@@ -103,6 +103,21 @@ vi.mock("@/server/coach/anthropic", () => ({
   }),
   COACH_MODEL: "claude-test",
   COACH_BUILD_MODEL: "claude-test-build",
+  COACH_DEEP_MODEL: "claude-test-deep",
+  COACH_BUILD_EFFORT: "high",
+  COACH_DEEP_EFFORT: "high",
+  COACH_CHAT_MAX_TOKENS: 16000,
+  COACH_BUILD_MAX_TOKENS: 32000,
+}));
+
+// ---------------------------------------------------------------------------
+// Recent-training mock — the planned-vs-actual block has its own DB queries;
+// stub it so the db.select call-order mock above stays simple.
+// ---------------------------------------------------------------------------
+const mockFetchRecentTraining = vi.fn();
+vi.mock("@/server/coach/recent-training", () => ({
+  fetchRecentTraining: (...args: unknown[]) => mockFetchRecentTraining(...args),
+  renderRecentTraining: () => "Recent training — planned vs actual (stub)",
 }));
 
 // ---------------------------------------------------------------------------
@@ -200,6 +215,160 @@ describe("runCoach", () => {
     expect(mockAppendMessage).toHaveBeenCalledTimes(2);
     expect(mockAppendMessage.mock.calls[0][1]).toBe("user");
     expect(mockAppendMessage.mock.calls[1][1]).toBe("assistant");
+
+    // Chat route: chat model, adaptive thinking, no effort override, 1h cache on system.
+    const params = mockStream.mock.calls[0][0] as {
+      model: string;
+      thinking: { type: string };
+      output_config?: unknown;
+      system: { cache_control?: { type: string; ttl?: string } }[];
+    };
+    expect(params.model).toBe("claude-test");
+    expect(params.thinking).toEqual({ type: "adaptive" });
+    expect(params.output_config).toBeUndefined();
+    expect(params.system[0].cache_control).toEqual({ type: "ephemeral", ttl: "1h" });
+
+    // The planned-vs-actual block is injected for the active plan.
+    expect(mockFetchRecentTraining).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: "u1", planId: "plan-1", today: "2026-04-26" })
+    );
+    const userText = (mockAppendMessage.mock.calls[0][2] as { text: string }[])[0].text;
+    expect(userText).toContain("<recent_training>");
+  });
+
+  it("uses the build model with high effort on cold-start builds and skips recent training", async () => {
+    const streamEvents = [
+      { type: "content_block_start", index: 0, content_block: { type: "text", text: "" } },
+      { type: "content_block_delta", index: 0, delta: { type: "text_delta", text: "Q?" } },
+      { type: "content_block_stop", index: 0 },
+      {
+        type: "message_delta",
+        delta: {
+          stop_reason: "end_turn",
+          stop_sequence: null,
+          container: null,
+          stop_details: null,
+        },
+        usage: { output_tokens: 5 },
+      },
+      { type: "message_stop" },
+    ] as import("@anthropic-ai/sdk/resources/messages").RawMessageStreamEvent[];
+    mockStream.mockReturnValue({
+      [Symbol.asyncIterator]: async function* () {
+        for (const e of streamEvents) yield e;
+      },
+      finalMessage: vi.fn().mockResolvedValue({
+        id: "msg-api",
+        stop_reason: "end_turn",
+        content: [{ type: "text", text: "Q?" }],
+        usage: { input_tokens: 10, output_tokens: 5 },
+      }),
+    });
+
+    const { runCoach } = await import("../runner");
+    await collectEvents(
+      runCoach({ userId: "u1", message: "build", today: "2026-04-26", coldStartBuild: true })
+    );
+
+    const params = mockStream.mock.calls[0][0] as {
+      model: string;
+      output_config?: { effort?: string };
+      max_tokens: number;
+    };
+    expect(params.model).toBe("claude-test-build");
+    expect(params.output_config).toEqual({ effort: "high" });
+    expect(params.max_tokens).toBe(32000);
+    expect(mockFetchRecentTraining).not.toHaveBeenCalled();
+  });
+
+  it("switches to the deep model for the rest of the turn after request_deep_planning", async () => {
+    const turn1 = [
+      {
+        type: "content_block_start",
+        index: 0,
+        content_block: {
+          type: "tool_use",
+          id: "tu-deep",
+          name: "request_deep_planning",
+          input: {},
+        },
+      },
+      { type: "content_block_stop", index: 0 },
+      {
+        type: "message_delta",
+        delta: {
+          stop_reason: "tool_use",
+          stop_sequence: null,
+          container: null,
+          stop_details: null,
+        },
+        usage: { output_tokens: 10 },
+      },
+      { type: "message_stop" },
+    ] as import("@anthropic-ai/sdk/resources/messages").RawMessageStreamEvent[];
+    const turn2 = [
+      { type: "content_block_start", index: 0, content_block: { type: "text", text: "" } },
+      { type: "content_block_delta", index: 0, delta: { type: "text_delta", text: "Plan." } },
+      { type: "content_block_stop", index: 0 },
+      {
+        type: "message_delta",
+        delta: {
+          stop_reason: "end_turn",
+          stop_sequence: null,
+          container: null,
+          stop_details: null,
+        },
+        usage: { output_tokens: 5 },
+      },
+      { type: "message_stop" },
+    ] as import("@anthropic-ai/sdk/resources/messages").RawMessageStreamEvent[];
+
+    mockStream
+      .mockReturnValueOnce({
+        [Symbol.asyncIterator]: async function* () {
+          for (const e of turn1) yield e;
+        },
+        finalMessage: vi.fn().mockResolvedValue({
+          id: "msg-1",
+          stop_reason: "tool_use",
+          content: [
+            {
+              type: "tool_use",
+              id: "tu-deep",
+              name: "request_deep_planning",
+              input: { reason: "x" },
+            },
+          ],
+        }),
+      })
+      .mockReturnValueOnce({
+        [Symbol.asyncIterator]: async function* () {
+          for (const e of turn2) yield e;
+        },
+        finalMessage: vi.fn().mockResolvedValue({
+          id: "msg-2",
+          stop_reason: "end_turn",
+          content: [{ type: "text", text: "Plan." }],
+        }),
+      });
+    mockAppendMessage
+      .mockResolvedValueOnce({ id: "msg-user-1" })
+      .mockResolvedValueOnce({ id: "msg-asst-1" });
+
+    const { HANDLERS } = await import("@/server/coach/tools");
+    (HANDLERS as Record<string, unknown>).request_deep_planning = vi
+      .fn()
+      .mockResolvedValue({ ok: true });
+
+    const { runCoach } = await import("../runner");
+    const events = await collectEvents(
+      runCoach({ userId: "u1", message: "rebuild weeks 6-12", today: "2026-04-26" })
+    );
+
+    expect(events.map((e) => e.type)).toContain("tool-use");
+    expect(mockStream).toHaveBeenCalledTimes(2);
+    expect((mockStream.mock.calls[0][0] as { model: string }).model).toBe("claude-test");
+    expect((mockStream.mock.calls[1][0] as { model: string }).model).toBe("claude-test-deep");
   });
 
   it("calls tool handler with correct userId and emits tool-use / tool-result events", async () => {
