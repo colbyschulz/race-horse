@@ -1,5 +1,4 @@
 "use client";
-import type { CSSProperties } from "react";
 import { formatDayLabel } from "@/lib/dates";
 import { formatDistance, formatDuration } from "@/lib/format";
 import { WorkoutBadge } from "./workout-badge";
@@ -36,23 +35,19 @@ export function WorkoutDayCard({
   const notes = showNotes && !isRest && workout?.notes ? workout.notes : null;
 
   // Secondary workout (doubles)
-  const secondary = !isRest ? (workout!.secondary as import("@/server/db/schema").SecondaryWorkout | null | undefined) : null;
-  const secDist = secondary?.distance_km != null
-    ? formatDistance(String(secondary.distance_km * 1000), units)
+  const secondary = !isRest
+    ? (workout!.secondary as import("@/server/db/schema").SecondaryWorkout | null | undefined)
     : null;
-  const secDur = secondary?.duration_minutes != null
-    ? formatDuration(secondary.duration_minutes * 60)
-    : null;
+  const secDist =
+    secondary?.distance_km != null
+      ? formatDistance(String(secondary.distance_km * 1000), units)
+      : null;
+  const secDur =
+    secondary?.duration_minutes != null ? formatDuration(secondary.duration_minutes * 60) : null;
   const secStat = secDist ? `${secDist} ${units}` : secDur;
 
-  const railType = isRest ? "rest" : workout!.type;
-  const cardStyle = { "--rail": `var(--color-workout-${railType}-mid)` } as CSSProperties;
-
   return (
-    <div
-      className={`${styles.card} ${isToday ? styles.cardToday : ""}`}
-      style={cardStyle}
-    >
+    <div className={`${styles.card} ${isToday ? styles.cardToday : ""}`}>
       <button
         type="button"
         className={styles.dayBtn}
@@ -94,9 +89,7 @@ export function WorkoutDayCard({
                 </div>
               )}
             </div>
-            {showNotes && secondary.notes && (
-              <p className={styles.notes}>{secondary.notes}</p>
-            )}
+            {showNotes && secondary.notes && <p className={styles.notes}>{secondary.notes}</p>}
           </div>
         )}
       </div>
@@ -125,12 +118,7 @@ export function WorkoutDayCard({
                   ? ` · ${formatDuration(act.moving_time_seconds) ?? ""}`
                   : ""}
               </span>
-              <svg
-                className={styles.externalArrow}
-                viewBox="0 0 16 16"
-                aria-hidden
-                role="img"
-              >
+              <svg className={styles.externalArrow} viewBox="0 0 16 16" aria-hidden role="img">
                 <path
                   d="M3 8 H13 M9 4 L13 8 L9 12"
                   fill="none"

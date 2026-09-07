@@ -2,21 +2,27 @@
   position: relative;
   background: var(--color-bg-surface);
   border: 1px solid var(--color-border-subtle);
-  border-left: 4px solid var(--rail, var(--color-border-default));
   border-radius: var(--radius-lg);
   overflow: hidden;
+  // The workout-type badge is the only carrier of type color on the card.
 }
 
 .cardToday {
   background: var(--color-brown-subtle);
 }
 
-.card:has(.dayBtn:not(:disabled):hover) {
-  background: color-mix(in srgb, var(--color-brown) 5%, var(--color-bg-surface));
-}
+// Hover: a clear tint plus a brown border. Pointer devices only — on touch,
+// :hover sticks to the last-tapped card and reads as a second highlight.
+@media (hover: hover) {
+  .card:has(.dayBtn:not(:disabled):hover) {
+    background: color-mix(in srgb, var(--color-brown) 9%, var(--color-bg-surface));
+    border-color: color-mix(in srgb, var(--color-brown) 35%, var(--color-border-subtle));
+  }
 
-.cardToday:has(.dayBtn:not(:disabled):hover) {
-  background: color-mix(in srgb, var(--color-brown) 8%, var(--color-brown-subtle));
+  .cardToday:has(.dayBtn:not(:disabled):hover) {
+    background: color-mix(in srgb, var(--color-brown) 13%, var(--color-bg-surface));
+    border-color: color-mix(in srgb, var(--color-brown) 45%, var(--color-border-subtle));
+  }
 }
 
 .dayBtn {
@@ -49,10 +55,15 @@
   min-width: 0;
 }
 
+// Fixed date column so the type badge starts at the same x on every card
+// ("Mon 7" and "Thu 10" differ in width otherwise).
+$day-column: 58px;
+$day-gap: 10px;
+
 .left {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: $day-gap;
   min-width: 0;
 }
 
@@ -63,6 +74,7 @@
   letter-spacing: -0.02em;
   color: var(--color-fg-primary);
   white-space: nowrap;
+  flex: 0 0 $day-column;
 }
 
 .dayLabelToday {
@@ -108,6 +120,8 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-2);
+  // Sit the second session's badge directly under the primary badge.
+  padding-left: $day-column + $day-gap;
 }
 
 .secStatValue {

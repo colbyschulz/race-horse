@@ -46,8 +46,9 @@
   --color-complete-subtle: var(--color-olive-subtle);
 
   // ── Workout type colors ──
-  // Each type has three shades: -bg (badge pill), -mid (accent rail / divider),
-  // and the base var (text + emphasis). They form a tonal ladder from light to dark.
+  // Each type has three shades: -bg (badge pill), -mid (dividers / soft accents),
+  // and the base var (badge text + emphasis). They form a tonal ladder from
+  // light to dark.
   --color-workout-easy: #5c6633;
   --color-workout-easy-bg: #d8e0b0;
   --color-workout-easy-mid: #c8d49a;
