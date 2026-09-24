@@ -532,10 +532,10 @@ export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
       const stream = client.messages.stream({
         model: cfg.model,
         max_tokens: cfg.max_tokens,
-        // Adaptive thinking on every route. Sonnet 5 / Opus 5 accept this as
-        // the only "on" mode; Opus 5 would think by default anyway. Effort
-        // is pinned per route (a mid-conversation effort change breaks the
-        // messages cache) — chat leaves it at the model default.
+        // Adaptive thinking on every route. Sonnet 5 accepts this as the
+        // only "on" mode; Opus 5.5 thinks by default and rejects disabling
+        // it. Effort is pinned per route (a mid-conversation effort change
+        // breaks the messages cache) — chat leaves it at the model default.
         thinking: { type: "adaptive" },
         ...(cfg.effort ? { output_config: { effort: cfg.effort } } : {}),
         system: systemBlocks,

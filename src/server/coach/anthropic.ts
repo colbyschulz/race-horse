@@ -21,8 +21,8 @@ export function getAnthropic(): Anthropic {
 //   (multi-week restructures). Caches are per-model, so an escalation costs one
 //   cold read of the history — acceptable because it's rare.
 export const COACH_MODEL = "claude-sonnet-5";
-export const COACH_BUILD_MODEL = "claude-opus-5";
-export const COACH_DEEP_MODEL = "claude-opus-5";
+export const COACH_BUILD_MODEL = "claude-opus-5-5";
+export const COACH_DEEP_MODEL = "claude-opus-5-5";
 export const EXTRACTION_MODEL = "claude-sonnet-5";
 
 // Effort for the planning paths. Chat leaves effort at the model default (high).
