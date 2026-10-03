@@ -1,17 +1,21 @@
 .user {
   display: flex;
   justify-content: flex-end;
+  min-width: 0;
   margin-bottom: var(--space-3);
 }
 
 .assistant {
   display: flex;
   justify-content: flex-start;
+  min-width: 0;
   margin-bottom: var(--space-3);
 }
 
 .bubble {
   max-width: 75%;
+  min-width: 0;
+  overflow-wrap: break-word;
   padding: var(--space-3) var(--space-4);
   border-radius: var(--radius-lg);
   font-family: var(--font-body);
