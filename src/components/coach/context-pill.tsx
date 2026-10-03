@@ -8,7 +8,7 @@ export function ContextPill({ fromRoute, fromLabel }: { fromRoute?: string; from
   if (!label || !fromRoute) return null;
   return (
     <Link href={fromRoute} className={styles.pill}>
-      ← Back to {label}
+      <span className={styles.label}>← Back to {label}</span>
     </Link>
   );
 }

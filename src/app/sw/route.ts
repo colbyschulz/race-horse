@@ -40,10 +40,6 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   if (event.request.mode !== 'navigate') return;
-  // Network-first: a stale cached document can carry an active-tab/layout
-  // state baked in at a different route, or reference CSS module class
-  // hashes from an older build, so it must never win over a live response
-  // while one is reachable. Cache is strictly the offline fallback.
   event.respondWith(
     fetch(event.request)
       .then(response => {
