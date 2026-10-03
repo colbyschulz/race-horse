@@ -40,24 +40,23 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   if (event.request.mode !== 'navigate') return;
+  // Network-first: a stale cached document can carry an active-tab/layout
+  // state baked in at a different route, or reference CSS module class
+  // hashes from an older build, so it must never win over a live response
+  // while one is reachable. Cache is strictly the offline fallback.
   event.respondWith(
-    caches.open(CACHE_NAME).then(cache =>
-      cache.match(event.request).then(cached => {
-        const networkFetch = fetch(event.request).then(response => {
-          if (response.ok) {
-            const clean = cleanNav(response);
-            cache.put(event.request, clean.clone());
-            return clean;
-          }
-          return response;
-        });
-        if (cached) {
-          networkFetch.catch(() => {});
-          return cached;
-        }
-        return networkFetch;
+    fetch(event.request)
+      .then(response => {
+        if (!response.ok) return response;
+        const clean = cleanNav(response);
+        caches.open(CACHE_NAME).then(cache => cache.put(event.request, clean.clone()));
+        return clean;
       })
-    )
+      .catch(() =>
+        caches.open(CACHE_NAME).then(cache =>
+          cache.match(event.request).then(cached => cached || cache.match('/'))
+        )
+      )
   );
 });
 `;
