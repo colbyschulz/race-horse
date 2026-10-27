@@ -19,6 +19,7 @@ const updateChain = {
 const deleteChain = {
   where: vi.fn().mockResolvedValue(undefined),
 };
+const batchMock = vi.fn().mockResolvedValue(undefined);
 
 vi.mock("@/server/db", () => ({
   db: {
@@ -26,6 +27,7 @@ vi.mock("@/server/db", () => ({
     insert: () => insertChain,
     update: () => updateChain,
     delete: () => deleteChain,
+    batch: (queries: unknown[]) => batchMock(queries),
   },
 }));
 vi.mock("@/server/db/schema", () => ({
@@ -128,16 +130,19 @@ describe("createPlan", () => {
 describe("setActivePlan", () => {
   beforeEach(() => {
     updateChain.set.mockClear().mockReturnThis();
-    updateChain.where.mockClear().mockResolvedValue(undefined);
+    updateChain.where.mockClear().mockReturnThis();
+    batchMock.mockClear().mockResolvedValue(undefined);
   });
 
-  it("issues a single UPDATE that flips is_active per row", async () => {
+  it("deactivates every other active plan, then activates the target, as one batch", async () => {
     await setActivePlan("p1", "u1");
-    expect(updateChain.set).toHaveBeenCalledOnce();
-    expect(updateChain.where).toHaveBeenCalledOnce();
-    const setArg = updateChain.set.mock.calls[0][0];
-    expect(setArg).toHaveProperty("is_active");
-    expect(setArg).toHaveProperty("updated_at");
+
+    expect(batchMock).toHaveBeenCalledOnce();
+    const batched = batchMock.mock.calls[0][0] as unknown[];
+    expect(batched).toHaveLength(2);
+
+    expect(updateChain.set).toHaveBeenNthCalledWith(1, expect.objectContaining({ is_active: false }));
+    expect(updateChain.set).toHaveBeenNthCalledWith(2, expect.objectContaining({ is_active: true }));
   });
 });
 

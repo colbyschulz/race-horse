@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, ne } from "drizzle-orm";
 import { db } from "@/server/db";
 import { plans, workouts } from "@/server/db/schema";
 import { mondayOf } from "@/lib/dates";
@@ -46,21 +46,23 @@ export async function createPlan(userId: string, input: CreatePlanInput): Promis
 /**
  * Activates `planId` for `userId` and deactivates all of the user's other plans.
  *
- * Single UPDATE so the partial unique index `(userId) WHERE is_active` is never
- * violated mid-statement (Postgres evaluates SET per row atomically).
- *
  * **Precondition:** caller MUST verify `planId` belongs to `userId` first
- * (e.g. via `getPlanById`). If `planId` is foreign, this becomes a no-op activation
- * AND deactivates every plan the user owns — the API route does this guard for us.
+ * (e.g. via `getPlanById`). If `planId` is foreign, this deactivates every
+ * plan the user owns and activates nothing — the API route does this guard
+ * for us.
  */
 export async function setActivePlan(planId: string, userId: string): Promise<void> {
-  await db
-    .update(plans)
-    .set({
-      is_active: sql`(${plans.id} = ${planId})`,
-      updated_at: new Date(),
-    })
-    .where(eq(plans.userId, userId));
+  const updated_at = new Date();
+  await db.batch([
+    db
+      .update(plans)
+      .set({ is_active: false, updated_at })
+      .where(and(eq(plans.userId, userId), eq(plans.is_active, true), ne(plans.id, planId))),
+    db
+      .update(plans)
+      .set({ is_active: true, updated_at })
+      .where(and(eq(plans.id, planId), eq(plans.userId, userId))),
+  ]);
 }
 
 export async function archivePlan(planId: string, userId: string): Promise<void> {
