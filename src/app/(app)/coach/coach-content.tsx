@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo } from "react";
-import { useSearchParams } from "next/navigation";
-import { CoachPageClient } from "./coach-page-client";
+import { useEffect, useMemo } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { CoachPageClient, COACH_BUILD_STASH_KEY } from "./coach-page-client";
 import { useCoachMessages } from "@/queries/coach-messages";
 import { usePlan } from "@/queries/plans";
 import type { StoredMessage } from "@/types/coach";
@@ -11,6 +11,7 @@ const UUID_RE = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
 const PLAN_FROM_RE = new RegExp(`^/plans/(${UUID_RE})$`);
 
 export function CoachContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const from = searchParams.get("from") ?? undefined;
   const fromLabelParam = searchParams.get("from_label") ?? undefined;
@@ -26,6 +27,20 @@ export function CoachContent() {
     }
     return null;
   }, [planIdParam, from]);
+
+  // A cold-start build interrupted before the URL ever carried plan_id (the
+  // user switched screens mid-build) would otherwise land back here with a
+  // blank form. Recover the in-progress conversation from the stash instead.
+  useEffect(() => {
+    if (intent !== "build" || planId) return;
+    let stashed: string | null = null;
+    try {
+      stashed = sessionStorage.getItem(COACH_BUILD_STASH_KEY);
+    } catch {
+      /* ignore */
+    }
+    if (stashed) router.replace(`/coach?plan_id=${encodeURIComponent(stashed)}`);
+  }, [intent, planId, router]);
 
   // Build form has no prior conversation — render the form directly with an
   // empty message list. Once the form is submitted, plan-created pivots us to

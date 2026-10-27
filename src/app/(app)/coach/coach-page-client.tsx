@@ -4,7 +4,8 @@ import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import styles from "./coach.module.scss";
 import type { StoredMessage, SSEEvent } from "@/types/coach";
-import { consumeStream } from "@/lib/sse";
+import { consumeStream, CoachStreamError } from "@/lib/sse";
+import { decideTurnPollOutcome, TURN_POLL_INTERVAL_MS, type Turn } from "@/lib/turn-poll";
 import type { BuildFormInput } from "@/lib/build-form";
 
 import { Button } from "@/components/button/button";
@@ -33,6 +34,13 @@ type StreamingState = {
   items: StreamItem[];
   done: boolean;
 };
+
+// sessionStorage key for a cold-start build's plan id, written as soon as it's
+// known (plan-created) so a build interrupted before the URL carries plan_id
+// (e.g. the user switches screens mid-build) can still be found again.
+export const COACH_BUILD_STASH_KEY = "coachInProgressBuildPlanId";
+
+type TurnStatusResponse = { turn: Turn };
 
 export function CoachPageClient({
   initialMessages,
@@ -90,6 +98,53 @@ export function CoachPageClient({
     }
   }, []);
 
+  // True while a mount-time poll has found a turn still running server-side
+  // (e.g. the user navigated away or closed the app mid-reply and came back).
+  const [turnInFlight, setTurnInFlight] = useState(false);
+
+  // True until the first turn-status check resolves. Input stays disabled
+  // through this window too — otherwise a message sent in the single
+  // round-trip before we know a turn is already running would race it.
+  const [checkingTurnStatus, setCheckingTurnStatus] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let observedRunning = false;
+
+    async function poll() {
+      const qs = planId ? `?plan_id=${encodeURIComponent(planId)}` : "";
+      const r = await fetch(`/api/coach/turn-status${qs}`);
+      if (cancelled || !r.ok) return;
+      const { turn } = (await r.json()) as TurnStatusResponse;
+      if (cancelled) return;
+
+      const outcome = decideTurnPollOutcome(turn, observedRunning, Date.now());
+      setCheckingTurnStatus(false);
+
+      if (outcome.kind === "keep-polling") {
+        observedRunning = true;
+        setTurnInFlight(true);
+        timer = setTimeout(poll, TURN_POLL_INTERVAL_MS);
+        return;
+      }
+
+      setTurnInFlight(false);
+      if (outcome.kind === "reload") {
+        void reloadHistory();
+      } else if (outcome.kind === "alert") {
+        alert(outcome.message);
+      }
+    }
+
+    void poll();
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [planId]);
+
   useEffect(() => {
     const el = streamRef.current;
     if (!el) return;
@@ -140,6 +195,11 @@ export function CoachPageClient({
       // Do NOT call window.history.replaceState here — it triggers useSearchParams()
       // to update, which causes CoachContent to remount CoachPageClient mid-stream.
       // URL is updated after consumeStream resolves (see buildSubmit).
+      try {
+        sessionStorage.setItem(COACH_BUILD_STASH_KEY, ev.plan_id);
+      } catch {
+        /* sessionStorage unavailable — reconnect just won't work for this session */
+      }
       return;
     }
     if (ev.type === "plan-finalized") {
@@ -181,7 +241,7 @@ export function CoachPageClient({
       }
       reloadHistoryPromiseRef.current = reloadHistory();
     } else if (ev.type === "error") {
-      throw new Error(ev.error);
+      throw new CoachStreamError(ev.error);
     }
   }
 
@@ -215,7 +275,11 @@ export function CoachPageClient({
       await consumeStream(res, (ev) => handleSSE(ev, assembled));
     } catch (err) {
       console.error(err);
-      alert("Coach error — please try again.");
+      alert(
+        err instanceof CoachStreamError
+          ? err.message
+          : "That request took too long and didn't finish — try asking for a smaller piece at a time."
+      );
       setStreaming(null); // reloadHistory won't run on error, so clear here
     } finally {
       setSending(false);
@@ -282,11 +346,20 @@ export function CoachPageClient({
       setBuildState(null);
     } catch (err) {
       console.error(err);
-      alert("Coach error — please try again.");
+      alert(
+        err instanceof CoachStreamError
+          ? err.message
+          : "That request took too long and didn't finish — try asking for a smaller piece at a time."
+      );
       setBuildState(null);
       setStreaming(null); // reloadHistory won't run on error, so clear here
     } finally {
       setSending(false);
+      try {
+        sessionStorage.removeItem(COACH_BUILD_STASH_KEY);
+      } catch {
+        /* ignore */
+      }
     }
   }
 
@@ -353,6 +426,7 @@ export function CoachPageClient({
               })() && <ThinkingIndicator />}
           </>
         )}
+        {!streaming && turnInFlight && <ThinkingIndicator />}
       </div>
       {viewPlanId && (
         <div className={styles.viewPlanCta}>
@@ -362,7 +436,13 @@ export function CoachPageClient({
         </div>
       )}
       <MessageInput
-        disabled={sending || buildState?.kind === "editable" || buildState?.kind === "submitting"}
+        disabled={
+          sending ||
+          turnInFlight ||
+          checkingTurnStatus ||
+          buildState?.kind === "editable" ||
+          buildState?.kind === "submitting"
+        }
         onSend={send}
       />
       <ClearChatDialog open={clearOpen} onClose={() => setClearOpen(false)} onConfirm={clear} />

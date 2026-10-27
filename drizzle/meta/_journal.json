@@ -65,5 +65,19 @@
       "tag": "0008_gigantic_tombstone",
       "breakpoints": true
     },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1777854027000,
+      "tag": "0009_workout_secondary",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1793065068531,
+      "tag": "0010_coach_turns",
+      "breakpoints": true
+    }
   ]
 }

@@ -51,6 +51,7 @@ export const workoutTypeEnum = pgEnum("workout_type", [
 ]);
 
 export const messageRoleEnum = pgEnum("message_role", ["user", "assistant"]);
+export const coachTurnStatusEnum = pgEnum("coach_turn_status", ["running", "done", "error"]);
 
 export const planFileStatusEnum = pgEnum("plan_file_status", ["extracting", "extracted", "failed"]);
 
@@ -262,6 +263,32 @@ export const messages = pgTable(
     created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("message_user_plan_created_idx").on(t.user_id, t.plan_id, t.created_at)]
+);
+
+export const coachTurns = pgTable(
+  "coach_turn",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    user_id: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    plan_id: uuid("plan_id").references(() => plans.id, { onDelete: "cascade" }),
+    status: coachTurnStatusEnum("status").notNull().default("running"),
+    error_message: text("error_message"),
+    started_at: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+    updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    // A plain uniqueIndex on (user_id, plan_id) wouldn't dedupe NULL plan_id rows —
+    // Postgres treats NULLs as distinct in unique indexes. Split into two partial
+    // indexes, same pattern as `plan_one_active_per_user_idx` above.
+    uniqueIndex("coach_turn_user_plan_idx")
+      .on(t.user_id, t.plan_id)
+      .where(sql`${t.plan_id} is not null`),
+    uniqueIndex("coach_turn_user_null_plan_idx")
+      .on(t.user_id)
+      .where(sql`${t.plan_id} is null`),
+  ]
 );
 
 export const planFiles = pgTable(

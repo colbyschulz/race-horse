@@ -1,5 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
+vi.mock("next/server", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("next/server")>();
+  return { ...actual, after: vi.fn() };
+});
+vi.mock("@/server/coach/turn-status", () => ({
+  upsertTurnStatus: vi.fn().mockResolvedValue(undefined),
+}));
+
 const mockRunCoach = vi.fn();
 vi.mock("@/server/coach/runner", () => ({ runCoach: (...args: unknown[]) => mockRunCoach(...args) }));
 

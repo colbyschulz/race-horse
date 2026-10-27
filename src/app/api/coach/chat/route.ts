@@ -4,8 +4,10 @@ import { eq } from "drizzle-orm";
 import { users } from "@/server/db/schema";
 import { runCoach } from "@/server/coach/runner";
 import { todayIso } from "@/lib/dates";
-import { sseResponse } from "@/lib/sse";
+import { sseResponse } from "@/lib/sse-server";
 import type { ChatRequestBody } from "@/server/coach/types";
+
+export const maxDuration = 300;
 
 export async function POST(req: Request): Promise<Response> {
   const session = await auth();
@@ -38,16 +40,18 @@ export async function POST(req: Request): Promise<Response> {
     .limit(1);
   const tz = (userRow?.preferences as { timezone?: string } | null)?.timezone;
   const today = todayIso(tz);
+  const planId: string | null = body.plan_id ?? null;
 
   return sseResponse(
     runCoach({
       userId: session.user.id!,
       message: body.message,
-      planId: body.plan_id ?? null,
+      planId,
       fromRoute: body.from_route,
       fromLabel: typeof body.from_label === "string" ? body.from_label.slice(0, 200) : undefined,
       planFileId: body.plan_file_id,
       today,
-    })
+    }),
+    { userId: session.user.id!, planId }
   );
 }

@@ -1,33 +1,19 @@
 import type { SSEEvent } from "@/types/coach";
 
-const SSE_HEADERS = {
+export const SSE_HEADERS = {
   "content-type": "text/event-stream",
   "cache-control": "no-cache, no-transform",
   connection: "keep-alive",
   "x-accel-buffering": "no",
 } as const;
 
+/** Thrown by the client when the server sent an explicit `error` SSE event —
+ * distinguishes "the coach reported a specific failure" from a connection
+ * just dying mid-stream (see CoachPageClient). */
+export class CoachStreamError extends Error {}
+
 export function sseEvent(event: SSEEvent): string {
   return `event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`;
-}
-
-export function sseResponse(gen: AsyncIterable<SSEEvent>): Response {
-  const enc = new TextEncoder();
-  const stream = new ReadableStream<Uint8Array>({
-    async start(controller) {
-      try {
-        for await (const event of gen) {
-          controller.enqueue(enc.encode(sseEvent(event)));
-        }
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : "unknown error";
-        controller.enqueue(enc.encode(sseEvent({ type: "error", error: msg })));
-      } finally {
-        controller.close();
-      }
-    },
-  });
-  return new Response(stream, { headers: SSE_HEADERS });
 }
 
 export async function consumeStream(res: Response, onEvent: (ev: SSEEvent) => void): Promise<void> {

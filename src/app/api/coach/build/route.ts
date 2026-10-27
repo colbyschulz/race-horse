@@ -6,9 +6,11 @@ import { runCoach } from "@/server/coach/runner";
 import { fetchStravaPreload } from "@/server/coach/strava-preload";
 import { formatBuildForm, type BuildFormInput } from "@/lib/build-form";
 import { todayIso } from "@/lib/dates";
-import { sseResponse } from "@/lib/sse";
+import { sseResponse } from "@/lib/sse-server";
 import { createPlan } from "@/server/plans/queries";
 import type { BuildRequestBody, SSEEvent } from "@/server/coach/types";
+
+export const maxDuration = 300;
 
 const STALE_STUB_THRESHOLD_MS = 60 * 60 * 1000; // 1 hour
 
@@ -162,6 +164,7 @@ export async function POST(req: Request): Promise<Response> {
         stravaPreload: preload,
         coldStartBuild: true,
       })
-    )
+    ),
+    { userId: session.user.id!, planId: stub.id }
   );
 }

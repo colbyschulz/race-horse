@@ -44,8 +44,16 @@ export function PlanCard({ plan, today, units }: Props) {
   const weeks = totalWeeks(plan.start_date, plan.end_date);
   const weeksLeft = status !== "archived" ? computeWeeksLeft(plan.end_date, today) : null;
 
+  // A still-generating plan has no workouts to show on its detail page yet —
+  // and no way back to its coach conversation from there — so route straight
+  // into the coach thread that's building it instead.
+  const href =
+    status === "generating"
+      ? `/coach?plan_id=${encodeURIComponent(plan.id)}&from=${encodeURIComponent("/plans")}&from_label=${encodeURIComponent(plan.title)}`
+      : `/plans/${plan.id}`;
+
   return (
-    <Link href={`/plans/${plan.id}`} className={styles.cardLink}>
+    <Link href={href} className={styles.cardLink}>
       <article className={`${styles.card} ${styles[`card_${status}`]}`}>
         <div className={styles.headRow}>
           <h2 className={styles.title}>{plan.title}</h2>
