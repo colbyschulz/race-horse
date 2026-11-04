@@ -60,6 +60,23 @@ beforeEach(() => {
 });
 
 describe("POST /api/coach/build", () => {
+  it("cleans up abandoned stubs but keeps plans that already have workouts", async () => {
+    const whereSpy = vi.fn(() => Promise.resolve());
+    mockDbDelete.mockReturnValue({ where: whereSpy });
+    const req = new Request("http://test/api/coach/build", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ sport: "run", goal_type: "indefinite" }),
+    });
+    await POST(req);
+
+    const { PgDialect } = await import("drizzle-orm/pg-core");
+    const condition = (whereSpy.mock.calls as unknown as [never][])[0][0];
+    const rendered = new PgDialect().sqlToQuery(condition).sql;
+    expect(rendered).toContain('"generation_status"');
+    expect(rendered).toContain('not exists (select 1 from "workout" where "workout"."plan_id" = "plan"."id")');
+  });
+
   it("returns 401 when unauthenticated", async () => {
     vi.mocked(auth).mockResolvedValueOnce(null as never);
     const req = new Request("http://test/api/coach/build", {

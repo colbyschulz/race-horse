@@ -27,7 +27,7 @@ function totalWeeks(start: string, end: string | null): number | null {
 
 const STATUS_LABEL: Record<Status, string> = {
   active: "Active",
-  generating: "Generating…",
+  generating: "In progress",
   upcoming: "Upcoming",
   archived: "Archived",
 };
@@ -44,8 +44,8 @@ export function PlanCard({ plan, today, units }: Props) {
   const weeks = totalWeeks(plan.start_date, plan.end_date);
   const weeksLeft = status !== "archived" ? computeWeeksLeft(plan.end_date, today) : null;
 
-  // A still-generating plan has no workouts to show on its detail page yet —
-  // and no way back to its coach conversation from there — so route straight
+  // A plan still being built may be incomplete or waiting at a check-in, and its
+  // detail page has no way back to the coach conversation, so route straight
   // into the coach thread that's building it instead.
   const href =
     status === "generating"

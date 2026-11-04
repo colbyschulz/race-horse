@@ -20,7 +20,7 @@ const mockWorkoutCounts = { total: 20, completed: 5 };
 // We need to mimic drizzle's chained query builder
 function makeSelectChain(rows: unknown[]) {
   const chain: Record<string, unknown> = {};
-  const methods = ["from", "where", "limit", "select"];
+  const methods = ["from", "where", "limit", "select", "orderBy"];
   for (const m of methods) {
     chain[m] = vi.fn(() => chain);
   }
@@ -104,9 +104,10 @@ vi.mock("@/server/coach/anthropic", () => ({
   COACH_MODEL: "claude-test",
   COACH_BUILD_MODEL: "claude-test-build",
   COACH_DEEP_MODEL: "claude-test-deep",
+  COACH_CHAT_EFFORT: "xhigh",
   COACH_BUILD_EFFORT: "high",
-  COACH_DEEP_EFFORT: "high",
-  COACH_CHAT_MAX_TOKENS: 16000,
+  COACH_DEEP_EFFORT: "xhigh",
+  COACH_CHAT_MAX_TOKENS: 32000,
   COACH_BUILD_MAX_TOKENS: 32000,
 }));
 
@@ -128,6 +129,7 @@ vi.mock("@/server/coach/tools", () => ({
   getColdStartTools: vi.fn().mockReturnValue([]),
   HANDLERS: {
     get_active_plan: vi.fn().mockResolvedValue({ id: "plan-1", title: "Marathon Base" }),
+    finalize_plan: vi.fn().mockResolvedValue({ ok: true }),
   },
   summarizeToolResult: vi.fn().mockReturnValue("Read active plan"),
 }));
@@ -216,16 +218,19 @@ describe("runCoach", () => {
     expect(mockAppendMessage.mock.calls[0][1]).toBe("user");
     expect(mockAppendMessage.mock.calls[1][1]).toBe("assistant");
 
-    // Chat route: chat model, adaptive thinking, no effort override, 1h cache on system.
+    // Chat route: chat model, adaptive thinking, explicit effort, 1h cache on system.
     const params = mockStream.mock.calls[0][0] as {
       model: string;
       thinking: { type: string };
-      output_config?: unknown;
+      output_config?: { effort?: string };
       system: { cache_control?: { type: string; ttl?: string } }[];
     };
     expect(params.model).toBe("claude-test");
-    expect(params.thinking).toEqual({ type: "adaptive" });
-    expect(params.output_config).toBeUndefined();
+    expect(params.thinking).toEqual({ type: "adaptive", display: "updates" });
+    expect(mockStream.mock.calls[0][1]).toEqual({
+      headers: { "anthropic-beta": "thinking-display-updates-2026-08-18" },
+    });
+    expect(params.output_config).toEqual({ effort: "xhigh" });
     expect(params.system[0].cache_control).toEqual({ type: "ephemeral", ttl: "1h" });
 
     // The planned-vs-actual block is injected for the active plan.
@@ -461,6 +466,182 @@ describe("runCoach", () => {
       expect.anything(),
       expect.objectContaining({ userId: "u1" })
     );
+  });
+
+  it("announces a tool as soon as it starts, and streams progress notes", async () => {
+    const streamEvents = [
+      { type: "content_block_start", index: 0, content_block: { type: "thinking", thinking: "", signature: "" } },
+      { type: "content_block_delta", index: 0, delta: { type: "thinking_delta", thinking: "" } },
+      {
+        type: "content_block_delta",
+        index: 0,
+        delta: { type: "thinking_delta", thinking: "Checking your plan first." },
+      },
+      {
+        type: "content_block_delta",
+        index: 0,
+        delta: {
+          type: "thinking_delta",
+          thinking: "This part of the response was interrupted before it finished.",
+        },
+      },
+      { type: "content_block_stop", index: 0 },
+      {
+        type: "content_block_start",
+        index: 1,
+        content_block: { type: "tool_use", id: "tu-9", name: "get_active_plan", input: {} },
+      },
+      { type: "content_block_delta", index: 1, delta: { type: "input_json_delta", partial_json: "{}" } },
+      { type: "content_block_stop", index: 1 },
+      {
+        type: "message_delta",
+        delta: { stop_reason: "tool_use", stop_sequence: null, container: null, stop_details: null },
+        usage: { output_tokens: 10 },
+      },
+    ] as unknown as import("@anthropic-ai/sdk/resources/messages").RawMessageStreamEvent[];
+
+    mockStream
+      .mockReturnValueOnce({
+        [Symbol.asyncIterator]: async function* () {
+          for (const e of streamEvents) yield e;
+        },
+        finalMessage: vi.fn().mockResolvedValue({
+          id: "msg-api-1",
+          stop_reason: "tool_use",
+          content: [{ type: "tool_use", id: "tu-9", name: "get_active_plan", input: {} }],
+        }),
+      })
+      .mockReturnValueOnce({
+        [Symbol.asyncIterator]: async function* () {
+          yield {
+            type: "message_delta",
+            delta: { stop_reason: "end_turn", stop_sequence: null, container: null, stop_details: null },
+            usage: { output_tokens: 1 },
+          };
+        },
+        finalMessage: vi.fn().mockResolvedValue({
+          id: "msg-api-2",
+          stop_reason: "end_turn",
+          content: [{ type: "text", text: "Done." }],
+        }),
+      });
+    mockAppendMessage
+      .mockResolvedValueOnce({ id: "msg-user-1" })
+      .mockResolvedValueOnce({ id: "msg-asst-1" });
+
+    const { runCoach } = await import("../runner");
+    const events = await collectEvents(runCoach({ userId: "u1", message: "Plan?", today: "2026-04-26" }));
+
+    const notes = events.filter((e) => e.type === "progress-delta");
+    expect(notes).toEqual([{ type: "progress-delta", delta: "Checking your plan first." }]);
+
+    const start = events.findIndex((e) => e.type === "tool-start");
+    const use = events.findIndex((e) => e.type === "tool-use");
+    const result = events.findIndex((e) => e.type === "tool-result");
+    expect(events[start]).toEqual({ type: "tool-start", id: "tu-9", name: "get_active_plan" });
+    expect(start).toBeLessThan(use);
+    expect(use).toBeLessThan(result);
+    expect(events[result]).toMatchObject({ id: "tu-9" });
+  });
+
+  describe("plans paused at a check-in", () => {
+    const history = (week: number, total: number) => [
+      { id: "u1", role: "user", content: [{ type: "text", text: "build" }], created_at: new Date() },
+      {
+        id: "a1",
+        role: "assistant",
+        content: [
+          {
+            type: "tool_use",
+            id: "tu-w",
+            name: "update_workouts",
+            input: { plan_id: "plan-1", week_number: week, total_weeks: total, operations: [] },
+          },
+        ],
+        created_at: new Date(),
+      },
+      {
+        id: "u2",
+        role: "user",
+        content: [{ type: "tool_result", tool_use_id: "tu-w", content: "{}" }],
+        created_at: new Date(),
+      },
+      { id: "u3", role: "user", content: [{ type: "text", text: "Looks good" }], created_at: new Date() },
+    ];
+
+    const endTurnStream = (text = "Here's the first 12 weeks.") => ({
+      [Symbol.asyncIterator]: async function* () {
+        yield {
+          type: "message_delta",
+          delta: { stop_reason: "end_turn", stop_sequence: null, container: null, stop_details: null },
+          usage: { output_tokens: 1 },
+        };
+      },
+      finalMessage: vi.fn().mockResolvedValue({
+        id: "msg-api",
+        stop_reason: "end_turn",
+        content: [{ type: "text", text }],
+      }),
+    });
+
+    async function run() {
+      mockAppendMessage.mockResolvedValue({ id: "msg-any" });
+      workoutSelectChain = makeSelectChain([{ n: 84, date: "2026-11-09", total: 84, completed: 0 }]);
+      const { runCoach } = await import("../runner");
+      const { HANDLERS, getColdStartTools } = await import("@/server/coach/tools");
+      const events = await collectEvents(
+        runCoach({ userId: "u1", message: "Looks good", planId: "plan-1", today: "2026-11-04", coldStartBuild: true })
+      );
+      return { events, HANDLERS, getColdStartTools };
+    }
+
+    it("doesn't finalize when weeks remain, and lets the coach re-read what it wrote", async () => {
+      mockLoadHistory.mockResolvedValue(history(12, 19));
+      mockStream.mockReturnValue(endTurnStream());
+      const { events, HANDLERS, getColdStartTools } = await run();
+
+      expect(HANDLERS.finalize_plan).not.toHaveBeenCalled();
+      expect(events.map((e) => e.type)).not.toContain("plan-finalized");
+      expect(getColdStartTools).toHaveBeenCalledWith("plan-1", { canReadPlan: true });
+    });
+
+    it("still finalizes once the last week is written", async () => {
+      mockLoadHistory.mockResolvedValue(history(19, 19));
+      mockStream.mockReturnValue(endTurnStream("All done."));
+      const { events, HANDLERS } = await run();
+
+      expect(HANDLERS.finalize_plan).toHaveBeenCalledTimes(1);
+      expect(events.map((e) => e.type)).toContain("plan-finalized");
+    });
+
+    it("refuses the coach's own finalize call while weeks remain", async () => {
+      mockLoadHistory.mockResolvedValue(history(12, 19));
+      const finalizeCall = { type: "tool_use", id: "tu-f", name: "finalize_plan", input: { plan_id: "plan-1" } };
+      mockStream
+        .mockReturnValueOnce({
+          [Symbol.asyncIterator]: async function* () {
+            yield { type: "content_block_start", index: 0, content_block: finalizeCall };
+            yield {
+              type: "message_delta",
+              delta: { stop_reason: "tool_use", stop_sequence: null, container: null, stop_details: null },
+              usage: { output_tokens: 1 },
+            };
+          },
+          finalMessage: vi.fn().mockResolvedValue({ id: "m", stop_reason: "tool_use", content: [finalizeCall] }),
+        })
+        .mockReturnValueOnce(endTurnStream());
+      const { events, HANDLERS } = await run();
+
+      expect(HANDLERS.finalize_plan).not.toHaveBeenCalled();
+      expect(events.map((e) => e.type)).not.toContain("plan-finalized");
+      // No tool-use event: that's what the client treats as a finished plan.
+      expect(events.some((e) => e.type === "tool-use")).toBe(false);
+      const toolResults = mockAppendMessage.mock.calls
+        .map((c) => c[2] as { type: string; is_error?: boolean }[])
+        .flat()
+        .filter((b) => b.type === "tool_result");
+      expect(toolResults).toEqual([expect.objectContaining({ tool_use_id: "tu-f", is_error: true })]);
+    });
   });
 
   it("passes stravaPreload and coldStartBuild to renderContextPrefix", async () => {

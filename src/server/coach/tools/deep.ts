@@ -6,16 +6,17 @@ import type { ToolHandler } from "../types";
 type Tool = Anthropic.Messages.Tool;
 
 /**
- * Escalation hatch. Everyday chat runs on the lighter chat model. When the
- * coach decides a request is really a multi-week restructure (injury, a
- * missed block, a moved race, a change to the plan's arc), it calls this tool
- * and the runner switches the rest of this turn — and the athlete's next turn —
- * to the deep planning model.
+ * Multi-week planning mode. When the coach decides a request is really a
+ * multi-week restructure (injury, a missed block, a moved race, a change to the
+ * plan's arc), it calls this tool and the runner moves the rest of this turn —
+ * and the athlete's next turn — to the deep planning route. That route currently
+ * has the same model, effort and output limit as chat, so the call changes nothing
+ * until those settings differ.
  */
 export const requestDeepPlanningTool: Tool = {
   name: "request_deep_planning",
   description:
-    "Switch this conversation to the deep-planning model for the rest of this turn and the athlete's next turn. Call it BEFORE reading the plan or writing any workouts when the request is a multi-week restructure: rebuilding 3+ weeks, changing the plan's arc or peak, re-planning after injury/illness/a missed block, or moving the goal race. Do not call it for single-workout or single-week edits — those are handled directly. Returns immediately; continue working after it returns.",
+    "Switch this conversation to the deep-planning model for the rest of this turn and the athlete's next turn. Call it BEFORE reading the plan or writing any workouts when the request is a multi-week restructure: changing two or more weeks, changing the plan's arc or peak, re-planning after injury/illness/a missed block, or moving the goal race. Do not call it for single-workout or single-week edits, or when the context already says deep planning mode is active. Returns immediately; continue working after it returns.",
   input_schema: {
     type: "object" as const,
     properties: {

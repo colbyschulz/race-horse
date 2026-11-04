@@ -16,6 +16,11 @@ const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
 const RUN_TYPES = new Set(["run", "virtualrun", "trailrun"]);
 const BIKE_TYPES = new Set(["ride", "virtualride", "ebikeride", "gravelride", "mountainbikeride"]);
 
+// Sessions whose shape matters to the next coaching decision. Easy and recovery
+// notes are left out to keep this block small.
+const DETAILED_WORKOUT_TYPES = new Set(["tempo", "threshold", "intervals", "long", "race", "cross"]);
+const SESSION_DETAIL_MAX_CHARS = 140;
+
 function matchesSport(activityType: string, sport: "run" | "bike"): boolean {
   const t = activityType.toLowerCase();
   return sport === "run" ? RUN_TYPES.has(t) : BIKE_TYPES.has(t);
@@ -136,6 +141,15 @@ function fmtPlanned(
   return parts.join(" ");
 }
 
+function sessionDetail(type: string, notes: string): string | null {
+  if (!DETAILED_WORKOUT_TYPES.has(type)) return null;
+  const text = notes.replace(/\s+/g, " ").trim();
+  if (!text) return null;
+  return text.length > SESSION_DETAIL_MAX_CHARS
+    ? `${text.slice(0, SESSION_DETAIL_MAX_CHARS).trimEnd()}…`
+    : text;
+}
+
 function fmtActual(a: ActualRow, units: "mi" | "km"): string {
   const parts: string[] = [`${a.type} "${a.name}"`];
   const dist = a.distance_meters != null ? formatDistance(a.distance_meters, units) : null;
@@ -150,8 +164,9 @@ function fmtActual(a: ActualRow, units: "mi" | "km"): string {
 }
 
 /**
- * Compact, deterministic text block. One line per day. Kept small (~600–900
- * tokens) because it lands in every chat turn's user message.
+ * Compact, deterministic text block. One line per day, with the start of the
+ * notes for sessions whose shape matters. Kept small (about 1,000 tokens)
+ * because it lands in every chat turn's user message.
  */
 export function renderRecentTraining(rt: RecentTraining, units: "mi" | "km"): string {
   const plannedByDate = new Map<string, PlannedRow>();
@@ -176,6 +191,8 @@ export function renderRecentTraining(rt: RecentTraining, units: "mi" | "km"): st
     let plannedText = "rest";
     if (p && p.type !== "rest") {
       plannedText = fmtPlanned(p.type, p.distance_meters, p.duration_seconds, units);
+      const detail = sessionDetail(p.type, p.notes);
+      if (detail) plannedText += ` [${detail}]`;
       if (p.secondary) {
         const secMeters = p.secondary.distance_km != null ? p.secondary.distance_km * 1000 : null;
         const secSeconds =
@@ -183,8 +200,14 @@ export function renderRecentTraining(rt: RecentTraining, units: "mi" | "km"): st
         plannedText += ` + PM ${fmtPlanned(p.secondary.type, secMeters, secSeconds, units)}`;
       }
       if (!isFuture) {
-        plannedMeters += p.distance_meters != null ? Number(p.distance_meters) : 0;
-        if (p.secondary?.distance_km != null) plannedMeters += p.secondary.distance_km * 1000;
+        // Completed distance only counts the plan's own sport, so planned cross
+        // days must stay out of this total or the percentage reads falsely low.
+        if (p.type !== "cross" && p.distance_meters != null) {
+          plannedMeters += Number(p.distance_meters);
+        }
+        if (p.secondary?.distance_km != null && p.secondary.type !== "cross") {
+          plannedMeters += p.secondary.distance_km * 1000;
+        }
       }
     }
 

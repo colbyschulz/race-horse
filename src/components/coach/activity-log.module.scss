@@ -1,0 +1,16 @@
+.log {
+  margin-bottom: var(--space-2);
+  padding-left: var(--space-1);
+}
+
+.summary {
+  font-family: var(--font-body);
+  font-size: 0.8125rem;
+  font-style: italic;
+  color: var(--color-fg-secondary);
+  cursor: pointer;
+}
+
+.steps {
+  margin-top: var(--space-2);
+}

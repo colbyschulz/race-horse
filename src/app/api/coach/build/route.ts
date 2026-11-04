@@ -1,7 +1,7 @@
 import { auth } from "@/server/auth";
 import { db } from "@/server/db";
-import { eq, and, lt } from "drizzle-orm";
-import { users, plans } from "@/server/db/schema";
+import { eq, and, lt, sql } from "drizzle-orm";
+import { users, plans, workouts } from "@/server/db/schema";
 import { runCoach } from "@/server/coach/runner";
 import { fetchStravaPreload } from "@/server/coach/strava-preload";
 import { formatBuildForm, type BuildFormInput } from "@/lib/build-form";
@@ -119,15 +119,17 @@ export async function POST(req: Request): Promise<Response> {
 
   // Garbage-collect abandoned stubs from prior build flows the user never
   // finished. Threshold-gated so an in-flight build (just-created stub for a
-  // build that's still running in another tab) is preserved. Cascading FK on
-  // messages.plan_id deletes their conversations too.
+  // build that's still running in another tab) is preserved. A plan with workouts
+  // is kept too: it may be paused at a check-in, waiting on the athlete. Cascading
+  // FK on messages.plan_id deletes their conversations too.
   await db
     .delete(plans)
     .where(
       and(
         eq(plans.userId, session.user.id!),
         eq(plans.generation_status, "generating"),
-        lt(plans.created_at, new Date(Date.now() - STALE_STUB_THRESHOLD_MS))
+        lt(plans.created_at, new Date(Date.now() - STALE_STUB_THRESHOLD_MS)),
+        sql`not exists (select 1 from ${workouts} where ${workouts.plan_id} = ${plans.id})`
       )
     );
 

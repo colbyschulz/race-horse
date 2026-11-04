@@ -6,6 +6,7 @@ import {
   COACH_MODEL,
   COACH_BUILD_MODEL,
   COACH_DEEP_MODEL,
+  COACH_CHAT_EFFORT,
   COACH_BUILD_EFFORT,
   COACH_DEEP_EFFORT,
   COACH_CHAT_MAX_TOKENS,
@@ -17,6 +18,12 @@ import { routeLabel } from "@/lib/route-label";
 import { loadHistory, appendMessage } from "./messages";
 import { getTools, getColdStartTools, HANDLERS, summarizeToolResult } from "./tools/index";
 import { fetchRecentTraining, renderRecentTraining } from "./recent-training";
+import {
+  isBuildUnfinished,
+  latestBuildProgress,
+  mergeBuildProgress,
+  type BuildProgress,
+} from "./build-progress";
 import type { SSEEvent, ToolName, ContentBlock } from "./types";
 import type { Anthropic } from "@anthropic-ai/sdk";
 import type { StravaPreload } from "./strava-preload";
@@ -61,6 +68,13 @@ const ALLOWED_BLOCK_TYPES = new Set([
 // price. The 1h write costs 2x (vs 1.25x) and pays for itself on the first
 // prevented miss.
 const CACHE_1H = { type: "ephemeral", ttl: "1h" } as const;
+
+// Opus 5.5 returns its notes between tool calls as thinking blocks, which come
+// back empty by default. "updates" returns those notes as text and keeps its
+// reasoning hidden, so a long turn doesn't look silent to the athlete.
+const THINKING_DISPLAY_UPDATES = { type: "adaptive", display: "updates" } as const;
+const THINKING_UPDATES_BETA = "thinking-display-updates-2026-08-18";
+const INTERRUPTED_NOTE = "This part of the response was interrupted before it finished.";
 
 /**
  * Strip tool_use/tool_result pairs for tools not in our known set, plus any
@@ -278,7 +292,7 @@ type Route = "chat" | "build" | "deep";
 function routeConfig(route: Route): {
   model: string;
   max_tokens: number;
-  effort: "high" | null;
+  effort: "high" | "xhigh";
 } {
   switch (route) {
     case "build":
@@ -294,7 +308,7 @@ function routeConfig(route: Route): {
         effort: COACH_DEEP_EFFORT,
       };
     default:
-      return { model: COACH_MODEL, max_tokens: COACH_CHAT_MAX_TOKENS, effort: null };
+      return { model: COACH_MODEL, max_tokens: COACH_CHAT_MAX_TOKENS, effort: COACH_CHAT_EFFORT };
   }
 }
 
@@ -335,6 +349,7 @@ export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
   // throws partway through a cold-start build.
   const createdPlanIds: string[] = [];
   const finalizedPlanIds = new Set<string>();
+  let buildProgress: BuildProgress | null = null;
 
   try {
     // 1. Load user context (units + coach_notes + active plan summary)
@@ -519,7 +534,14 @@ export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
       },
     ];
 
-    const tools = coldStartBuild ? getColdStartTools(planId) : getTools(planId);
+    // Read before compaction, which can shorten older tool inputs.
+    buildProgress = latestBuildProgress(rawMessages);
+
+    // Once weeks exist, a build may need to re-read them to act on feedback at a
+    // check-in, because older tool calls in history get shortened.
+    const tools = coldStartBuild
+      ? getColdStartTools(planId, { canReadPlan: buildProgress != null })
+      : getTools(planId);
 
     let currentMessages = [...anthropicMessages];
     let assistantMessageId = "";
@@ -529,19 +551,22 @@ export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
       const cfg = routeConfig(route);
       apiCalls++;
 
-      const stream = client.messages.stream({
-        model: cfg.model,
-        max_tokens: cfg.max_tokens,
-        // Adaptive thinking on every route. Sonnet 5 accepts this as the
-        // only "on" mode; Opus 5.5 thinks by default and rejects disabling
-        // it. Effort is pinned per route (a mid-conversation effort change
-        // breaks the messages cache) — chat leaves it at the model default.
-        thinking: { type: "adaptive" },
-        ...(cfg.effort ? { output_config: { effort: cfg.effort } } : {}),
-        system: systemBlocks,
-        tools,
-        messages: withCacheBreakpoint(currentMessages),
-      });
+      const stream = client.messages.stream(
+        {
+          model: cfg.model,
+          max_tokens: cfg.max_tokens,
+          // Adaptive thinking on every route: Opus 5.5 thinks by default and
+          // rejects disabling it. Effort is pinned per route, because a
+          // mid-conversation effort change breaks the messages cache.
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          thinking: THINKING_DISPLAY_UPDATES as any,
+          output_config: { effort: cfg.effort },
+          system: systemBlocks,
+          tools,
+          messages: withCacheBreakpoint(currentMessages),
+        },
+        { headers: { "anthropic-beta": THINKING_UPDATES_BETA } }
+      );
 
       // Track tool use blocks being built: index -> partial block
       const toolUseMap = new Map<number, { id: string; name: string; inputJson: string }>();
@@ -557,19 +582,34 @@ export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
               name: block.name,
               inputJson: "",
             });
+            // Announced now because writing a large call can take a while.
+            yield { type: "tool-start", id: block.id, name: block.name };
+          } else if (block.type === "server_tool_use") {
+            yield { type: "tool-start", id: block.id, name: block.name };
+          } else if (block.type === "web_search_tool_result") {
+            yield {
+              type: "tool-result",
+              id: block.tool_use_id,
+              name: "web_search",
+              result_summary: "Searched the web",
+            };
           }
         } else if (event.type === "content_block_delta") {
           const delta = event.delta;
           if (delta.type === "text_delta") {
             yield { type: "text-delta", delta: delta.text };
+          } else if (delta.type === "thinking_delta") {
+            if (delta.thinking && delta.thinking !== INTERRUPTED_NOTE) {
+              yield { type: "progress-delta", delta: delta.thinking };
+            }
           } else if (delta.type === "input_json_delta") {
             const entry = toolUseMap.get(event.index);
             if (entry) {
               entry.inputJson += delta.partial_json;
             }
           }
-          // thinking_delta / signature_delta: not surfaced; the final message
-          // carries the complete blocks and they're persisted from there.
+          // signature_delta: not surfaced; the final message carries the
+          // complete blocks and they're persisted from there.
         } else if (event.type === "message_delta") {
           stopReason = event.delta.stop_reason ?? null;
         }
@@ -656,7 +696,27 @@ export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
         const toolName = toolBlock.name as ToolName;
         const handler = HANDLERS[toolName];
 
-        yield { type: "tool-use", name: toolName, input: toolBlock.input };
+        // A plan paused at a check-in must not be marked finished. The coach can
+        // shorten a plan by rewriting its last week with the new total_weeks.
+        if (toolName === "finalize_plan" && coldStartBuild && isBuildUnfinished(buildProgress)) {
+          yield {
+            type: "tool-result",
+            id: toolBlock.id,
+            name: toolName,
+            result_summary: "More weeks still to write",
+          };
+          toolResultContent.push({
+            type: "tool_result",
+            tool_use_id: toolBlock.id,
+            is_error: true,
+            content: JSON.stringify({
+              error: `Only ${buildProgress?.week} of ${buildProgress?.total} weeks are written, so the plan can't be finalized yet. Write the remaining weeks first. If the plan is now shorter, rewrite its last week with the new total_weeks.`,
+            }),
+          });
+          continue;
+        }
+
+        yield { type: "tool-use", id: toolBlock.id, name: toolName, input: toolBlock.input };
 
         let resultValue: unknown;
 
@@ -684,6 +744,8 @@ export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
         } else if (toolName === "finalize_plan") {
           const inp = toolBlock.input as { plan_id?: string } | null;
           if (inp?.plan_id) finalizedPlanIds.add(inp.plan_id);
+        } else if (toolName === "update_workouts") {
+          buildProgress = mergeBuildProgress(buildProgress, toolBlock.input);
         } else if (toolName === DEEP_PLANNING_TOOL && route === "chat") {
           // Rest of this turn runs on the deep model. The next human turn is
           // picked up from history by deepPlanningCarriedOver().
@@ -695,7 +757,7 @@ export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
             ? summarizeToolResult(toolName, resultValue)
             : `Unknown tool: ${toolName}`;
 
-        yield { type: "tool-result", name: toolName, result_summary: summary };
+        yield { type: "tool-result", id: toolBlock.id, name: toolName, result_summary: summary };
 
         toolResultContent.push({
           type: "tool_result",
@@ -715,8 +777,9 @@ export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
     // Guard: only finalize plans that actually have workouts. A clarifying-question
     // turn writes no workouts; auto-finalizing an empty stub would flip it to
     // status=complete, causing the next continuation turn to lose coldStartBuild
-    // mode and let the coach read/modify the wrong (existing active) plan.
-    if (coldStartBuild) {
+    // mode and let the coach read/modify the wrong (existing active) plan. The same
+    // applies to a plan paused at a check-in with weeks still to write.
+    if (coldStartBuild && !isBuildUnfinished(buildProgress)) {
       const ids = new Set<string>(createdPlanIds);
       if (planId) ids.add(planId);
       for (const id of ids) {
@@ -752,8 +815,8 @@ export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
     yield { type: "error", error: message };
   } finally {
     // Safety net: finalize any plan not yet finalized if the loop threw before
-    // reaching the eager finalize above. Same workout-count guard applies.
-    if (coldStartBuild) {
+    // reaching the eager finalize above. Same guards apply.
+    if (coldStartBuild && !isBuildUnfinished(buildProgress)) {
       const ids = new Set<string>(createdPlanIds);
       if (planId) ids.add(planId);
       for (const id of ids) {

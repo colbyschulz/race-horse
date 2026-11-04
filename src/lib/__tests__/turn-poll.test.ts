@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { decideTurnPollOutcome, TURN_STALE_MS, type Turn } from "../turn-poll";
+import { decideTurnPollOutcome, TURN_CUT_OFF_MESSAGE, TURN_STALE_MS, type Turn } from "../turn-poll";
 
 const NOW = new Date("2026-01-01T00:10:00Z").getTime();
 
@@ -55,7 +55,7 @@ describe("decideTurnPollOutcome", () => {
     const outcome = decideTurnPollOutcome(turn, true, NOW);
     expect(outcome).toEqual({
       kind: "alert",
-      message: "That request took too long and didn't finish — try asking for a smaller piece at a time.",
+      message: TURN_CUT_OFF_MESSAGE,
     });
   });
 

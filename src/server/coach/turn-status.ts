@@ -64,6 +64,29 @@ export async function upsertTurnStatus(
   }
 }
 
+/**
+ * Marks a stuck "running" row as failed. A platform kill never gets to write a
+ * final status, so without this the row would report a failure on every return
+ * to the chat. Matching on started_at leaves a newer turn untouched.
+ */
+export async function closeStaleTurn(
+  userId: string,
+  planId: string | null,
+  startedAt: Date,
+  message: string
+): Promise<void> {
+  await db
+    .update(coachTurns)
+    .set({ status: "error", error_message: message, updated_at: new Date() })
+    .where(
+      and(
+        planFilter(userId, planId),
+        eq(coachTurns.status, "running"),
+        eq(coachTurns.started_at, startedAt)
+      )
+    );
+}
+
 export async function getTurnStatus(userId: string, planId: string | null): Promise<CoachTurn | null> {
   const rows = await db
     .select({

@@ -101,7 +101,7 @@ describe("renderRecentTraining", () => {
       '2026-08-24 Mon | planned: easy 8.0 km | actual: Run "Morning Run", 8.1 km, 45m, 5:33/km, HR 142'
     );
     expect(out).toContain(
-      "2026-08-25 Tue | planned: intervals 10.0 km + PM easy 4.0 km | actual: none"
+      "2026-08-25 Tue | planned: intervals 10.0 km [6 × 1 km] + PM easy 4.0 km | actual: none"
     );
     expect(out).toContain(
       '2026-08-27 Thu | planned: rest | actual: Ride "Spin", 30.0 km, 1h 0m, HR 120'
@@ -116,6 +116,68 @@ describe("renderRecentTraining", () => {
     const out = renderRecentTraining(base, "mi");
     expect(out).toContain("2026-08-24 Mon | planned: easy 5.0 mi");
     expect(out).toContain("8:56/mi");
+  });
+
+  it("shows session details for hard sessions only, shortened and on one line", () => {
+    const longNotes = `3 × 12 min @ threshold,\n90 sec float. ${"x".repeat(200)}`;
+    const out = renderRecentTraining(
+      {
+        ...base,
+        planned: [
+          {
+            date: "2026-08-24",
+            type: "easy",
+            distance_meters: "8000",
+            duration_seconds: null,
+            notes: "Keep it relaxed",
+            secondary: null,
+          },
+          {
+            date: "2026-08-25",
+            type: "threshold",
+            distance_meters: "12000",
+            duration_seconds: null,
+            notes: longNotes,
+            secondary: null,
+          },
+        ],
+      },
+      "km"
+    );
+
+    expect(out).toContain("2026-08-24 Mon | planned: easy 8.0 km | actual:");
+    expect(out).not.toContain("Keep it relaxed");
+    const line = out.split("\n").find((l) => l.startsWith("2026-08-25"));
+    expect(line).toContain("[3 × 12 min @ threshold, 90 sec float. x");
+    expect(line).toContain("…]");
+    expect(line).not.toContain("x".repeat(200));
+  });
+
+  it("keeps planned cross days out of the completion percentage", () => {
+    const cross = (date: string) => ({
+      date,
+      type: "cross",
+      distance_meters: "160000",
+      duration_seconds: null,
+      notes: "Long ride",
+      secondary: null,
+    });
+    const crossSecondary = {
+      date: "2026-08-26",
+      type: "easy",
+      distance_meters: "5000",
+      duration_seconds: null,
+      notes: "",
+      secondary: { type: "cross" as const, distance_km: 40 },
+    };
+    const out = renderRecentTraining(
+      { ...base, planned: [...base.planned, cross("2026-08-29"), crossSecondary] },
+      "km"
+    );
+
+    // The base 52 km plus the 5 km easy run; the ride and the PM cross session don't count.
+    expect(out.split("\n")[1]).toContain("planned 57.0 km");
+    expect(out).toContain("2026-08-29 Sat | planned: cross 160.0 km [Long ride]");
   });
 
   it("omits the percentage when nothing was planned", () => {

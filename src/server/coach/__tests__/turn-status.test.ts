@@ -2,11 +2,13 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const insertChain = { values: vi.fn(), onConflictDoUpdate: vi.fn() };
 const selectChain = { from: vi.fn(), where: vi.fn(), limit: vi.fn() };
+const updateChain = { set: vi.fn(), where: vi.fn() };
 
 vi.mock("@/server/db", () => ({
   db: {
     insert: vi.fn(() => insertChain),
     select: vi.fn(() => selectChain),
+    update: vi.fn(() => updateChain),
   },
 }));
 
@@ -21,9 +23,11 @@ vi.mock("@/server/db/schema", () => ({
   },
 }));
 
-import { upsertTurnStatus, getTurnStatus } from "../turn-status";
+import { closeStaleTurn, upsertTurnStatus, getTurnStatus } from "../turn-status";
 
 beforeEach(() => {
+  updateChain.set.mockReset().mockReturnValue(updateChain);
+  updateChain.where.mockReset().mockResolvedValue(undefined);
   insertChain.values.mockReturnValue(insertChain);
   insertChain.onConflictDoUpdate.mockReset().mockResolvedValue(undefined);
   selectChain.from.mockReturnValue(selectChain);
@@ -59,6 +63,16 @@ describe("upsertTurnStatus", () => {
     await upsertTurnStatus("u1", "p1", "error", "boom");
     const call = insertChain.onConflictDoUpdate.mock.calls[0][0];
     expect(call.set.error_message).toBe("boom");
+  });
+});
+
+describe("closeStaleTurn", () => {
+  it("marks the turn failed with the given message", async () => {
+    await closeStaleTurn("u1", "p1", new Date("2026-01-01"), "cut off");
+    expect(updateChain.set).toHaveBeenCalledWith(
+      expect.objectContaining({ status: "error", error_message: "cut off" })
+    );
+    expect(updateChain.where).toHaveBeenCalledTimes(1);
   });
 });
 

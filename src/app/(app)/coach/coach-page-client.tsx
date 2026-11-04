@@ -1,18 +1,25 @@
 "use client";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import styles from "./coach.module.scss";
 import type { StoredMessage, SSEEvent } from "@/types/coach";
 import { consumeStream, CoachStreamError } from "@/lib/sse";
-import { decideTurnPollOutcome, TURN_POLL_INTERVAL_MS, type Turn } from "@/lib/turn-poll";
+import {
+  COACH_UNREACHABLE_MESSAGE,
+  decideTurnPollOutcome,
+  TURN_POLL_INTERVAL_MS,
+  type Turn,
+} from "@/lib/turn-poll";
 import type { BuildFormInput } from "@/lib/build-form";
+import { buildTimeline, describeToolInProgress, isStepNarration } from "@/lib/coach-activity";
 
 import { Button } from "@/components/button/button";
 import { PageHeader } from "@/components/layout/page-header";
 import { ContextPill } from "@/components/coach/context-pill";
 import { MessageBubble } from "@/components/coach/message-bubble";
-import { ToolIndicator } from "@/components/coach/tool-indicator";
+import { ProgressNote, ToolIndicator } from "@/components/coach/tool-indicator";
+import { ActivityLog } from "@/components/coach/activity-log";
 import { ThinkingIndicator } from "@/components/coach/thinking-indicator";
 import { MessageInput } from "@/components/coach/message-input";
 import { ClearChatDialog } from "@/components/coach/clear-chat-dialog";
@@ -28,7 +35,13 @@ interface Props {
   intent?: string;
 }
 
-type StreamItem = { kind: "text"; text: string } | { kind: "tool"; name: string; summary?: string };
+type StreamItem =
+  | { kind: "text"; text: string }
+  | { kind: "note"; text: string }
+  | { kind: "tool"; id: string; label: string; summary?: string };
+
+// How often a returning athlete's chat picks up new steps, in status checks.
+const REFRESH_EVERY_N_POLLS = 2;
 
 type StreamingState = {
   items: StreamItem[];
@@ -107,40 +120,112 @@ export function CoachPageClient({
   // round-trip before we know a turn is already running would race it.
   const [checkingTurnStatus, setCheckingTurnStatus] = useState(true);
 
+  // Asks the server where the current turn stands. `watching` means a stream
+  // this page was following has gone away, so whatever the turn does next is
+  // news. `refresh` means the page just arrived or came back and may be showing
+  // out-of-date messages.
+  const checkTurnRef = useRef<(opts: { watching: boolean; refresh: boolean }) => void>(() => {});
+  const streamActiveRef = useRef(false);
+  const streamAbortRef = useRef<AbortController | null>(null);
+  const lastAlertRef = useRef<string | null>(null);
+  const mountedRef = useRef(false);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  function showAlertOnce(message: string) {
+    if (lastAlertRef.current === message) return;
+    lastAlertRef.current = message;
+    alert(message);
+  }
+
   useEffect(() => {
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
     let observedRunning = false;
+    let latestCheck = 0;
+    let pollsWhileRunning = 0;
 
-    async function poll() {
+    // A blank build form has no conversation of its own to load.
+    const hasHistory = Boolean(planId) || intent !== "build";
+
+    async function poll(refresh: boolean) {
+      const check = ++latestCheck;
+      if (timer) clearTimeout(timer);
       const qs = planId ? `?plan_id=${encodeURIComponent(planId)}` : "";
-      const r = await fetch(`/api/coach/turn-status${qs}`);
-      if (cancelled || !r.ok) return;
-      const { turn } = (await r.json()) as TurnStatusResponse;
-      if (cancelled) return;
+
+      let turn: Turn;
+      try {
+        const r = await fetch(`/api/coach/turn-status${qs}`);
+        if (!r.ok) throw new Error(`turn status failed: ${r.status}`);
+        ({ turn } = (await r.json()) as TurnStatusResponse);
+      } catch (err) {
+        if (cancelled || check !== latestCheck) return;
+        console.error(err);
+        // Never leave the input locked because a status check failed.
+        setCheckingTurnStatus(false);
+        if (observedRunning) timer = setTimeout(() => void poll(refresh), TURN_POLL_INTERVAL_MS);
+        return;
+      }
+      if (cancelled || check !== latestCheck) return;
 
       const outcome = decideTurnPollOutcome(turn, observedRunning, Date.now());
       setCheckingTurnStatus(false);
 
+      const refreshNow = refresh && hasHistory && !streamActiveRef.current;
+
       if (outcome.kind === "keep-polling") {
         observedRunning = true;
         setTurnInFlight(true);
-        timer = setTimeout(poll, TURN_POLL_INTERVAL_MS);
+        // Each finished step is saved as it happens, so a returning athlete can
+        // follow along even without the live stream.
+        pollsWhileRunning += 1;
+        if (refreshNow) {
+          void reloadHistory();
+        } else if (
+          hasHistory &&
+          !streamActiveRef.current &&
+          pollsWhileRunning % REFRESH_EVERY_N_POLLS === 0
+        ) {
+          void fetchLatestMessages();
+        }
+        timer = setTimeout(() => void poll(false), TURN_POLL_INTERVAL_MS);
         return;
       }
 
       setTurnInFlight(false);
-      if (outcome.kind === "reload") {
-        void reloadHistory();
-      } else if (outcome.kind === "alert") {
-        alert(outcome.message);
-      }
+      observedRunning = false;
+      const turnEnded = outcome.kind === "reload" || outcome.kind === "alert";
+      if (turnEnded) streamAbortRef.current?.abort();
+      if (turnEnded || refreshNow) void reloadHistory();
+      if (outcome.kind === "alert") showAlertOnce(outcome.message);
     }
 
-    void poll();
+    checkTurnRef.current = ({ watching, refresh }) => {
+      if (watching) observedRunning = true;
+      void poll(refresh);
+    };
+
+    // An installed app often resumes without remounting, so this page can be
+    // left showing an old state unless it checks again on the way back.
+    function onResume() {
+      if (document.visibilityState === "visible") void poll(true);
+    }
+    document.addEventListener("visibilitychange", onResume);
+    window.addEventListener("pageshow", onResume);
+    window.addEventListener("online", onResume);
+
+    void poll(true);
     return () => {
       cancelled = true;
       if (timer) clearTimeout(timer);
+      document.removeEventListener("visibilitychange", onResume);
+      window.removeEventListener("pageshow", onResume);
+      window.removeEventListener("online", onResume);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [planId]);
@@ -166,21 +251,30 @@ export function CoachPageClient({
     el.scrollTop = el.scrollHeight;
   }, [messages, streaming?.items]);
 
-  async function reloadHistory() {
+  async function fetchLatestMessages() {
     // Use ref first: on cold-start builds, plan-created fires before done, and
     // state updates are async so planId state is still null when this runs.
     const effectivePlanId = receivedPlanIdRef.current ?? planId;
     const qs = effectivePlanId ? `?plan_id=${encodeURIComponent(effectivePlanId)}` : "";
-    const r = await fetch(`/api/coach/messages${qs}`);
-    if (r.ok) {
-      const { messages: m } = (await r.json()) as { messages: StoredMessage[] };
-      setMessages(m);
-      // Pre-populate RQ cache so the component that remounts after the URL update
-      // (window.history.replaceState fires after consumeStream) sees data instantly.
-      if (effectivePlanId) {
-        queryClient.setQueryData(["coach", "messages", effectivePlanId], m);
+    try {
+      const r = await fetch(`/api/coach/messages${qs}`);
+      if (r.ok) {
+        const { messages: m } = (await r.json()) as { messages: StoredMessage[] };
+        setMessages(m);
+        // Pre-populate RQ cache so the component that remounts after the URL update
+        // (window.history.replaceState fires after consumeStream) sees data instantly.
+        if (effectivePlanId) {
+          queryClient.setQueryData(["coach", "messages", effectivePlanId], m);
+        }
       }
+    } catch (err) {
+      // Offline: keep what's on screen. The next resume or status check retries.
+      console.error(err);
     }
+  }
+
+  async function reloadHistory() {
+    await fetchLatestMessages();
     // Coach turns can create plans, edit workouts, or update notes — invalidate
     // anything plan-shaped so the rest of the app picks up the new state.
     void queryClient.invalidateQueries({ queryKey: ["plans"] });
@@ -219,15 +313,34 @@ export function CoachPageClient({
         assembled.items.push({ kind: "text", text: ev.delta });
       }
       setStreaming({ items: [...assembled.items], done: false });
+    } else if (ev.type === "progress-delta") {
+      const last = assembled.items[assembled.items.length - 1];
+      if (last && last.kind === "note") {
+        last.text += ev.delta;
+      } else {
+        assembled.items.push({ kind: "note", text: ev.delta });
+      }
+      setStreaming({ items: [...assembled.items], done: false });
+    } else if (ev.type === "tool-start") {
+      assembled.items.push({
+        kind: "tool",
+        id: ev.id,
+        label: describeToolInProgress(ev.name),
+      });
+      setStreaming({ items: [...assembled.items], done: false });
     } else if (ev.type === "tool-use") {
-      assembled.items.push({ kind: "tool", name: ev.name });
+      const label = describeToolInProgress(ev.name, ev.input);
+      const item = assembled.items.find(
+        (t): t is Extract<StreamItem, { kind: "tool" }> => t.kind === "tool" && t.id === ev.id
+      );
+      if (item) item.label = label;
+      else assembled.items.push({ kind: "tool", id: ev.id, label });
       setStreaming({ items: [...assembled.items], done: false });
     } else if (ev.type === "tool-result") {
-      const last = assembled.items.findLast(
-        (t): t is Extract<StreamItem, { kind: "tool" }> =>
-          t.kind === "tool" && t.name === ev.name && !t.summary
+      const item = assembled.items.find(
+        (t): t is Extract<StreamItem, { kind: "tool" }> => t.kind === "tool" && t.id === ev.id
       );
-      if (last) last.summary = ev.result_summary;
+      if (item) item.summary = ev.result_summary;
       setStreaming({ items: [...assembled.items], done: false });
     } else if (ev.type === "done") {
       // Mark done immediately so the working-indicator hides before reloadHistory resolves.
@@ -245,13 +358,46 @@ export function CoachPageClient({
     }
   }
 
+  // Returns true when the turn may still be running on the server, in which case
+  // the page has switched to checking on it. A dropped connection isn't a failed
+  // turn: the server keeps working after the app is backgrounded or closed.
+  function recoverFromLostStream(err: unknown, res: Response | undefined): boolean {
+    console.error(err);
+    setStreaming(null); // reloadHistory won't run on error, so clear here
+    if (err instanceof CoachStreamError) {
+      showAlertOnce(err.message);
+      return false;
+    }
+    if (!res || !res.ok) {
+      if (mountedRef.current) showAlertOnce(COACH_UNREACHABLE_MESSAGE);
+      checkTurnRef.current({ watching: false, refresh: true });
+      return false;
+    }
+    checkTurnRef.current({ watching: true, refresh: false });
+    return true;
+  }
+
+  function beginStream(): AbortController {
+    const controller = new AbortController();
+    streamAbortRef.current = controller;
+    streamActiveRef.current = true;
+    lastAlertRef.current = null;
+    return controller;
+  }
+
+  function endStream() {
+    streamActiveRef.current = false;
+    streamAbortRef.current = null;
+  }
+
   async function send(text: string) {
     pinnedRef.current = true;
     setSending(true);
+    const tmpId = `tmp-${Date.now()}`;
     setMessages((prev) => [
       ...prev,
       {
-        id: `tmp-${Date.now()}`,
+        id: tmpId,
         role: "user",
         plan_id: planId ?? null,
         created_at: new Date(),
@@ -259,10 +405,13 @@ export function CoachPageClient({
       },
     ]);
     setStreaming({ items: [], done: false });
+    const controller = beginStream();
+    let res: Response | undefined;
     try {
-      const res = await fetch("/api/coach/chat", {
+      res = await fetch("/api/coach/chat", {
         method: "POST",
         headers: { "content-type": "application/json" },
+        signal: controller.signal,
         body: JSON.stringify({
           message: text,
           from_route: fromRoute,
@@ -272,16 +421,20 @@ export function CoachPageClient({
         }),
       });
       const assembled = { items: [] as StreamItem[] };
-      await consumeStream(res, (ev) => handleSSE(ev, assembled));
+      let finished = false;
+      await consumeStream(res, (ev) => {
+        if (ev.type === "done" || ev.type === "error") finished = true;
+        handleSSE(ev, assembled);
+      });
+      if (!finished) throw new Error("coach stream ended before the turn finished");
     } catch (err) {
-      console.error(err);
-      alert(
-        err instanceof CoachStreamError
-          ? err.message
-          : "That request took too long and didn't finish — try asking for a smaller piece at a time."
-      );
-      setStreaming(null); // reloadHistory won't run on error, so clear here
+      // Aborted means a status check already found this turn over and reloaded.
+      if (!controller.signal.aborted) {
+        if (!res || !res.ok) setMessages((prev) => prev.filter((m) => m.id !== tmpId));
+        recoverFromLostStream(err, res);
+      }
     } finally {
+      endStream();
       setSending(false);
     }
   }
@@ -290,21 +443,27 @@ export function CoachPageClient({
     setSending(true);
     setBuildState({ kind: "submitting", values });
     setStreaming({ items: [], done: false });
+    const controller = beginStream();
+    let res: Response | undefined;
     try {
-      const res = await fetch("/api/coach/build", {
+      res = await fetch("/api/coach/build", {
         method: "POST",
         headers: { "content-type": "application/json" },
+        signal: controller.signal,
         body: JSON.stringify(values),
       });
       const assembled = { items: [] as StreamItem[] };
       let lockedYet = false;
+      let finished = false;
       await consumeStream(res, (ev) => {
+        if (ev.type === "done" || ev.type === "error") finished = true;
         if (!lockedYet && ev.type === "text-delta") {
           lockedYet = true;
           setBuildState({ kind: "locked", values });
         }
         handleSSE(ev, assembled);
       });
+      if (!finished) throw new Error("coach stream ended before the turn finished");
       // Wait for reloadHistory to finish so the messages cache is populated before
       // replaceState. Without this, CoachWithMessages suspends on mount because
       // useCoachMessages finds no cache entry for the new plan_id.
@@ -345,15 +504,24 @@ export function CoachPageClient({
       }
       setBuildState(null);
     } catch (err) {
-      console.error(err);
-      alert(
-        err instanceof CoachStreamError
-          ? err.message
-          : "That request took too long and didn't finish — try asking for a smaller piece at a time."
-      );
-      setBuildState(null);
-      setStreaming(null); // reloadHistory won't run on error, so clear here
+      if (!controller.signal.aborted) {
+        const stillRunning = recoverFromLostStream(err, res);
+        // Nothing reached the server, so keep the form available for a retry.
+        setBuildState(!res || !res.ok ? { kind: "editable" } : null);
+        if (stillRunning && receivedPlanIdRef.current) {
+          // The build carries on under its plan, so point the page at it.
+          window.history.replaceState(
+            null,
+            "",
+            `/coach?plan_id=${encodeURIComponent(receivedPlanIdRef.current)}`
+          );
+          receivedPlanIdRef.current = null;
+        }
+      } else {
+        setBuildState(null);
+      }
     } finally {
+      endStream();
       setSending(false);
       try {
         sessionStorage.removeItem(COACH_BUILD_STASH_KEY);
@@ -374,6 +542,8 @@ export function CoachPageClient({
     setClearOpen(false);
   }
 
+  const timeline = useMemo(() => buildTimeline(messages), [messages]);
+
   return (
     <div className={styles.page}>
       <ContextPill fromRoute={fromRoute} fromLabel={fromLabel} />
@@ -386,9 +556,17 @@ export function CoachPageClient({
         }
       />
       <div className={styles.stream} ref={streamRef}>
-        {messages.map((m) => (
-          <MessageBubble key={m.id} message={m} />
-        ))}
+        {timeline.map((entry, i) =>
+          entry.kind === "message" ? (
+            <MessageBubble key={entry.message.id} message={entry.message} />
+          ) : (
+            <ActivityLog
+              key={entry.key}
+              steps={entry.steps}
+              open={turnInFlight && i === timeline.length - 1}
+            />
+          )
+        )}
         {buildState && (
           <BuildFormCard
             state={buildState}
@@ -401,7 +579,11 @@ export function CoachPageClient({
           <>
             {streaming.items.map((item, i) =>
               item.kind === "tool" ? (
-                <ToolIndicator key={i} name={item.name} summary={item.summary} />
+                <ToolIndicator key={i} label={item.label} summary={item.summary} />
+              ) : item.kind === "note" ||
+                (isStepNarration(item.text) &&
+                  streaming.items.slice(i + 1).some((later) => later.kind === "tool")) ? (
+                <ProgressNote key={i} text={item.text} />
               ) : (
                 <MessageBubble
                   key={i}

@@ -43,8 +43,12 @@ export type ToolHandler<I = unknown, O = unknown> = (input: I, ctx: ToolContext)
 
 export type SSEEvent =
   | { type: "text-delta"; delta: string }
-  | { type: "tool-use"; name: ToolName; input: unknown }
-  | { type: "tool-result"; name: ToolName; result_summary: string }
+  /** A short note from the coach between steps. Notes are optional, so there may be none. */
+  | { type: "progress-delta"; delta: string }
+  /** A tool call has begun being written. Its details follow in `tool-use`. */
+  | { type: "tool-start"; id: string; name: string }
+  | { type: "tool-use"; id: string; name: ToolName; input: unknown }
+  | { type: "tool-result"; id: string; name: string; result_summary: string }
   | { type: "plan-created"; plan_id: string }
   | { type: "plan-finalized"; plan_id: string }
   | { type: "done"; message_id: string }

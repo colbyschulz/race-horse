@@ -92,8 +92,14 @@ const COLD_START_EXCLUDED = new Set([
   "archive_plan",
   "request_deep_planning",
 ]);
-export function getColdStartTools(planId: string | null): Anthropic.Messages.Tool[] {
-  return getTools(planId).filter((t) => !COLD_START_EXCLUDED.has(t.name));
+export function getColdStartTools(
+  planId: string | null,
+  options?: { canReadPlan?: boolean }
+): Anthropic.Messages.Tool[] {
+  return getTools(planId).filter(
+    (t) =>
+      !COLD_START_EXCLUDED.has(t.name) || (options?.canReadPlan === true && t.name === "get_plan")
+  );
 }
 
 // Keep TOOLS / COLD_START_TOOLS as aliases for compatibility (no plan context).
@@ -165,8 +171,10 @@ export function summarizeToolResult(name: ToolName, result: unknown): string {
       return "Plan ready";
     case "get_recent_activities":
       return "Pulled your recent activities";
-    case "get_activity_laps":
-      return "Read your splits";
+    case "get_activity_laps": {
+      const name = (result as { activity?: { name?: unknown } } | null)?.activity?.name;
+      return typeof name === "string" && name ? `Read your splits from ${name}` : "Read your splits";
+    }
     case "update_activity_match":
       return "Linked workout to activity";
     case "get_athlete_summary":
