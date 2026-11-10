@@ -12,7 +12,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   adapter: DrizzleAdapter(db),
   session: { strategy: "database" },
   callbacks: {
-    ...authConfig.callbacks,
     async session({ session, user }) {
       const [row] = await db
         .select({ preferences: users.preferences })

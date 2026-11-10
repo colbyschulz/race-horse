@@ -12,7 +12,7 @@ import styles from "./plans.module.scss";
 
 export default async function PlansPage() {
   const session = await getSession();
-  if (!session?.user?.id) redirect("/");
+  if (!session?.user?.id) redirect("/session-expired");
   const userId = session.user.id;
   const prefs = session.user.preferences;
 

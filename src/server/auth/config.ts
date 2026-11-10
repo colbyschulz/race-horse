@@ -13,17 +13,4 @@ export const authConfig = {
   pages: {
     signIn: "/",
   },
-  callbacks: {
-    authorized({ auth, request }) {
-      const isLoggedIn = !!auth?.user;
-      const path = request.nextUrl.pathname;
-      const isAppRoute =
-        path.startsWith("/today") ||
-        path.startsWith("/training") ||
-        path.startsWith("/plans") ||
-        path.startsWith("/settings");
-      if (isAppRoute && !isLoggedIn) return false;
-      return true;
-    },
-  },
 } satisfies NextAuthConfig;

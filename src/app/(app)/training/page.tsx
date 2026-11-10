@@ -13,7 +13,7 @@ export default async function TrainingPage({
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   const session = await getSession();
-  if (!session?.user?.id) redirect("/");
+  if (!session?.user?.id) redirect("/session-expired");
   const userId = session.user.id;
   const prefs = session.user.preferences;
 
