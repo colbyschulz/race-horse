@@ -14,7 +14,7 @@ import styles from "./settings.module.scss";
 
 export default async function SettingsPage() {
   const session = await getSession();
-  if (!session?.user?.id) redirect("/");
+  if (!session?.user?.id) redirect("/session-expired");
   const userId = session.user.id;
   const prefs = session.user.preferences;
 

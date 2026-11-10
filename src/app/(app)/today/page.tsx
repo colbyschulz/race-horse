@@ -11,7 +11,7 @@ import styles from "./today.module.scss";
 
 export default async function TodayPage() {
   const session = await getSession();
-  if (!session?.user?.id) redirect("/");
+  if (!session?.user?.id) redirect("/session-expired");
   const userId = session.user.id;
   const prefs = session.user.preferences;
   const today = todayIso(prefs.timezone);

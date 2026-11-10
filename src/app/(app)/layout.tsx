@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { after } from "next/server";
 import { getSession } from "@/lib/get-session";
@@ -13,10 +14,31 @@ import { QueryProvider } from "@/lib/query-client";
 const INITIAL_BACKFILL_DAYS = 90;
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
+  // The session check is the only thing that holds back the first byte. It
+  // stays ahead of the stream so a dead session gets a real HTTP redirect,
+  // which the service worker relies on to tell the app from the sign-in page.
   const session = await getSession();
-  if (!session?.user?.id) redirect("/");
+  if (!session?.user?.id) redirect("/session-expired");
 
-  const userId = session.user.id;
+  return (
+    <QueryProvider>
+      <PreferencesCapture />
+      <Suspense fallback={null}>
+        <InitialSync userId={session.user.id} />
+      </Suspense>
+      <AppShell userName={session.user.name ?? ""}>{children}</AppShell>
+    </QueryProvider>
+  );
+}
+
+// Streams in after the shell: only a brand-new user ever sees the banner, so
+// the sync lookup shouldn't hold up everyone's first paint.
+async function InitialSync({ userId }: { userId: string }) {
+  return <SyncStatusBanner initialSynced={await startInitialSyncIfNeeded(userId)} />;
+}
+
+/** Kicks off the first Strava backfill for a new user. Resolves to whether a sync has already run. */
+async function startInitialSyncIfNeeded(userId: string): Promise<boolean> {
   const [row] = await db
     .select({ last_synced_at: users.last_synced_at })
     .from(users)
@@ -38,11 +60,5 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     });
   }
 
-  return (
-    <QueryProvider>
-      <PreferencesCapture />
-      <SyncStatusBanner initialSynced={!!row?.last_synced_at} />
-      <AppShell userName={session.user.name ?? ""}>{children}</AppShell>
-    </QueryProvider>
-  );
+  return !!row?.last_synced_at;
 }
