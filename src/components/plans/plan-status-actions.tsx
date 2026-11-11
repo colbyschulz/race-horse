@@ -28,19 +28,26 @@ export function PlanStatusActions({ plan, today }: Props) {
   const menuRef = useRef<HTMLDivElement>(null);
   const status = statusOf(plan, today);
 
+  // Closing the menu also backs out of a half-finished delete confirmation.
+  function closeMenu() {
+    setMenuOpen(false);
+    setConfirmDelete(false);
+  }
+
   useEffect(() => {
+    if (!menuOpen) return;
     function onClickOutside(e: MouseEvent) {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
         setMenuOpen(false);
+        setConfirmDelete(false);
       }
     }
-    if (menuOpen) document.addEventListener("mousedown", onClickOutside);
-    else setConfirmDelete(false);
+    document.addEventListener("mousedown", onClickOutside);
     return () => document.removeEventListener("mousedown", onClickOutside);
   }, [menuOpen]);
 
   async function patch(body: Record<string, unknown>) {
-    setMenuOpen(false);
+    closeMenu();
     setBusy(true);
     try {
       const res = await fetch(`/api/plans/${plan.id}`, {
@@ -64,7 +71,7 @@ export function PlanStatusActions({ plan, today }: Props) {
 
   async function destroy() {
     setBusy(true);
-    setMenuOpen(false);
+    closeMenu();
     try {
       const res = await fetch(`/api/plans/${plan.id}`, { method: "DELETE" });
       if (!res.ok) throw new Error(`DELETE failed: ${res.status}`);
@@ -90,7 +97,7 @@ export function PlanStatusActions({ plan, today }: Props) {
           size="sm"
           disabled={disabled}
           aria-label="Plan actions"
-          onClick={() => setMenuOpen((o) => !o)}
+          onClick={() => (menuOpen ? closeMenu() : setMenuOpen(true))}
         >
           •••
         </Button>
@@ -115,7 +122,7 @@ export function PlanStatusActions({ plan, today }: Props) {
                   alert("Download failed — please try again.");
                 } finally {
                   setDownloading(false);
-                  setMenuOpen(false);
+                  closeMenu();
                 }
               }}
             >

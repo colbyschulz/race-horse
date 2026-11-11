@@ -33,7 +33,11 @@ import {
   get_athlete_summary_handler,
 } from "../activities";
 
-import { listRecentActivities, getActivityWithLaps, getAthleteSummary } from "@/server/strava/queries";
+import {
+  listRecentActivities,
+  getActivityWithLaps,
+  getAthleteSummary,
+} from "@/server/strava/queries";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -76,17 +80,6 @@ function makeLap(idx: number) {
     start_index: null,
     end_index: null,
   };
-}
-
-function buildSelectChain(rows: unknown[]) {
-  const chain = {
-    from: vi.fn().mockReturnThis(),
-    where: vi.fn().mockReturnThis(),
-    innerJoin: vi.fn().mockReturnThis(),
-    limit: vi.fn().mockResolvedValue(rows),
-  };
-  mockSelect.mockReturnValue(chain);
-  return chain;
 }
 
 function buildUpdateChain() {

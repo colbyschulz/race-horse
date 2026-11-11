@@ -4,14 +4,6 @@ import { plans, workouts } from "@/server/db/schema";
 import { mondayOf } from "@/lib/dates";
 import type { CreatePlanInput, Plan, PlanWithCounts } from "./types";
 
-export async function listPlans(userId: string): Promise<Plan[]> {
-  return db
-    .select()
-    .from(plans)
-    .where(eq(plans.userId, userId))
-    .orderBy(desc(plans.is_active), desc(plans.start_date)) as Promise<Plan[]>;
-}
-
 export async function getPlanById(planId: string, userId: string): Promise<Plan | null> {
   const rows = await db
     .select()

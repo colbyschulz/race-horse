@@ -1,6 +1,4 @@
-// src/app/(app)/plans/upload/[id]/review/ReviewClient.tsx
 "use client";
-import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { InFlightUploadCard } from "@/components/plans/in-flight-upload-card";
 import { ReviewForm } from "./review-form";
@@ -15,37 +13,14 @@ interface FileSnapshot {
 }
 
 interface Props {
-  initialFile: FileSnapshot;
+  file: FileSnapshot;
   units: "mi" | "km";
   today: string;
   hasActivePlan: boolean;
-  isRetry: boolean;
 }
 
-export function ReviewClient({ initialFile, units, today, hasActivePlan, isRetry }: Props) {
+export function ReviewClient({ file, units, today, hasActivePlan }: Props) {
   const router = useRouter();
-  const [file, setFile] = useState(initialFile);
-
-  useEffect(() => {
-    // Poll while extracting, or briefly after a retry (status may still be "failed" due to race)
-    if (file.status !== "extracting" && !(isRetry && file.status === "failed")) return;
-    let cancelled = false;
-    const tick = async () => {
-      try {
-        const res = await fetch(`/api/plans/upload/${file.id}`);
-        if (!res.ok) return;
-        const data = (await res.json()) as FileSnapshot;
-        if (!cancelled) setFile(data);
-      } catch {
-        /* swallow */
-      }
-    };
-    const handle = setInterval(tick, 2000);
-    return () => {
-      cancelled = true;
-      clearInterval(handle);
-    };
-  }, [file.id, file.status, isRetry]);
 
   if (file.status === "extracting" || file.status === "failed") {
     return (

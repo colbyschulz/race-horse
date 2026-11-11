@@ -65,7 +65,7 @@ export async function POST(req: Request): Promise<NextResponse> {
       mime_type: mime,
       size_bytes: file.size,
     });
-  } catch (err) {
+  } catch {
     // Best-effort blob cleanup
     try {
       await del(blobUrl);

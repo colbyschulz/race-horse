@@ -20,7 +20,7 @@
 .backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.4);
+  background: var(--color-scrim);
   z-index: 100;
   animation: sheet-backdrop-in 180ms ease-out;
 }
@@ -121,11 +121,6 @@
   font-weight: 600;
   color: var(--color-fg-primary);
 }
-.intervals {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
 .h3 {
   font-family: var(--font-body);
   font-size: 0.75rem;
@@ -134,18 +129,6 @@
   letter-spacing: 0.08em;
   color: var(--color-fg-tertiary);
   margin: 0;
-}
-.intervalList {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-.intervalRow {
-  font-size: 0.875rem;
-  color: var(--color-fg-secondary);
 }
 .notes {
   font-size: 0.9375rem;

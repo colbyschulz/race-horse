@@ -1,37 +1,18 @@
 "use client";
 
+// This replaces the root layout when it renders, so it has to bring the global
+// styles (and with them the design tokens) itself.
+import "@/styles/globals.scss";
 import { Button } from "@/components/button/button";
+import styles from "./error-page.module.scss";
 
 export default function GlobalError({ error, reset }: { error: Error; reset: () => void }) {
   return (
-    <html>
+    <html lang="en">
       <body>
-        <main
-          style={{
-            padding: "var(--space-8)",
-            textAlign: "center",
-            minHeight: "100vh",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            fontFamily: "var(--font-body)",
-            background: "var(--color-bg-base)",
-            color: "var(--color-fg-primary)",
-          }}
-        >
-          <h1
-            style={{
-              fontFamily: "var(--font-display)",
-              fontSize: "1.5rem",
-              marginBottom: "var(--space-3)",
-            }}
-          >
-            Something went wrong
-          </h1>
-          <p style={{ color: "var(--color-fg-secondary)", marginBottom: "var(--space-6)" }}>
-            {error.message}
-          </p>
+        <main className={`${styles.page} ${styles.fullScreen}`}>
+          <h1 className={styles.title}>Something went wrong</h1>
+          <p className={styles.message}>{error.message}</p>
           <Button variant="primary" onClick={reset}>
             Try again
           </Button>

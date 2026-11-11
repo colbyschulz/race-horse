@@ -42,7 +42,7 @@
 // ── Variants ──
 .primary {
   background: var(--color-brown);
-  color: #fff;
+  color: var(--color-fg-on-accent);
   border-color: var(--color-brown);
 
   &:hover:not(:disabled):not([aria-disabled="true"]) {
@@ -85,7 +85,7 @@
 
 .dangerSolid {
   background: var(--color-workout-race);
-  color: #fff;
+  color: var(--color-fg-on-accent);
   border-color: var(--color-workout-race);
 
   &:hover:not(:disabled):not([aria-disabled="true"]) {

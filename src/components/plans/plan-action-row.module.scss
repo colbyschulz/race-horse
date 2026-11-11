@@ -32,21 +32,11 @@
 
 .btnPrimary {
   background: var(--color-brown);
-  color: #fff;
+  color: var(--color-fg-on-accent);
   border-color: var(--color-brown);
 }
 
 .icon {
   font-size: 0.9em;
   opacity: 0.85;
-}
-
-.comingSoon {
-  display: block;
-  font-family: var(--font-body);
-  font-size: 0.6875rem;
-  color: var(--color-fg-tertiary);
-  text-align: center;
-  margin-top: var(--space-2);
-  letter-spacing: 0.04em;
 }

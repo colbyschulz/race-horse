@@ -27,6 +27,11 @@
   --color-border-subtle: #e0d9ce;
   --color-border-default: #c8bfb0;
 
+  // ── Text on a filled accent, the dimmer behind dialogs, third-party brand ──
+  --color-fg-on-accent: #fff;
+  --color-scrim: rgba(0, 0, 0, 0.4);
+  --color-strava: #fc4c02;
+
   // ── Brown (primary brand accent) ──
   --color-brown: #7a4728;
   --color-brown-hover: #63391f;

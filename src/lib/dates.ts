@@ -12,10 +12,6 @@ export function todayIso(timezone?: string): string {
   return new Date().toLocaleDateString("en-CA", { timeZone: timezone });
 }
 
-export function parseIso(iso: string): string {
-  return iso;
-}
-
 function toUtcDate(iso: string): Date {
   const [y, m, d] = iso.split("-").map(Number);
   return new Date(Date.UTC(y, m - 1, d));
@@ -69,17 +65,6 @@ const LONG_MONTH = [
 ];
 const SHORT_WEEKDAY = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const LONG_WEEKDAY = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-
-export function formatWeekLabel(monday: string): string {
-  const start = toUtcDate(monday);
-  const end = toUtcDate(addDays(monday, 6));
-  const startStr = `${SHORT_MONTH[start.getUTCMonth()]} ${start.getUTCDate()}`;
-  const endStr =
-    start.getUTCMonth() === end.getUTCMonth()
-      ? `${end.getUTCDate()}`
-      : `${SHORT_MONTH[end.getUTCMonth()]} ${end.getUTCDate()}`;
-  return `${startStr}–${endStr}`;
-}
 
 export function formatDayLabel(iso: string): string {
   const d = toUtcDate(iso);

@@ -25,15 +25,18 @@ export function MileageChart({ workouts, units, planStartDate }: Props) {
 
   const weeks = weeklyMileage(workouts, units);
 
-  useEffect(() => {
-    if (activeIdx == null) return;
-    const bar = barRefs.current[activeIdx];
+  // Measures where the tooltip goes in the same event that shows it, so it
+  // never renders once in the old position first.
+  function activate(idx: number | null) {
+    const bar = idx == null ? null : barRefs.current[idx];
     const wrap = wrapRef.current;
-    if (!bar || !wrap) return;
-    const b = bar.getBoundingClientRect();
-    const w = wrap.getBoundingClientRect();
-    setTooltipLeft(b.left - w.left + b.width / 2);
-  }, [activeIdx]);
+    if (bar && wrap) {
+      const b = bar.getBoundingClientRect();
+      const w = wrap.getBoundingClientRect();
+      setTooltipLeft(b.left - w.left + b.width / 2);
+    }
+    setActiveIdx(idx);
+  }
 
   useEffect(() => {
     function onDocPointerDown(e: PointerEvent) {
@@ -88,9 +91,9 @@ export function MileageChart({ workouts, units, planStartDate }: Props) {
               className={`${styles.chartBar} ${isActive ? styles.chartBarActive : ""}`}
               aria-label={`Week ${weekNum}: ${w.miles.toFixed(1)} ${units}`}
               onPointerEnter={(e) => {
-                if (e.pointerType === "mouse") setActiveIdx(i);
+                if (e.pointerType === "mouse") activate(i);
               }}
-              onClick={() => setActiveIdx(activeIdx === i ? null : i)}
+              onClick={() => activate(activeIdx === i ? null : i)}
               style={{
                 height: `${heightPct}%`,
                 background: `color-mix(in srgb, var(--color-brown) ${tint}%, var(--color-bg-subtle))`,

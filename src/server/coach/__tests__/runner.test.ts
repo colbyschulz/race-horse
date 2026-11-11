@@ -42,7 +42,7 @@ let selectCallCount = 0;
 
 vi.mock("@/server/db", () => ({
   db: {
-    select: vi.fn((...args: unknown[]) => {
+    select: vi.fn(() => {
       selectCallCount++;
       // Call 1 = user query, Call 2 = plans query, Call 3 = workout counts
       if (selectCallCount === 1) return userSelectChain;
@@ -80,19 +80,6 @@ vi.mock("@/server/coach/messages", () => ({
 // ---------------------------------------------------------------------------
 // Anthropic mock
 // ---------------------------------------------------------------------------
-// We'll simulate: text delta, then tool_use, then tool_result, then final text
-function makeStreamEvents(
-  events: import("@anthropic-ai/sdk/resources/messages").RawMessageStreamEvent[]
-) {
-  return {
-    [Symbol.asyncIterator]: async function* () {
-      for (const e of events) yield e;
-    },
-    finalMessage: vi.fn(),
-  };
-}
-
-const mockCreate = vi.fn();
 const mockStream = vi.fn();
 
 vi.mock("@/server/coach/anthropic", () => ({
@@ -470,7 +457,11 @@ describe("runCoach", () => {
 
   it("announces a tool as soon as it starts, and streams progress notes", async () => {
     const streamEvents = [
-      { type: "content_block_start", index: 0, content_block: { type: "thinking", thinking: "", signature: "" } },
+      {
+        type: "content_block_start",
+        index: 0,
+        content_block: { type: "thinking", thinking: "", signature: "" },
+      },
       { type: "content_block_delta", index: 0, delta: { type: "thinking_delta", thinking: "" } },
       {
         type: "content_block_delta",
@@ -491,11 +482,20 @@ describe("runCoach", () => {
         index: 1,
         content_block: { type: "tool_use", id: "tu-9", name: "get_active_plan", input: {} },
       },
-      { type: "content_block_delta", index: 1, delta: { type: "input_json_delta", partial_json: "{}" } },
+      {
+        type: "content_block_delta",
+        index: 1,
+        delta: { type: "input_json_delta", partial_json: "{}" },
+      },
       { type: "content_block_stop", index: 1 },
       {
         type: "message_delta",
-        delta: { stop_reason: "tool_use", stop_sequence: null, container: null, stop_details: null },
+        delta: {
+          stop_reason: "tool_use",
+          stop_sequence: null,
+          container: null,
+          stop_details: null,
+        },
         usage: { output_tokens: 10 },
       },
     ] as unknown as import("@anthropic-ai/sdk/resources/messages").RawMessageStreamEvent[];
@@ -515,7 +515,12 @@ describe("runCoach", () => {
         [Symbol.asyncIterator]: async function* () {
           yield {
             type: "message_delta",
-            delta: { stop_reason: "end_turn", stop_sequence: null, container: null, stop_details: null },
+            delta: {
+              stop_reason: "end_turn",
+              stop_sequence: null,
+              container: null,
+              stop_details: null,
+            },
             usage: { output_tokens: 1 },
           };
         },
@@ -530,7 +535,9 @@ describe("runCoach", () => {
       .mockResolvedValueOnce({ id: "msg-asst-1" });
 
     const { runCoach } = await import("../runner");
-    const events = await collectEvents(runCoach({ userId: "u1", message: "Plan?", today: "2026-04-26" }));
+    const events = await collectEvents(
+      runCoach({ userId: "u1", message: "Plan?", today: "2026-04-26" })
+    );
 
     const notes = events.filter((e) => e.type === "progress-delta");
     expect(notes).toEqual([{ type: "progress-delta", delta: "Checking your plan first." }]);
@@ -546,7 +553,12 @@ describe("runCoach", () => {
 
   describe("plans paused at a check-in", () => {
     const history = (week: number, total: number) => [
-      { id: "u1", role: "user", content: [{ type: "text", text: "build" }], created_at: new Date() },
+      {
+        id: "u1",
+        role: "user",
+        content: [{ type: "text", text: "build" }],
+        created_at: new Date(),
+      },
       {
         id: "a1",
         role: "assistant",
@@ -566,14 +578,24 @@ describe("runCoach", () => {
         content: [{ type: "tool_result", tool_use_id: "tu-w", content: "{}" }],
         created_at: new Date(),
       },
-      { id: "u3", role: "user", content: [{ type: "text", text: "Looks good" }], created_at: new Date() },
+      {
+        id: "u3",
+        role: "user",
+        content: [{ type: "text", text: "Looks good" }],
+        created_at: new Date(),
+      },
     ];
 
     const endTurnStream = (text = "Here's the first 12 weeks.") => ({
       [Symbol.asyncIterator]: async function* () {
         yield {
           type: "message_delta",
-          delta: { stop_reason: "end_turn", stop_sequence: null, container: null, stop_details: null },
+          delta: {
+            stop_reason: "end_turn",
+            stop_sequence: null,
+            container: null,
+            stop_details: null,
+          },
           usage: { output_tokens: 1 },
         };
       },
@@ -586,11 +608,19 @@ describe("runCoach", () => {
 
     async function run() {
       mockAppendMessage.mockResolvedValue({ id: "msg-any" });
-      workoutSelectChain = makeSelectChain([{ n: 84, date: "2026-11-09", total: 84, completed: 0 }]);
+      workoutSelectChain = makeSelectChain([
+        { n: 84, date: "2026-11-09", total: 84, completed: 0 },
+      ]);
       const { runCoach } = await import("../runner");
       const { HANDLERS, getColdStartTools } = await import("@/server/coach/tools");
       const events = await collectEvents(
-        runCoach({ userId: "u1", message: "Looks good", planId: "plan-1", today: "2026-11-04", coldStartBuild: true })
+        runCoach({
+          userId: "u1",
+          message: "Looks good",
+          planId: "plan-1",
+          today: "2026-11-04",
+          coldStartBuild: true,
+        })
       );
       return { events, HANDLERS, getColdStartTools };
     }
@@ -616,18 +646,30 @@ describe("runCoach", () => {
 
     it("refuses the coach's own finalize call while weeks remain", async () => {
       mockLoadHistory.mockResolvedValue(history(12, 19));
-      const finalizeCall = { type: "tool_use", id: "tu-f", name: "finalize_plan", input: { plan_id: "plan-1" } };
+      const finalizeCall = {
+        type: "tool_use",
+        id: "tu-f",
+        name: "finalize_plan",
+        input: { plan_id: "plan-1" },
+      };
       mockStream
         .mockReturnValueOnce({
           [Symbol.asyncIterator]: async function* () {
             yield { type: "content_block_start", index: 0, content_block: finalizeCall };
             yield {
               type: "message_delta",
-              delta: { stop_reason: "tool_use", stop_sequence: null, container: null, stop_details: null },
+              delta: {
+                stop_reason: "tool_use",
+                stop_sequence: null,
+                container: null,
+                stop_details: null,
+              },
               usage: { output_tokens: 1 },
             };
           },
-          finalMessage: vi.fn().mockResolvedValue({ id: "m", stop_reason: "tool_use", content: [finalizeCall] }),
+          finalMessage: vi
+            .fn()
+            .mockResolvedValue({ id: "m", stop_reason: "tool_use", content: [finalizeCall] }),
         })
         .mockReturnValueOnce(endTurnStream());
       const { events, HANDLERS } = await run();
@@ -640,7 +682,9 @@ describe("runCoach", () => {
         .map((c) => c[2] as { type: string; is_error?: boolean }[])
         .flat()
         .filter((b) => b.type === "tool_result");
-      expect(toolResults).toEqual([expect.objectContaining({ tool_use_id: "tu-f", is_error: true })]);
+      expect(toolResults).toEqual([
+        expect.objectContaining({ tool_use_id: "tu-f", is_error: true }),
+      ]);
     });
   });
 

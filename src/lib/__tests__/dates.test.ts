@@ -2,7 +2,6 @@ import { describe, it, expect } from "vitest";
 import {
   mondayOf,
   addDays,
-  formatWeekLabel,
   formatDayLabel,
   formatLongDate,
   formatDateShort,
@@ -10,7 +9,6 @@ import {
   formatDateRange,
   weekIndexFromStart,
   todayIso,
-  parseIso,
 } from "../dates";
 
 describe("mondayOf", () => {
@@ -37,15 +35,6 @@ describe("addDays", () => {
   });
 });
 
-describe("formatWeekLabel", () => {
-  it("labels a same-month week", () => {
-    expect(formatWeekLabel("2026-04-20")).toBe("Apr 20–26");
-  });
-  it("labels a cross-month week", () => {
-    expect(formatWeekLabel("2026-04-27")).toBe("Apr 27–May 3");
-  });
-});
-
 describe("formatDayLabel", () => {
   it("returns 'Mon 20' format", () => {
     expect(formatDayLabel("2026-04-20")).toBe("Mon 20");
@@ -55,12 +44,6 @@ describe("formatDayLabel", () => {
 describe("formatLongDate", () => {
   it("returns 'Friday, April 24'", () => {
     expect(formatLongDate("2026-04-24")).toBe("Friday, April 24");
-  });
-});
-
-describe("parseIso / round-trip", () => {
-  it("parses then re-formats", () => {
-    expect(addDays(parseIso("2026-04-26"), 0)).toBe("2026-04-26");
   });
 });
 
