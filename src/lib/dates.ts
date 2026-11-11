@@ -12,6 +12,17 @@ export function todayIso(timezone?: string): string {
   return new Date().toLocaleDateString("en-CA", { timeZone: timezone });
 }
 
+/**
+ * The calendar day (YYYY-MM-DD) an instant falls on for someone in `timezone`.
+ * An evening run is already "tomorrow" in UTC, so slicing the ISO string is wrong.
+ */
+export function localDate(instant: string | Date, timezone?: string): string {
+  const d = typeof instant === "string" ? new Date(instant) : instant;
+  if (!timezone || timezone === "UTC") return d.toISOString().slice(0, 10);
+  // en-CA locale returns YYYY-MM-DD format
+  return d.toLocaleDateString("en-CA", { timeZone: timezone });
+}
+
 function toUtcDate(iso: string): Date {
   const [y, m, d] = iso.split("-").map(Number);
   return new Date(Date.UTC(y, m - 1, d));

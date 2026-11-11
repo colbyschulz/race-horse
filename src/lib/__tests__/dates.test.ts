@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   mondayOf,
   addDays,
+  localDate,
   formatDayLabel,
   formatLongDate,
   formatDateShort,
@@ -87,5 +88,28 @@ describe("weekIndexFromStart", () => {
   });
   it("returns 4 three weeks later", () => {
     expect(weekIndexFromStart("2026-04-20", "2026-05-11")).toBe(4);
+  });
+});
+
+describe("localDate", () => {
+  // 6:30pm on April 20 in Los Angeles is already April 21 in UTC.
+  const eveningRun = "2026-04-21T01:30:00.000Z";
+
+  it("gives the day in the athlete's timezone, not the UTC day", () => {
+    expect(localDate(eveningRun, "America/Los_Angeles")).toBe("2026-04-20");
+    expect(localDate(eveningRun, "UTC")).toBe("2026-04-21");
+  });
+
+  it("accepts a Date as well as an ISO string", () => {
+    expect(localDate(new Date(eveningRun), "America/Los_Angeles")).toBe("2026-04-20");
+  });
+
+  it("uses the UTC day when no timezone is known", () => {
+    expect(localDate(eveningRun)).toBe("2026-04-21");
+  });
+
+  it("handles timezones ahead of UTC", () => {
+    // 11pm UTC on April 20 is 9am April 21 in Sydney.
+    expect(localDate("2026-04-20T23:00:00.000Z", "Australia/Sydney")).toBe("2026-04-21");
   });
 });

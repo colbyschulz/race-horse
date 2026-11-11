@@ -1,6 +1,6 @@
 import { db } from "@/server/db";
 import { activities } from "@/server/db/schema";
-import { and, asc, eq, gte, lte, sql } from "drizzle-orm";
+import { and, asc, eq, gte, lt, sql } from "drizzle-orm";
 
 export type ActivityRow = typeof activities.$inferSelect;
 
@@ -15,11 +15,18 @@ export type Activity = Omit<ActivityRow, "start_date" | "created_at" | "updated_
   updated_at: string;
 };
 
-/** Returns activities whose start_date falls within the inclusive ISO date range. */
+/**
+ * Returns activities that started on the given calendar days (inclusive), where
+ * a "day" is the athlete's own: the range runs from local midnight at the start
+ * of `startDate` to local midnight after `endDate`. Comparing the stored
+ * instant against those two bounds, rather than casting the column to a date,
+ * also lets the (userId, start_date) index do the work.
+ */
 export async function getActivitiesForDateRange(
   userId: string,
   startDate: string,
-  endDate: string
+  endDate: string,
+  timezone: string = "UTC"
 ): Promise<ActivityRow[]> {
   return db
     .select()
@@ -27,8 +34,8 @@ export async function getActivitiesForDateRange(
     .where(
       and(
         eq(activities.userId, userId),
-        gte(sql`${activities.start_date}::date`, sql`${startDate}::date`),
-        lte(sql`${activities.start_date}::date`, sql`${endDate}::date`)
+        gte(activities.start_date, sql`(${startDate}::date::timestamp AT TIME ZONE ${timezone})`),
+        lt(activities.start_date, sql`((${endDate}::date + 1)::timestamp AT TIME ZONE ${timezone})`)
       )
     )
     .orderBy(asc(activities.start_date));

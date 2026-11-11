@@ -82,6 +82,7 @@ export function TrainingContent() {
             sunday={sunday}
             today={today}
             units={prefs.units}
+            timezone={prefs.timezone}
             planId={activePlan.id}
           />
         </Suspense>
@@ -95,15 +96,19 @@ interface WeekAgendaProps {
   sunday: string;
   today: string;
   units: "mi" | "km";
+  timezone: string;
   planId: string;
 }
 
-function WeekAgenda({ monday, sunday, today, units, planId }: WeekAgendaProps) {
+function WeekAgenda({ monday, sunday, today, units, timezone, planId }: WeekAgendaProps) {
   const { data: workouts } = useWorkouts(monday, sunday);
   const { data: activities } = useActivities(monday, sunday);
 
   const byDate = useMemo(() => new Map(workouts.map((w) => [w.date, w])), [workouts]);
-  const activitiesByDate = useMemo(() => groupActivitiesByDate(activities), [activities]);
+  const activitiesByDate = useMemo(
+    () => groupActivitiesByDate(activities, timezone),
+    [activities, timezone]
+  );
   const sheet = useWorkoutSheet((date) => byDate.get(date));
 
   return (

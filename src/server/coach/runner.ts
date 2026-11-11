@@ -365,6 +365,7 @@ export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
     if (!userRow) throw new Error("User not found");
 
     const units = (userRow.units as { units?: string })?.units === "km" ? "km" : "mi";
+    const timezone = (userRow.units as { timezone?: string })?.timezone || "UTC";
     const coachNotes = userRow.coach_notes ?? "";
 
     // Active plan summary
@@ -442,6 +443,7 @@ export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
           planId: conversationPlan.id,
           sport: conversationPlan.sport,
           today,
+          timezone,
         });
         recentTraining = renderRecentTraining(rt, units);
       } catch (err) {
