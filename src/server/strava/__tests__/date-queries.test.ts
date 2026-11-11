@@ -11,12 +11,15 @@ const fromChain = {
   orderBy: vi.fn().mockReturnThis(),
 };
 
+// Lets a test see which columns were asked for.
+const selectSpy = { select: (_columns?: unknown) => selectChain };
+
 // select().from() returns fromChain
 selectChain.from.mockReturnValue(fromChain);
 
 vi.mock("@/server/db", () => ({
   db: {
-    select: () => selectChain,
+    select: (columns?: unknown) => selectSpy.select(columns),
   },
 }));
 
@@ -26,6 +29,7 @@ vi.mock("@/server/db/schema", () => ({
     userId: "userId",
     start_date: "start_date",
     type: "type",
+    raw: "raw",
   },
 }));
 
@@ -35,6 +39,7 @@ vi.mock("drizzle-orm", () => ({
   gte: vi.fn((col, bound) => ({ type: "gte", col, bound })),
   lt: vi.fn((col, bound) => ({ type: "lt", col, bound })),
   asc: vi.fn(),
+  getTableColumns: vi.fn((table: Record<string, unknown>) => table),
   // Render a tagged template to plain text, marking each parameter, so tests
   // can read the SQL that was built.
   sql: vi.fn((strings: TemplateStringsArray, ...values: unknown[]) =>
@@ -124,5 +129,16 @@ describe("getActivitiesForDateRange", () => {
       "start_date",
       "(<2026-04-20>::date::timestamp AT TIME ZONE <UTC>)"
     );
+  });
+
+  it("leaves the raw Strava payload out of what it selects", async () => {
+    fromChain.orderBy.mockResolvedValueOnce([]);
+    const select = vi.spyOn(selectSpy, "select");
+
+    await getActivitiesForDateRange("u1", "2026-04-20", "2026-04-20");
+
+    const columns = select.mock.calls[0][0] as Record<string, unknown>;
+    expect(columns).toHaveProperty("start_date");
+    expect(columns).not.toHaveProperty("raw");
   });
 });

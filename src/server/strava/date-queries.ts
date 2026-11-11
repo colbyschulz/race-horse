@@ -1,8 +1,13 @@
 import { db } from "@/server/db";
 import { activities } from "@/server/db/schema";
-import { and, asc, eq, gte, lt, sql } from "drizzle-orm";
+import { and, asc, eq, getTableColumns, gte, lt, sql } from "drizzle-orm";
 
-export type ActivityRow = typeof activities.$inferSelect;
+// Everything except `raw`, the full Strava payload kept for reprocessing. It
+// is tens of kilobytes per activity and nothing that reads these rows uses it,
+// so it stays out of API responses and the cache saved on the device.
+const { raw: _raw, ...activityColumns } = getTableColumns(activities);
+
+export type ActivityRow = Omit<typeof activities.$inferSelect, "raw">;
 
 /**
  * Wire-format Activity used on the client. The DB row (ActivityRow) has
@@ -29,7 +34,7 @@ export async function getActivitiesForDateRange(
   timezone: string = "UTC"
 ): Promise<ActivityRow[]> {
   return db
-    .select()
+    .select(activityColumns)
     .from(activities)
     .where(
       and(
