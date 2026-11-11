@@ -1,22 +1,16 @@
 // src/app/api/plans/upload/[id]/file/route.ts
 import { NextResponse } from "next/server";
-import { auth } from "@/server/auth";
 import { getPlanFileById } from "@/server/plans/files";
+import { requireUser } from "@/lib/api-auth";
+import { notFound } from "@/lib/api-responses";
 
 type Ctx = { params: Promise<{ id: string }> };
 
-function unauthorized() {
-  return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-}
-function notFound() {
-  return NextResponse.json({ error: "not found" }, { status: 404 });
-}
-
 export async function GET(_req: Request, ctx: Ctx): Promise<NextResponse | Response> {
-  const session = await auth();
-  if (!session?.user?.id) return unauthorized();
+  const user = await requireUser();
+  if (user instanceof NextResponse) return user;
   const { id } = await ctx.params;
-  const row = await getPlanFileById(id, session.user.id);
+  const row = await getPlanFileById(id, user.userId);
   if (!row) return notFound();
 
   const token = process.env.BLOB_READ_WRITE_TOKEN;

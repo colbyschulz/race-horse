@@ -2,6 +2,7 @@
 
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { ApiError, fetchJson } from "@/lib/api-client";
+import type { ExtractedPlan } from "@/types/extraction";
 
 export interface PlanFileResponse {
   id: string;
@@ -10,7 +11,7 @@ export interface PlanFileResponse {
   mime_type: string;
   size_bytes: number;
   extraction_error: string | null;
-  extracted_payload: unknown;
+  extracted_payload: ExtractedPlan | null;
   extracted_plan_id: string | null;
   created_at: string;
 }

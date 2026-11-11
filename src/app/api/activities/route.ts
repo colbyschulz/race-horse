@@ -1,13 +1,11 @@
 import { NextResponse } from "next/server";
 import { getActivitiesForDateRange } from "@/server/strava/date-queries";
-import { auth } from "@/server/auth";
 import { isIsoDate } from "@/lib/dates";
+import { requireUser } from "@/lib/api-auth";
 
 export async function GET(req: Request): Promise<NextResponse> {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
+  const user = await requireUser();
+  if (user instanceof NextResponse) return user;
 
   const url = new URL(req.url);
   const from = url.searchParams.get("from");
@@ -19,10 +17,10 @@ export async function GET(req: Request): Promise<NextResponse> {
 
   // `from` and `to` are days on the athlete's calendar, not UTC days.
   const activities = await getActivitiesForDateRange(
-    session.user.id,
+    user.userId,
     from,
     to,
-    session.user.preferences.timezone
+    user.preferences.timezone
   );
   return NextResponse.json({ activities });
 }

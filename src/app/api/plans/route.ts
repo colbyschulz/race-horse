@@ -1,21 +1,17 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/server/auth";
 import { createPlan, listPlansWithCounts } from "@/server/plans/queries";
 import type { CreatePlanInput, PlanMode, PlanSource, Sport } from "@/server/plans/types";
+import { requireUser } from "@/lib/api-auth";
 
 const VALID_SPORTS: Sport[] = ["run", "bike"];
 const VALID_MODES: PlanMode[] = ["goal", "indefinite"];
 const VALID_SOURCES: PlanSource[] = ["uploaded", "coach_generated"];
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
-function unauthorized(): NextResponse {
-  return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-}
-
 export async function GET(): Promise<NextResponse> {
-  const session = await auth();
-  if (!session?.user?.id) return unauthorized();
-  const plans = await listPlansWithCounts(session.user.id);
+  const user = await requireUser();
+  if (user instanceof NextResponse) return user;
+  const plans = await listPlansWithCounts(user.userId);
   return NextResponse.json({ plans });
 }
 
@@ -42,8 +38,8 @@ function validate(body: unknown): CreatePlanInput | null {
 }
 
 export async function POST(req: Request): Promise<NextResponse> {
-  const session = await auth();
-  if (!session?.user?.id) return unauthorized();
+  const user = await requireUser();
+  if (user instanceof NextResponse) return user;
   let body: unknown;
   try {
     body = await req.json();
@@ -52,6 +48,6 @@ export async function POST(req: Request): Promise<NextResponse> {
   }
   const input = validate(body);
   if (!input) return NextResponse.json({ error: "invalid body" }, { status: 400 });
-  const plan = await createPlan(session.user.id, input);
+  const plan = await createPlan(user.userId, input);
   return NextResponse.json({ plan }, { status: 201 });
 }

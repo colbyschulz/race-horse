@@ -1,4 +1,4 @@
-import { auth } from "@/server/auth";
+import { NextResponse } from "next/server";
 import { db } from "@/server/db";
 import { eq, and, lt, sql } from "drizzle-orm";
 import { users, plans, workouts } from "@/server/db/schema";
@@ -9,6 +9,7 @@ import { todayIso } from "@/lib/dates";
 import { sseResponse } from "@/lib/sse-server";
 import { createPlan } from "@/server/plans/queries";
 import type { BuildRequestBody, SSEEvent } from "@/server/coach/types";
+import { requireUser } from "@/lib/api-auth";
 
 export const maxDuration = 300;
 
@@ -76,13 +77,8 @@ function validate(body: unknown): { ok: true; value: BuildRequestBody } | { ok: 
 }
 
 export async function POST(req: Request): Promise<Response> {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return new Response(JSON.stringify({ error: "unauthorized" }), {
-      status: 401,
-      headers: { "content-type": "application/json" },
-    });
-  }
+  const user = await requireUser();
+  if (user instanceof NextResponse) return user;
   let raw: unknown;
   try {
     raw = await req.json();
@@ -113,7 +109,7 @@ export async function POST(req: Request): Promise<Response> {
   };
   const message = formatBuildForm(formInput);
 
-  const [userRow] = await db.select({ preferences: users.preferences }).from(users).where(eq(users.id, session.user.id!)).limit(1);
+  const [userRow] = await db.select({ preferences: users.preferences }).from(users).where(eq(users.id, user.userId)).limit(1);
   const tz = (userRow?.preferences as { timezone?: string } | null)?.timezone;
   const today = todayIso(tz);
 
@@ -126,7 +122,7 @@ export async function POST(req: Request): Promise<Response> {
     .delete(plans)
     .where(
       and(
-        eq(plans.userId, session.user.id!),
+        eq(plans.userId, user.userId),
         eq(plans.generation_status, "generating"),
         lt(plans.created_at, new Date(Date.now() - STALE_STUB_THRESHOLD_MS)),
         sql`not exists (select 1 from ${workouts} where ${workouts.plan_id} = ${plans.id})`
@@ -136,7 +132,7 @@ export async function POST(req: Request): Promise<Response> {
   // Pre-create a stub plan so the entire build conversation binds to a single
   // plan id from message 1. The model populates and finalizes this stub during
   // the run; create_plan is excluded from cold-start tools.
-  const stub = await createPlan(session.user.id!, {
+  const stub = await createPlan(user.userId, {
     title: buildStubTitle(body),
     sport: body.sport,
     mode: body.goal_type === "race" ? "goal" : "indefinite",
@@ -154,12 +150,12 @@ export async function POST(req: Request): Promise<Response> {
     generation_status: "generating",
   });
 
-  const preload = await fetchStravaPreload(session.user.id!);
+  const preload = await fetchStravaPreload(user.userId);
   return sseResponse(
     prependPlanCreated(
       stub.id,
       runCoach({
-        userId: session.user.id!,
+        userId: user.userId,
         message,
         today,
         planId: stub.id,
@@ -167,6 +163,6 @@ export async function POST(req: Request): Promise<Response> {
         coldStartBuild: true,
       })
     ),
-    { userId: session.user.id!, planId: stub.id }
+    { userId: user.userId, planId: stub.id }
   );
 }

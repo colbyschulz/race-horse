@@ -1,10 +1,7 @@
 import { NextResponse } from "next/server";
+import { unauthorized } from "@/lib/api-responses";
 
 const STRAVA_API = "https://www.strava.com/api/v3";
-
-function unauthorized() {
-  return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-}
 
 function checkAdmin(req: Request): boolean {
   const expected = process.env.ADMIN_API_TOKEN;

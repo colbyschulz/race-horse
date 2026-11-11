@@ -2,17 +2,14 @@ import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { db } from "@/server/db";
 import { users } from "@/server/db/schema";
-import { auth } from "@/server/auth";
-import { requireUser } from "@/lib/api-auth";
 import { PreferencesSchema } from "@/lib/preferences";
+import { requireUser } from "@/lib/api-auth";
 
 // The session lookup already reads preferences, so this needs no query of its own.
 export async function GET(): Promise<NextResponse> {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
-  return NextResponse.json({ preferences: session.user.preferences });
+  const user = await requireUser();
+  if (user instanceof NextResponse) return user;
+  return NextResponse.json({ preferences: user.preferences });
 }
 
 export async function POST(req: Request): Promise<NextResponse> {

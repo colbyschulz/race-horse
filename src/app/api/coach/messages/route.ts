@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { auth } from "@/server/auth";
 import { clearMessages, loadHistory } from "@/server/coach/messages";
+import { requireUser } from "@/lib/api-auth";
 
 function parsePlanId(req: NextRequest): string | null {
   const v = req.nextUrl.searchParams.get("plan_id");
@@ -8,15 +8,15 @@ function parsePlanId(req: NextRequest): string | null {
 }
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
-  const session = await auth();
-  if (!session?.user?.id) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  const messages = await loadHistory(session.user.id, parsePlanId(req));
+  const user = await requireUser();
+  if (user instanceof NextResponse) return user;
+  const messages = await loadHistory(user.userId, parsePlanId(req));
   return NextResponse.json({ messages });
 }
 
 export async function DELETE(req: NextRequest): Promise<NextResponse> {
-  const session = await auth();
-  if (!session?.user?.id) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  await clearMessages(session.user.id, parsePlanId(req));
+  const user = await requireUser();
+  if (user instanceof NextResponse) return user;
+  await clearMessages(user.userId, parsePlanId(req));
   return new NextResponse(null, { status: 204 });
 }

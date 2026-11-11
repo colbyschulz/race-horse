@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getWorkoutsForDateRange, getNextWorkouts } from "@/server/plans/date-queries";
-import { requireUser } from "@/lib/api-auth";
 import { isIsoDate } from "@/lib/dates";
+import { requireUser } from "@/lib/api-auth";
 
 export async function GET(req: Request): Promise<NextResponse> {
   const auth = await requireUser();

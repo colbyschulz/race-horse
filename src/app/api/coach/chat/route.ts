@@ -1,4 +1,4 @@
-import { auth } from "@/server/auth";
+import { NextResponse } from "next/server";
 import { db } from "@/server/db";
 import { eq } from "drizzle-orm";
 import { users } from "@/server/db/schema";
@@ -6,17 +6,13 @@ import { runCoach } from "@/server/coach/runner";
 import { todayIso } from "@/lib/dates";
 import { sseResponse } from "@/lib/sse-server";
 import type { ChatRequestBody } from "@/server/coach/types";
+import { requireUser } from "@/lib/api-auth";
 
 export const maxDuration = 300;
 
 export async function POST(req: Request): Promise<Response> {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return new Response(JSON.stringify({ error: "unauthorized" }), {
-      status: 401,
-      headers: { "content-type": "application/json" },
-    });
-  }
+  const user = await requireUser();
+  if (user instanceof NextResponse) return user;
   let body: ChatRequestBody;
   try {
     body = (await req.json()) as ChatRequestBody;
@@ -36,7 +32,7 @@ export async function POST(req: Request): Promise<Response> {
   const [userRow] = await db
     .select({ preferences: users.preferences })
     .from(users)
-    .where(eq(users.id, session.user.id!))
+    .where(eq(users.id, user.userId))
     .limit(1);
   const tz = (userRow?.preferences as { timezone?: string } | null)?.timezone;
   const today = todayIso(tz);
@@ -44,7 +40,7 @@ export async function POST(req: Request): Promise<Response> {
 
   return sseResponse(
     runCoach({
-      userId: session.user.id!,
+      userId: user.userId,
       message: body.message,
       planId,
       fromRoute: body.from_route,
@@ -52,6 +48,6 @@ export async function POST(req: Request): Promise<Response> {
       planFileId: body.plan_file_id,
       today,
     }),
-    { userId: session.user.id!, planId }
+    { userId: user.userId, planId }
   );
 }

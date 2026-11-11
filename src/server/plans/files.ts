@@ -2,6 +2,7 @@
 import { and, desc, eq, isNull } from "drizzle-orm";
 import { db } from "@/server/db";
 import { planFiles } from "@/server/db/schema";
+import type { ExtractedPlan } from "@/server/extraction/schema";
 
 export type PlanFileRow = {
   id: string;
@@ -81,13 +82,13 @@ export async function updatePlanFileStatus(
 export async function setExtractedPayload(
   id: string,
   userId: string,
-  payload: unknown
+  payload: ExtractedPlan
 ): Promise<void> {
   await db
     .update(planFiles)
     .set({
       status: "extracted",
-      extracted_payload: payload as never,
+      extracted_payload: payload,
       extraction_error: null,
       updated_at: new Date(),
     })

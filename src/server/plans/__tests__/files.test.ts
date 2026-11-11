@@ -105,12 +105,18 @@ describe("updatePlanFileStatus", () => {
 
 describe("setExtractedPayload", () => {
   it("writes payload + status=extracted", async () => {
-    await setExtractedPayload("f1", "u1", { is_training_plan: true });
+    const payload = {
+      is_training_plan: true,
+      title: "Spring marathon",
+      sport: "run" as const,
+      mode: "goal" as const,
+      goal: null,
+      tentative_start_date: null,
+      workouts: [],
+    };
+    await setExtractedPayload("f1", "u1", payload);
     expect(updateChain.set).toHaveBeenCalledWith(
-      expect.objectContaining({
-        status: "extracted",
-        extracted_payload: { is_training_plan: true },
-      })
+      expect.objectContaining({ status: "extracted", extracted_payload: payload })
     );
   });
 });

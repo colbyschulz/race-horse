@@ -16,6 +16,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import type { AdapterAccountType } from "next-auth/adapters";
+import type { ExtractedPlan } from "@/server/extraction/schema";
 
 export type UserPreferences = {
   units: "mi" | "km";
@@ -83,7 +84,16 @@ export type IntervalSpec = {
 };
 
 export type SecondaryWorkout = {
-  type: "easy" | "long" | "tempo" | "threshold" | "intervals" | "recovery" | "race" | "rest" | "cross";
+  type:
+    | "easy"
+    | "long"
+    | "tempo"
+    | "threshold"
+    | "intervals"
+    | "recovery"
+    | "race"
+    | "rest"
+    | "cross";
   distance_km?: number;
   duration_minutes?: number;
   notes?: string;
@@ -304,7 +314,7 @@ export const planFiles = pgTable(
     size_bytes: integer("size_bytes").notNull(),
     status: planFileStatusEnum("status").notNull(),
     extraction_error: text("extraction_error"),
-    extracted_payload: jsonb("extracted_payload"),
+    extracted_payload: jsonb("extracted_payload").$type<ExtractedPlan>(),
     extracted_plan_id: uuid("extracted_plan_id").references(() => plans.id, {
       onDelete: "set null",
     }),
