@@ -164,6 +164,56 @@ describe("POST /api/coach/build", () => {
     expect(args.message).toContain("**Weekly mileage:** 45 mi");
   });
 
+  describe("with a plan id chosen by the app", () => {
+    const PLAN_ID = "3f2b8c1e-5d47-4a9b-8e21-0c6d9f4a7b13";
+    const build = () =>
+      POST(
+        new Request("http://test/api/coach/build", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ sport: "run", goal_type: "indefinite", plan_id: PLAN_ID }),
+        })
+      );
+    function existingPlan(rows: { userId: string }[]) {
+      mockDbSelect.mockReturnValueOnce({
+        from: () => ({ where: () => ({ limit: () => Promise.resolve(rows) }) }),
+      });
+    }
+
+    it("creates the plan under that id", async () => {
+      existingPlan([]);
+      const res = await build();
+      expect(res.status).toBe(200);
+      expect(mockCreatePlan.mock.calls[0][1]).toMatchObject({ id: PLAN_ID });
+    });
+
+    it("answers 409 instead of starting a second build when that plan already exists", async () => {
+      existingPlan([{ userId: "u1" }]);
+      const res = await build();
+      expect(res.status).toBe(409);
+      expect(mockCreatePlan).not.toHaveBeenCalled();
+      expect(mockRunCoach).not.toHaveBeenCalled();
+    });
+
+    it("rejects an id that belongs to someone else's plan", async () => {
+      existingPlan([{ userId: "someone-else" }]);
+      const res = await build();
+      expect(res.status).toBe(400);
+      expect(mockCreatePlan).not.toHaveBeenCalled();
+    });
+
+    it("rejects an id that isn't a UUID", async () => {
+      const res = await POST(
+        new Request("http://test/api/coach/build", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ sport: "run", goal_type: "indefinite", plan_id: "nope" }),
+        })
+      );
+      expect(res.status).toBe(400);
+    });
+  });
+
   it("emits plan-created as the first SSE event", async () => {
     const req = new Request("http://test/api/coach/build", {
       method: "POST",

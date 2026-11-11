@@ -17,6 +17,7 @@ export async function createPlan(userId: string, input: CreatePlanInput): Promis
   const result = await db
     .insert(plans)
     .values({
+      ...(input.id ? { id: input.id } : {}),
       userId,
       title: input.title,
       sport: input.sport,

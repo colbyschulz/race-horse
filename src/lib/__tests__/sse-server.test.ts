@@ -14,6 +14,7 @@ vi.mock("@/server/coach/turn-status", () => ({
 }));
 
 import { sseResponse } from "../sse-server";
+import { COACH_FAILED_MESSAGE } from "@/server/coach/errors";
 
 async function* gen(events: SSEEvent[]): AsyncGenerator<SSEEvent> {
   for (const e of events) yield e;
@@ -81,10 +82,17 @@ describe("sseResponse", () => {
     async function* throwingGen(): AsyncGenerator<SSEEvent> {
       throw new Error("unexpected failure");
     }
+    const errorLog = vi.spyOn(console, "error").mockImplementation(() => {});
     const res = sseResponse(throwingGen(), { userId: "u1", planId: "p1" });
     await readAll(res);
     await capturedTask;
-    expect(mockUpsertTurnStatus).toHaveBeenLastCalledWith("u1", "p1", "error", "unexpected failure");
+    // The raw error is for the log; the athlete gets a message written for them.
+    expect(mockUpsertTurnStatus).toHaveBeenLastCalledWith("u1", "p1", "error", COACH_FAILED_MESSAGE);
+    expect(errorLog).toHaveBeenCalledWith(
+      "coach stream failed",
+      { userId: "u1", planId: "p1" },
+      expect.objectContaining({ message: "unexpected failure" })
+    );
   });
 
   it("keeps draining the generator to completion after the client cancels", async () => {

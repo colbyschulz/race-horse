@@ -12,7 +12,13 @@ import {
   type Turn,
 } from "@/lib/turn-poll";
 import type { BuildFormInput } from "@/lib/build-form";
-import { buildTimeline, describeToolInProgress, isStepNarration } from "@/lib/coach-activity";
+import {
+  buildTimeline,
+  describeToolInProgress,
+  isStepNarration,
+  stepExpectation,
+  type TurnExpectation,
+} from "@/lib/coach-activity";
 
 import { Button } from "@/components/button/button";
 import { PageHeader } from "@/components/layout/page-header";
@@ -24,6 +30,7 @@ import { ThinkingIndicator } from "@/components/coach/thinking-indicator";
 import { MessageInput } from "@/components/coach/message-input";
 import { ClearChatDialog } from "@/components/coach/clear-chat-dialog";
 import { BuildFormCard, type BuildFormCardState } from "@/components/coach/build-form-card";
+import { BuiltPlanActions } from "@/components/coach/built-plan-actions";
 import { usePreferences } from "@/queries/preferences";
 
 interface Props {
@@ -33,12 +40,20 @@ interface Props {
   planId?: string | null;
   planFileId?: string;
   intent?: string;
+  /** The conversation's plan is still being built, so its writes are many weeks long. */
+  planGenerating?: boolean;
 }
 
 type StreamItem =
   | { kind: "text"; text: string }
   | { kind: "note"; text: string }
-  | { kind: "tool"; id: string; label: string; summary?: string };
+  | {
+      kind: "tool";
+      id: string;
+      label: string;
+      summary?: string;
+      expectation?: TurnExpectation | null;
+    };
 
 // How often a returning athlete's chat picks up new steps, in status checks.
 const REFRESH_EVERY_N_POLLS = 2;
@@ -55,6 +70,48 @@ export const COACH_BUILD_STASH_KEY = "coachInProgressBuildPlanId";
 
 type TurnStatusResponse = { turn: Turn };
 
+// How long the connection gets to settle before a dropped message is re-sent.
+const RESEND_DELAY_MS = 1000;
+
+function whenVisible(): Promise<void> {
+  if (document.visibilityState === "visible") return Promise.resolve();
+  return new Promise((resolve) => {
+    function onChange() {
+      if (document.visibilityState !== "visible") return;
+      document.removeEventListener("visibilitychange", onChange);
+      resolve();
+    }
+    document.addEventListener("visibilitychange", onChange);
+  });
+}
+
+/**
+ * Starts a coach turn, trying once more if the request is dropped before the
+ * server answers. A phone does that to a request in flight when the app goes
+ * to the background, and often to the first one after it comes back. If the
+ * first attempt did arrive, the server answers the second with 409 and the
+ * page follows the turn already under way.
+ */
+async function postTurn(url: string, body: string, signal: AbortSignal): Promise<Response> {
+  const post = () =>
+    fetch(url, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      signal,
+      body,
+    });
+  try {
+    return await post();
+  } catch (err) {
+    if (signal.aborted) throw err;
+    console.error(err);
+    await whenVisible();
+    await new Promise((resolve) => setTimeout(resolve, RESEND_DELAY_MS));
+    if (signal.aborted) throw err;
+    return post();
+  }
+}
+
 export function CoachPageClient({
   initialMessages,
   fromRoute,
@@ -62,6 +119,7 @@ export function CoachPageClient({
   planId: initialPlanId,
   planFileId,
   intent,
+  planGenerating = false,
 }: Props) {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -118,6 +176,9 @@ export function CoachPageClient({
   // True while a mount-time poll has found a turn still running server-side
   // (e.g. the user navigated away or closed the app mid-reply and came back).
   const [turnInFlight, setTurnInFlight] = useState(false);
+
+  // When the turn in progress began, for the running clock under it.
+  const [turnStartedAt, setTurnStartedAt] = useState<number | null>(null);
 
   // True until the first turn-status check resolves. Input stays disabled
   // through this window too — otherwise a message sent in the single
@@ -185,6 +246,11 @@ export function CoachPageClient({
       if (outcome.kind === "keep-polling") {
         observedRunning = true;
         setTurnInFlight(true);
+        // A turn this page started is timed from the send; one found already
+        // running is timed from when the server says it began.
+        if (!streamActiveRef.current && turn) {
+          setTurnStartedAt(new Date(turn.started_at).getTime());
+        }
         // Each finished step is saved as it happens, so a returning athlete can
         // follow along even without the live stream.
         pollsWhileRunning += 1;
@@ -282,7 +348,11 @@ export function CoachPageClient({
     setStreaming(null);
   }
 
-  function handleSSE(ev: SSEEvent, assembled: { items: StreamItem[] }): void {
+  function handleSSE(
+    ev: SSEEvent,
+    assembled: { items: StreamItem[] },
+    buildingPlan: boolean
+  ): void {
     if (ev.type === "plan-created") {
       receivedPlanIdRef.current = ev.plan_id;
       setPlanId(ev.plan_id);
@@ -326,6 +396,7 @@ export function CoachPageClient({
         kind: "tool",
         id: ev.id,
         label: describeToolInProgress(ev.name),
+        expectation: stepExpectation(ev.name, undefined, buildingPlan),
       });
       setStreaming({ items: [...assembled.items], done: false });
     } else if (ev.type === "tool-use") {
@@ -333,8 +404,13 @@ export function CoachPageClient({
       const item = assembled.items.find(
         (t): t is Extract<StreamItem, { kind: "tool" }> => t.kind === "tool" && t.id === ev.id
       );
-      if (item) item.label = label;
-      else assembled.items.push({ kind: "tool", id: ev.id, label });
+      const expectation = stepExpectation(ev.name, ev.input, buildingPlan);
+      if (item) {
+        item.label = label;
+        item.expectation = expectation;
+      } else {
+        assembled.items.push({ kind: "tool", id: ev.id, label, expectation });
+      }
       setStreaming({ items: [...assembled.items], done: false });
     } else if (ev.type === "tool-result") {
       const item = assembled.items.find(
@@ -368,6 +444,11 @@ export function CoachPageClient({
       showAlertOnce(err.message);
       return false;
     }
+    if (res?.status === 409) {
+      // An earlier attempt at this message got through and is being answered.
+      checkTurnRef.current({ watching: true, refresh: true });
+      return true;
+    }
     if (!res || !res.ok) {
       if (mountedRef.current) showAlertOnce(COACH_UNREACHABLE_MESSAGE);
       checkTurnRef.current({ watching: false, refresh: true });
@@ -382,6 +463,7 @@ export function CoachPageClient({
     streamAbortRef.current = controller;
     streamActiveRef.current = true;
     lastAlertRef.current = null;
+    setTurnStartedAt(Date.now());
     return controller;
   }
 
@@ -408,29 +490,32 @@ export function CoachPageClient({
     const controller = beginStream();
     let res: Response | undefined;
     try {
-      res = await fetch("/api/coach/chat", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        signal: controller.signal,
-        body: JSON.stringify({
+      res = await postTurn(
+        "/api/coach/chat",
+        JSON.stringify({
           message: text,
           from_route: fromRoute,
           from_label: fromLabel,
           plan_file_id: planFileId ?? undefined,
           plan_id: planId ?? null,
         }),
-      });
+        controller.signal
+      );
       const assembled = { items: [] as StreamItem[] };
       let finished = false;
       await consumeStream(res, (ev) => {
         if (ev.type === "done" || ev.type === "error") finished = true;
-        handleSSE(ev, assembled);
+        handleSSE(ev, assembled, planGenerating);
       });
       if (!finished) throw new Error("coach stream ended before the turn finished");
     } catch (err) {
       // Aborted means a status check already found this turn over and reloaded.
       if (!controller.signal.aborted) {
-        if (!res || !res.ok) setMessages((prev) => prev.filter((m) => m.id !== tmpId));
+        // Nothing was accepted, so take the unsent message back off the screen.
+        // (409 means an earlier attempt was accepted; the reload replaces it.)
+        if (!res || (!res.ok && res.status !== 409)) {
+          setMessages((prev) => prev.filter((m) => m.id !== tmpId));
+        }
         recoverFromLostStream(err, res);
       }
     } finally {
@@ -444,14 +529,16 @@ export function CoachPageClient({
     setBuildState({ kind: "submitting", values });
     setStreaming({ items: [], done: false });
     const controller = beginStream();
+    // The app picks the plan's id so that a build whose request is dropped can
+    // be re-sent safely, and found again if the first attempt did arrive.
+    const newPlanId = crypto.randomUUID();
     let res: Response | undefined;
     try {
-      res = await fetch("/api/coach/build", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        signal: controller.signal,
-        body: JSON.stringify(values),
-      });
+      res = await postTurn(
+        "/api/coach/build",
+        JSON.stringify({ ...values, plan_id: newPlanId }),
+        controller.signal
+      );
       const assembled = { items: [] as StreamItem[] };
       let lockedYet = false;
       let finished = false;
@@ -461,7 +548,7 @@ export function CoachPageClient({
           lockedYet = true;
           setBuildState({ kind: "locked", values });
         }
-        handleSSE(ev, assembled);
+        handleSSE(ev, assembled, true);
       });
       if (!finished) throw new Error("coach stream ended before the turn finished");
       // Wait for reloadHistory to finish so the messages cache is populated before
@@ -504,7 +591,13 @@ export function CoachPageClient({
       }
       setBuildState(null);
     } catch (err) {
-      if (!controller.signal.aborted) {
+      if (!controller.signal.aborted && res?.status === 409) {
+        // The first attempt arrived and the build is under way. Point the page
+        // at its plan; the conversation loads there and follows the build.
+        setStreaming(null);
+        setBuildState(null);
+        window.history.replaceState(null, "", `/coach?plan_id=${encodeURIComponent(newPlanId)}`);
+      } else if (!controller.signal.aborted) {
         const stillRunning = recoverFromLostStream(err, res);
         // Nothing reached the server, so keep the form available for a retry.
         setBuildState(!res || !res.ok ? { kind: "editable" } : null);
@@ -543,6 +636,17 @@ export function CoachPageClient({
   }
 
   const timeline = useMemo(() => buildTimeline(messages), [messages]);
+
+  // What the line under a turn in progress says. A step being carried out has
+  // its own pulsing dot and label, so the line goes quiet apart from the clock.
+  const lastItem = streaming?.items.at(-1);
+  const steps =
+    streaming?.items.filter(
+      (x): x is Extract<StreamItem, { kind: "tool" }> => x.kind === "tool"
+    ) ?? [];
+  const lastStep = steps.at(-1);
+  const stepInFlight = lastStep != null && lastStep.summary === undefined;
+  const expectation = steps.findLast((s) => s.expectation != null)?.expectation ?? null;
 
   return (
     <div className={styles.page}>
@@ -598,23 +702,25 @@ export function CoachPageClient({
                 />
               )
             )}
-            {/* Working-indicator persists across turn boundaries so the user
-                always knows the run is still in flight. Hidden when a tool
-                is in-flight (its pulsing dot is the indicator) or when done. */}
-            {!streaming.done &&
-              (() => {
-                const lastTool = streaming.items.findLast((x) => x.kind === "tool");
-                return !lastTool || lastTool.summary !== undefined;
-              })() && <ThinkingIndicator />}
+            {/* Stays for the whole turn, across its steps, so the athlete
+                always knows the run is still going and for how long. */}
+            {!streaming.done && (
+              <ThinkingIndicator
+                label={stepInFlight || lastItem?.kind === "text" ? "Working" : "Thinking"}
+                dots={!stepInFlight}
+                startedAt={turnStartedAt}
+                expectation={expectation}
+              />
+            )}
           </>
         )}
-        {!streaming && turnInFlight && <ThinkingIndicator />}
+        {!streaming && turnInFlight && (
+          <ThinkingIndicator label="Working" startedAt={turnStartedAt} />
+        )}
       </div>
       {viewPlanId && (
         <div className={styles.viewPlanCta}>
-          <Button href={`/plans/${viewPlanId}`} variant="primary" size="sm">
-            View your plan →
-          </Button>
+          <BuiltPlanActions planId={viewPlanId} />
         </div>
       )}
       <MessageInput

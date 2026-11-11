@@ -1,9 +1,43 @@
+.status {
+  padding: var(--space-2) var(--space-1);
+}
+
 .row {
   display: flex;
   align-items: center;
+  gap: var(--space-2);
+  min-height: 16px;
+}
+
+.dots {
+  display: flex;
+  align-items: center;
   gap: 6px;
-  padding: var(--space-2) var(--space-3);
-  width: fit-content;
+}
+
+.label,
+.elapsed {
+  font-family: var(--font-body);
+  font-size: 0.8125rem;
+  color: var(--color-fg-secondary);
+}
+
+.label {
+  font-style: italic;
+}
+
+.elapsed {
+  color: var(--color-fg-tertiary);
+  // Equal-width digits, so the clock doesn't shift as it ticks.
+  font-variant-numeric: tabular-nums;
+}
+
+.hint {
+  margin: var(--space-1) 0 0;
+  font-family: var(--font-body);
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: var(--color-fg-tertiary);
 }
 
 .dot {

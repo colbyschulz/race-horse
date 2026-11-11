@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { buildTimeline, describeToolDone, describeToolInProgress, isProgressNote } from "../coach-activity";
+import {
+  buildTimeline,
+  describeToolDone,
+  describeToolInProgress,
+  isProgressNote,
+  stepExpectation,
+} from "../coach-activity";
 import type { StoredMessage } from "@/types/coach";
 
 function message(id: string, role: "user" | "assistant", content: unknown[]): StoredMessage {
@@ -118,5 +124,25 @@ describe("buildTimeline", () => {
     const [a] = buildTimeline(msgs);
     const [b] = buildTimeline(msgs);
     expect(a).toEqual(b);
+  });
+});
+
+describe("stepExpectation", () => {
+  it("flags a switch to multi-week planning", () => {
+    expect(stepExpectation("request_deep_planning")).toBe("deep");
+  });
+
+  it("flags a write that names its week of a plan", () => {
+    expect(stepExpectation("update_workouts", { week_number: 1, total_weeks: 16 })).toBe("plan");
+  });
+
+  it("flags any write while a new plan is being built, before its details arrive", () => {
+    expect(stepExpectation("update_workouts", undefined, true)).toBe("plan");
+  });
+
+  it("leaves ordinary steps alone", () => {
+    expect(stepExpectation("update_workouts", { operations: [{ date: "2026-11-12" }] })).toBeNull();
+    expect(stepExpectation("update_workouts")).toBeNull();
+    expect(stepExpectation("get_plan", undefined, true)).toBeNull();
   });
 });

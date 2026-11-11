@@ -14,6 +14,7 @@ import { requireUser } from "@/lib/api-auth";
 export const maxDuration = 300;
 
 const STALE_STUB_THRESHOLD_MS = 60 * 60 * 1000; // 1 hour
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function buildStubTitle(body: BuildRequestBody): string {
   if (body.goal_type === "race") {
@@ -46,6 +47,9 @@ function validate(body: unknown): { ok: true; value: BuildRequestBody } | { ok: 
       return { ok: false, error: "race_event required for race goal_type" };
     }
   }
+  if (b.plan_id != null && (typeof b.plan_id !== "string" || !UUID_RE.test(b.plan_id))) {
+    return { ok: false, error: "plan_id must be a UUID if provided" };
+  }
   for (const k of ["race_date", "race_event", "target_time", "context"] as const) {
     if (b[k] != null && typeof b[k] !== "string") {
       return { ok: false, error: `${k} must be a string if provided` };
@@ -63,6 +67,7 @@ function validate(body: unknown): { ok: true; value: BuildRequestBody } | { ok: 
   return {
     ok: true,
     value: {
+      plan_id: typeof b.plan_id === "string" ? b.plan_id.toLowerCase() : undefined,
       sport: b.sport,
       goal_type: b.goal_type,
       race_date: typeof b.race_date === "string" ? b.race_date : undefined,
@@ -96,6 +101,22 @@ export async function POST(req: Request): Promise<Response> {
     });
   }
   const body = parsed.value;
+
+  // The app re-sends a build whose request was dropped (a phone does this when
+  // the app is backgrounded). If the first attempt did arrive, its plan already
+  // exists, and the re-send must not start a second build.
+  if (body.plan_id) {
+    const [existing] = await db
+      .select({ userId: plans.userId })
+      .from(plans)
+      .where(eq(plans.id, body.plan_id))
+      .limit(1);
+    if (existing) {
+      return existing.userId === user.userId
+        ? NextResponse.json({ error: "this build has already started" }, { status: 409 })
+        : NextResponse.json({ error: "plan_id unavailable" }, { status: 400 });
+    }
+  }
 
   const formInput: BuildFormInput = {
     sport: body.sport,
@@ -133,6 +154,7 @@ export async function POST(req: Request): Promise<Response> {
   // plan id from message 1. The model populates and finalizes this stub during
   // the run; create_plan is excluded from cold-start tools.
   const stub = await createPlan(user.userId, {
+    id: body.plan_id,
     title: buildStubTitle(body),
     sport: body.sport,
     mode: body.goal_type === "race" ? "goal" : "indefinite",

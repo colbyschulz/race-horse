@@ -29,6 +29,8 @@ export type PlanWithCounts = Plan & {
 };
 
 export type CreatePlanInput = {
+  /** Set when the caller has already chosen the plan's id; otherwise generated. */
+  id?: string;
   title: string;
   sport: Sport;
   mode: PlanMode;

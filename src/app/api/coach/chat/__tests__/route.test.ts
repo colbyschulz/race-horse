@@ -4,8 +4,10 @@ vi.mock("next/server", async (importOriginal) => {
   const actual = await importOriginal<typeof import("next/server")>();
   return { ...actual, after: vi.fn() };
 });
+const mockGetTurnStatus = vi.fn();
 vi.mock("@/server/coach/turn-status", () => ({
   upsertTurnStatus: vi.fn().mockResolvedValue(undefined),
+  getTurnStatus: (...args: unknown[]) => mockGetTurnStatus(...args),
 }));
 
 const mockAuth = vi.fn();
@@ -16,22 +18,13 @@ vi.mock("@/server/coach/runner", () => ({
   runCoach: (...args: unknown[]) => mockRunCoach(...args),
 }));
 
-// The route reads the user's timezone preference before starting the coach.
-vi.mock("@/server/db", () => {
-  const chain = {
-    from: vi.fn().mockReturnThis(),
-    where: vi.fn().mockReturnThis(),
-    limit: vi.fn().mockResolvedValue([{ preferences: { timezone: "UTC" } }]),
-  };
-  return { db: { select: vi.fn(() => chain) } };
-});
-
 import { POST } from "../route";
 
 describe("POST /api/coach/chat", () => {
   beforeEach(() => {
     mockAuth.mockReset();
     mockRunCoach.mockReset();
+    mockGetTurnStatus.mockReset().mockResolvedValue(null);
   });
 
   it("returns 401 if not authenticated", async () => {
@@ -87,5 +80,41 @@ describe("POST /api/coach/chat", () => {
     expect(text).toContain(JSON.stringify({ type: "text-delta", delta: "hello" }));
     expect(text).toContain("event: done\ndata: ");
     expect(text).toContain(JSON.stringify({ type: "done", message_id: "m1" }));
+  });
+
+  it("refuses a second message while a reply is still in progress", async () => {
+    mockAuth.mockResolvedValue({ user: { id: "u1" } });
+    mockGetTurnStatus.mockResolvedValue({
+      status: "running",
+      error_message: null,
+      started_at: new Date(),
+    });
+    const req = new Request("http://test/api/coach/chat", {
+      method: "POST",
+      body: JSON.stringify({ message: "Are you there?", plan_id: "p1" }),
+    });
+    const res = await POST(req);
+
+    expect(res.status).toBe(409);
+    expect(mockGetTurnStatus).toHaveBeenCalledWith("u1", "p1");
+    expect(mockRunCoach).not.toHaveBeenCalled();
+  });
+
+  it("accepts a message when the earlier reply was cut off long ago", async () => {
+    mockAuth.mockResolvedValue({ user: { id: "u1" } });
+    mockGetTurnStatus.mockResolvedValue({
+      status: "running",
+      error_message: null,
+      started_at: new Date(Date.now() - 60 * 60 * 1000),
+    });
+    mockRunCoach.mockReturnValue((async function* () {})());
+    const req = new Request("http://test/api/coach/chat", {
+      method: "POST",
+      body: JSON.stringify({ message: "Try again" }),
+    });
+    const res = await POST(req);
+
+    expect(res.status).toBe(200);
+    expect(mockRunCoach).toHaveBeenCalledTimes(1);
   });
 });

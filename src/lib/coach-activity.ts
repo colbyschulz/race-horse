@@ -83,6 +83,28 @@ export function describeToolInProgress(name: string, input?: unknown): string {
   }
 }
 
+/** The kinds of turn known to take a while, so the athlete can be told up front. */
+export type TurnExpectation = "plan" | "deep";
+
+/**
+ * Whether a step marks its turn as one of the long kinds. `buildingPlan` is
+ * true when the conversation is building a new plan, where any write is the
+ * start of many; otherwise a write counts once it names its week of the plan.
+ */
+export function stepExpectation(
+  name: string,
+  input?: unknown,
+  buildingPlan = false
+): TurnExpectation | null {
+  if (name === "request_deep_planning") return "deep";
+  if (name === "update_workouts") {
+    const i = (input ?? {}) as ToolInput;
+    const namesItsWeek = typeof i.week_number === "number" && typeof i.total_weeks === "number";
+    if (buildingPlan || namesItsWeek) return "plan";
+  }
+  return null;
+}
+
 /** The same step after it has finished, for conversation history. */
 export function describeToolDone(name: string, input?: unknown): string {
   const i = (input ?? {}) as ToolInput;
