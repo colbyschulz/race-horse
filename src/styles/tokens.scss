@@ -2,8 +2,8 @@
 
 :root {
   // ── Typography ──
-  --font-display: "Syne", sans-serif;
-  --font-body: "Roboto", sans-serif;
+  --font-display: var(--font-syne), sans-serif;
+  --font-body: var(--font-roboto), sans-serif;
 
   // ── Sand neutrals ──
   --sand-50: #fdfaf5;
@@ -26,6 +26,11 @@
   --color-fg-tertiary: #9b8e7e;
   --color-border-subtle: #e0d9ce;
   --color-border-default: #c8bfb0;
+
+  // ── Text on a filled accent, the dimmer behind dialogs, third-party brand ──
+  --color-fg-on-accent: #fff;
+  --color-scrim: rgba(0, 0, 0, 0.4);
+  --color-strava: #fc4c02;
 
   // ── Brown (primary brand accent) ──
   --color-brown: #7a4728;

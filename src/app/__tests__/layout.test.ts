@@ -1,4 +1,11 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
+
+// next/font is resolved by the Next.js compiler, which doesn't run under vitest.
+vi.mock("next/font/google", () => ({
+  Syne: () => ({ variable: "--font-syne" }),
+  Roboto: () => ({ variable: "--font-roboto" }),
+}));
+
 import { metadata } from "../layout";
 
 describe("root metadata", () => {

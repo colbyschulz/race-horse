@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { requireUser } from "@/lib/api-auth";
 import { getPlanById } from "@/server/plans/queries";
 import { getWorkoutsForPlan } from "@/server/plans/date-queries";
 import type { Goal } from "@/server/db/schema";
+import { requireUser } from "@/lib/api-auth";
 
 type Ctx = { params: Promise<{ id: string }> };
 

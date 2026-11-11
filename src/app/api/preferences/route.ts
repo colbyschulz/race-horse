@@ -1,19 +1,15 @@
 import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { db } from "@/server/db";
-import { users, DEFAULT_PREFERENCES } from "@/server/db/schema";
-import { requireUser } from "@/lib/api-auth";
+import { users } from "@/server/db/schema";
 import { PreferencesSchema } from "@/lib/preferences";
+import { requireUser } from "@/lib/api-auth";
 
+// The session lookup already reads preferences, so this needs no query of its own.
 export async function GET(): Promise<NextResponse> {
-  const auth = await requireUser();
-  if (auth instanceof NextResponse) return auth;
-  const [row] = await db
-    .select({ preferences: users.preferences })
-    .from(users)
-    .where(eq(users.id, auth.userId))
-    .limit(1);
-  return NextResponse.json({ preferences: row?.preferences ?? DEFAULT_PREFERENCES });
+  const user = await requireUser();
+  if (user instanceof NextResponse) return user;
+  return NextResponse.json({ preferences: user.preferences });
 }
 
 export async function POST(req: Request): Promise<NextResponse> {

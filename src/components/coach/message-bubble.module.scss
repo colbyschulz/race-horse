@@ -24,7 +24,7 @@
 
   .user & {
     background: var(--color-brown);
-    color: #fff;
+    color: var(--color-fg-on-accent);
     border-bottom-right-radius: var(--radius-sm);
   }
 

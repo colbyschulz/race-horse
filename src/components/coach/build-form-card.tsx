@@ -94,7 +94,6 @@ const CAL_CLASSES = {
   disabled: styles.calDisabled,
 };
 
-// eslint-disable-next-line react/display-name
 const NULL_COMPONENTS = {
   MonthCaption: (): React.JSX.Element => <></>,
   Nav: (): React.JSX.Element => <></>,
@@ -190,8 +189,7 @@ function EditableForm({
     if (!sport || !goalType) return;
     if (goalType === "race" && (!raceDate.trim() || !raceEvent.trim())) return;
     const mileageNum = weeklyMileage.trim() === "" ? null : Number(weeklyMileage);
-    const hasMileage =
-      mileageNum != null && Number.isFinite(mileageNum) && mileageNum > 0;
+    const hasMileage = mileageNum != null && Number.isFinite(mileageNum) && mileageNum > 0;
     onSubmit({
       sport,
       goal_type: goalType,

@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/server/db";
 import { sessions } from "@/server/db/schema";
 import { SESSION_COOKIE_NAMES, sessionCookieOptions } from "@/lib/session-cookie";
+import { APP_BACKGROUND } from "@/lib/theme";
 
 export const dynamic = "force-dynamic";
 
@@ -38,7 +39,7 @@ export async function GET(request: NextRequest) {
 }
 
 function retryPage() {
-  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Race Horse</title><style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#f5f0e8;font-family:system-ui,sans-serif;text-align:center}a{color:inherit}</style></head><body><main><p>Race Horse couldn't load your session.</p><p><a href="/today">Try again</a></p></main></body></html>`;
+  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Race Horse</title><style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:${APP_BACKGROUND};font-family:system-ui,sans-serif;text-align:center}a{color:inherit}</style></head><body><main><p>Race Horse couldn't load your session.</p><p><a href="/today">Try again</a></p></main></body></html>`;
   return new Response(html, {
     status: 503,
     headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" },

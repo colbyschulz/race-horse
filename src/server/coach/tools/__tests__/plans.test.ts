@@ -80,40 +80,6 @@ function makePlan(overrides: object = {}) {
   };
 }
 
-function buildSelectChain(rows: unknown[]) {
-  const chain = {
-    from: vi.fn().mockReturnThis(),
-    where: vi.fn().mockReturnThis(),
-    limit: vi.fn().mockResolvedValue(rows),
-    // also resolve directly for calls without .limit()
-    then: (resolve: (v: unknown) => unknown) => Promise.resolve(rows).then(resolve),
-  };
-  // make it thenable directly
-  Object.defineProperty(chain, Symbol.toStringTag, { value: "Promise" });
-  mockSelect.mockReturnValue(chain);
-  return chain;
-}
-
-function buildDeleteChain() {
-  const chain = {
-    from: vi.fn().mockReturnThis(),
-    where: vi.fn().mockResolvedValue(undefined),
-  };
-  mockDelete.mockReturnValue(chain);
-  return chain;
-}
-
-function buildInsertChain() {
-  const chain = {
-    values: vi.fn().mockReturnThis(),
-    returning: vi.fn().mockResolvedValue([]),
-    onConflictDoUpdate: vi.fn().mockReturnThis(),
-    then: (resolve: (v: unknown) => unknown) => Promise.resolve(undefined).then(resolve),
-  };
-  mockInsert.mockReturnValue(chain);
-  return chain;
-}
-
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------

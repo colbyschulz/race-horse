@@ -1,25 +1,19 @@
 import { NavLinks } from "./nav-links";
 import { TabBar } from "./tab-bar";
 import { MainContent } from "./main-content";
-import { PrefetchOnResume } from "./prefetch-on-resume";
+import { UserLabel } from "./user-label";
 import styles from "./app-shell.module.scss";
 
-interface AppShellProps {
-  userName: string;
-  children: React.ReactNode;
-}
-
-export function AppShell({ userName, children }: AppShellProps) {
+export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className={styles.shell}>
       <aside className={styles.sidebar}>
         <div>
           <div className={styles.brand}>Race Horse</div>
-          {userName && <div className={styles.userLabel}>{userName}</div>}
+          <UserLabel />
         </div>
         <NavLinks variant="sidebar" />
       </aside>
-      <PrefetchOnResume />
       <MainContent>{children}</MainContent>
       <TabBar />
     </div>

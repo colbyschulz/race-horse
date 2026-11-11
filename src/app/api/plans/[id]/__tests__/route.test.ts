@@ -5,6 +5,8 @@ const getPlanById = vi.fn();
 const setActivePlan = vi.fn();
 const archivePlan = vi.fn();
 const deletePlan = vi.fn();
+const deletePlanFilesByPlanId = vi.fn();
+const del = vi.fn();
 
 vi.mock("@/server/auth", () => ({ auth: (...a: unknown[]) => auth(...a) }));
 vi.mock("@/server/plans/queries", () => ({
@@ -13,6 +15,12 @@ vi.mock("@/server/plans/queries", () => ({
   archivePlan: (...a: unknown[]) => archivePlan(...a),
   deletePlan: (...a: unknown[]) => deletePlan(...a),
 }));
+// Deleting a plan also removes its uploaded files and their blobs. Without
+// these mocks the test reaches for a real database and blob store.
+vi.mock("@/server/plans/files", () => ({
+  deletePlanFilesByPlanId: (...a: unknown[]) => deletePlanFilesByPlanId(...a),
+}));
+vi.mock("@vercel/blob", () => ({ del: (...a: unknown[]) => del(...a) }));
 
 import { GET, PATCH, DELETE } from "../route";
 
@@ -109,8 +117,11 @@ describe("DELETE /api/plans/[id]", () => {
   it("deletes and returns 204", async () => {
     auth.mockResolvedValueOnce({ user: { id: "u1" } });
     getPlanById.mockResolvedValueOnce({ id: "p1" });
+    deletePlanFilesByPlanId.mockResolvedValueOnce([{ blob_url: "https://blob.test/a.pdf" }]);
     const res = await DELETE(makeReq("DELETE"), ctx);
     expect(res.status).toBe(204);
+    expect(deletePlanFilesByPlanId).toHaveBeenCalledWith("p1", "u1");
+    expect(del).toHaveBeenCalledWith("https://blob.test/a.pdf");
     expect(deletePlan).toHaveBeenCalledWith("p1", "u1");
   });
 });

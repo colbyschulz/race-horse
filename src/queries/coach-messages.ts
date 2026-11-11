@@ -9,10 +9,10 @@ export function useCoachMessages(planId: string | null) {
   return useSuspenseQuery({
     queryKey: ["coach", "messages", planId],
     queryFn: () =>
-      fetchJson<{ messages: StoredMessage[] }>(`/api/coach/messages${qs}`).then(
-        (d) => d.messages
-      ),
+      fetchJson<{ messages: StoredMessage[] }>(`/api/coach/messages${qs}`).then((d) => d.messages),
     staleTime: 0,
     refetchOnMount: "always",
+    // The coach page runs its own resume check and reloads history itself.
+    refetchOnWindowFocus: false,
   });
 }

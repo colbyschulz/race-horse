@@ -28,14 +28,19 @@ function ReviewContent({ id }: { id: string }) {
   const isRetry = searchParams.get("retry") === "1";
 
   const { data: prefs } = usePreferences();
-  const { data: file } = usePlanFile(id);
+  // Keep re-reading while extraction runs, or just after a retry, when the
+  // status can still read "failed" for a moment before it flips.
+  const { data: file } = usePlanFile(
+    id,
+    (f) => f.status === "extracting" || (isRetry && f.status === "failed")
+  );
   const { data: activePlan } = useActivePlan();
 
   if (!file) notFound();
 
   return (
     <ReviewClient
-      initialFile={{
+      file={{
         id: file.id,
         status: file.status,
         original_filename: file.original_filename,
@@ -45,7 +50,6 @@ function ReviewContent({ id }: { id: string }) {
       units={prefs.units}
       today={todayIso(prefs.timezone)}
       hasActivePlan={activePlan !== null}
-      isRetry={isRetry}
     />
   );
 }

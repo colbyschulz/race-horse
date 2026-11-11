@@ -1,32 +1,26 @@
 import { NextResponse } from "next/server";
 import { del } from "@vercel/blob";
-import { auth } from "@/server/auth";
 import { archivePlan, deletePlan, getPlanById, setActivePlan } from "@/server/plans/queries";
 import { deletePlanFilesByPlanId } from "@/server/plans/files";
+import { requireUser } from "@/lib/api-auth";
+import { notFound } from "@/lib/api-responses";
 
 type Ctx = { params: Promise<{ id: string }> };
 
-function unauthorized(): NextResponse {
-  return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-}
-function notFound(): NextResponse {
-  return NextResponse.json({ error: "not found" }, { status: 404 });
-}
-
 export async function GET(_req: Request, ctx: Ctx): Promise<NextResponse> {
-  const session = await auth();
-  if (!session?.user?.id) return unauthorized();
+  const user = await requireUser();
+  if (user instanceof NextResponse) return user;
   const { id } = await ctx.params;
-  const plan = await getPlanById(id, session.user.id);
+  const plan = await getPlanById(id, user.userId);
   if (!plan) return notFound();
   return NextResponse.json({ plan });
 }
 
 export async function PATCH(req: Request, ctx: Ctx): Promise<NextResponse> {
-  const session = await auth();
-  if (!session?.user?.id) return unauthorized();
+  const user = await requireUser();
+  if (user instanceof NextResponse) return user;
   const { id } = await ctx.params;
-  const owned = await getPlanById(id, session.user.id);
+  const owned = await getPlanById(id, user.userId);
   if (!owned) return notFound();
 
   let body: { is_active?: boolean };
@@ -40,24 +34,24 @@ export async function PATCH(req: Request, ctx: Ctx): Promise<NextResponse> {
   }
 
   if (body.is_active) {
-    await setActivePlan(id, session.user.id);
+    await setActivePlan(id, user.userId);
   } else {
-    await archivePlan(id, session.user.id);
+    await archivePlan(id, user.userId);
   }
   return NextResponse.json({ ok: true });
 }
 
 export async function DELETE(_req: Request, ctx: Ctx): Promise<NextResponse | Response> {
-  const session = await auth();
-  if (!session?.user?.id) return unauthorized();
+  const user = await requireUser();
+  if (user instanceof NextResponse) return user;
   const { id } = await ctx.params;
-  const owned = await getPlanById(id, session.user.id);
+  const owned = await getPlanById(id, user.userId);
   if (!owned) return notFound();
 
   // Delete associated plan_files first (before the FK set-null fires)
-  const deletedFiles = await deletePlanFilesByPlanId(id, session.user.id);
+  const deletedFiles = await deletePlanFilesByPlanId(id, user.userId);
   await Promise.allSettled(deletedFiles.map((f) => del(f.blob_url)));
 
-  await deletePlan(id, session.user.id);
+  await deletePlan(id, user.userId);
   return new NextResponse(null, { status: 204 });
 }

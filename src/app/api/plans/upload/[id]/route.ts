@@ -1,22 +1,16 @@
 import { NextResponse } from "next/server";
 import { del } from "@vercel/blob";
-import { auth } from "@/server/auth";
 import { deletePlanFile, getPlanFileById } from "@/server/plans/files";
+import { requireUser } from "@/lib/api-auth";
+import { notFound } from "@/lib/api-responses";
 
 type Ctx = { params: Promise<{ id: string }> };
 
-function unauthorized() {
-  return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-}
-function notFound() {
-  return NextResponse.json({ error: "not found" }, { status: 404 });
-}
-
 export async function GET(_req: Request, ctx: Ctx): Promise<NextResponse> {
-  const session = await auth();
-  if (!session?.user?.id) return unauthorized();
+  const user = await requireUser();
+  if (user instanceof NextResponse) return user;
   const { id } = await ctx.params;
-  const row = await getPlanFileById(id, session.user.id);
+  const row = await getPlanFileById(id, user.userId);
   if (!row) return notFound();
   return NextResponse.json({
     id: row.id,
@@ -32,10 +26,10 @@ export async function GET(_req: Request, ctx: Ctx): Promise<NextResponse> {
 }
 
 export async function DELETE(_req: Request, ctx: Ctx): Promise<NextResponse> {
-  const session = await auth();
-  if (!session?.user?.id) return unauthorized();
+  const user = await requireUser();
+  if (user instanceof NextResponse) return user;
   const { id } = await ctx.params;
-  const row = await getPlanFileById(id, session.user.id);
+  const row = await getPlanFileById(id, user.userId);
   if (!row) return notFound();
 
   try {
@@ -43,6 +37,6 @@ export async function DELETE(_req: Request, ctx: Ctx): Promise<NextResponse> {
   } catch {
     /* swallow — keep going to delete the row */
   }
-  await deletePlanFile(id, session.user.id);
+  await deletePlanFile(id, user.userId);
   return new NextResponse(null, { status: 204 });
 }

@@ -1,8 +1,8 @@
 // src/app/api/plans/upload/route.ts
 import { NextResponse } from "next/server";
 import { put, del } from "@vercel/blob";
-import { auth } from "@/server/auth";
 import { createPlanFile } from "@/server/plans/files";
+import { requireUser } from "@/lib/api-auth";
 
 const MAX_BYTES = 10 * 1024 * 1024;
 
@@ -14,10 +14,6 @@ const ALLOWED: Record<string, string> = {
   txt: "text/plain",
 };
 
-function unauthorized() {
-  return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-}
-
 function extFromName(name: string): string | null {
   const i = name.lastIndexOf(".");
   if (i < 0) return null;
@@ -25,8 +21,8 @@ function extFromName(name: string): string | null {
 }
 
 export async function POST(req: Request): Promise<NextResponse> {
-  const session = await auth();
-  if (!session?.user?.id) return unauthorized();
+  const user = await requireUser();
+  if (user instanceof NextResponse) return user;
 
   const form = await req.formData();
   const file = form.get("file");
@@ -59,13 +55,13 @@ export async function POST(req: Request): Promise<NextResponse> {
   try {
     await createPlanFile({
       id,
-      userId: session.user.id,
+      userId: user.userId,
       blob_url: blobUrl,
       original_filename: file.name,
       mime_type: mime,
       size_bytes: file.size,
     });
-  } catch (err) {
+  } catch {
     // Best-effort blob cleanup
     try {
       await del(blobUrl);

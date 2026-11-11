@@ -1,7 +1,7 @@
 import "server-only";
 
 import type { Anthropic } from "@anthropic-ai/sdk";
-import { eq, and, gte, lte } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { db } from "@/server/db";
 import { plans, workouts } from "@/server/db/schema";
 import type { SecondaryWorkout } from "@/server/db/schema";
@@ -679,10 +679,3 @@ export const finalize_plan_handler: ToolHandler<
 };
 
 // Kept for callers that want a date-range query without the mapping layer.
-export async function listPlanWorkoutsBetween(planId: string, from: string, to: string) {
-  return db
-    .select()
-    .from(workouts)
-    .where(and(eq(workouts.plan_id, planId), gte(workouts.date, from), lte(workouts.date, to)))
-    .orderBy(workouts.date);
-}

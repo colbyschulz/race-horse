@@ -1,6 +1,6 @@
 // src/components/plans/__tests__/InFlightUploadCard.test.tsx
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { InFlightUploadCard } from "../in-flight-upload-card";
 
 vi.mock("next/navigation", () => ({

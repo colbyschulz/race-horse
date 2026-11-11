@@ -69,7 +69,10 @@
   font-size: 0.875rem;
   font-weight: 500;
   cursor: pointer;
-  transition: border-color 120ms, background 120ms, color 120ms;
+  transition:
+    border-color 120ms,
+    background 120ms,
+    color 120ms;
 
   &:hover:not(.togglePillActive) {
     border-color: var(--color-brown-mid);
@@ -79,7 +82,7 @@
 
 .togglePillActive {
   background: var(--color-brown);
-  color: #fff;
+  color: var(--color-fg-on-accent);
   border-color: var(--color-brown);
 }
 
@@ -231,7 +234,7 @@
 .calSelected {
   .calDayBtn {
     background: var(--color-brown);
-    color: #fff;
+    color: var(--color-fg-on-accent);
 
     &:hover {
       background: var(--color-brown-hover);

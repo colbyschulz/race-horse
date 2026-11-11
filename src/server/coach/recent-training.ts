@@ -5,7 +5,7 @@ import { db } from "@/server/db";
 import { workouts } from "@/server/db/schema";
 import type { SecondaryWorkout } from "@/server/db/schema";
 import { getActivitiesForDateRange } from "@/server/strava/date-queries";
-import { addDays } from "@/lib/dates";
+import { addDays, localDate } from "@/lib/dates";
 import { formatDistance, formatDuration, formatPace } from "@/lib/format";
 
 export const RECENT_TRAINING_LOOKBACK_DAYS = 14;
@@ -18,7 +18,14 @@ const BIKE_TYPES = new Set(["ride", "virtualride", "ebikeride", "gravelride", "m
 
 // Sessions whose shape matters to the next coaching decision. Easy and recovery
 // notes are left out to keep this block small.
-const DETAILED_WORKOUT_TYPES = new Set(["tempo", "threshold", "intervals", "long", "race", "cross"]);
+const DETAILED_WORKOUT_TYPES = new Set([
+  "tempo",
+  "threshold",
+  "intervals",
+  "long",
+  "race",
+  "cross",
+]);
 const SESSION_DETAIL_MAX_CHARS = 140;
 
 function matchesSport(activityType: string, sport: "run" | "bike"): boolean {
@@ -70,6 +77,8 @@ export async function fetchRecentTraining(params: {
   planId: string;
   sport: "run" | "bike";
   today: string;
+  /** The athlete's timezone, so an evening run counts toward the day it was run. */
+  timezone: string;
 }): Promise<RecentTraining> {
   const from = addDays(params.today, -RECENT_TRAINING_LOOKBACK_DAYS);
   const lookaheadTo = addDays(params.today, RECENT_TRAINING_LOOKAHEAD_DAYS);
@@ -93,7 +102,7 @@ export async function fetchRecentTraining(params: {
         )
       )
       .orderBy(asc(workouts.date)),
-    getActivitiesForDateRange(params.userId, from, params.today),
+    getActivitiesForDateRange(params.userId, from, params.today, params.timezone),
   ]);
 
   const planned: PlannedRow[] = plannedRows.map((r) => ({
@@ -106,7 +115,7 @@ export async function fetchRecentTraining(params: {
   }));
 
   const actual: ActualRow[] = activityRows.map((a) => ({
-    date: a.start_date.toISOString().slice(0, 10),
+    date: localDate(a.start_date, params.timezone),
     name: a.name,
     type: a.type,
     distance_meters: a.distance_meters != null ? Number(a.distance_meters) : null,

@@ -11,12 +11,15 @@ const fromChain = {
   orderBy: vi.fn().mockReturnThis(),
 };
 
+// Lets a test see which columns were asked for.
+const selectSpy = { select: (_columns?: unknown) => selectChain };
+
 // select().from() returns fromChain
 selectChain.from.mockReturnValue(fromChain);
 
 vi.mock("@/server/db", () => ({
   db: {
-    select: () => selectChain,
+    select: (columns?: unknown) => selectSpy.select(columns),
   },
 }));
 
@@ -26,20 +29,22 @@ vi.mock("@/server/db/schema", () => ({
     userId: "userId",
     start_date: "start_date",
     type: "type",
+    raw: "raw",
   },
 }));
 
 vi.mock("drizzle-orm", () => ({
   eq: vi.fn((_col, val) => ({ type: "eq", val })),
   and: vi.fn((...args) => ({ type: "and", args })),
-  gte: vi.fn(),
-  lte: vi.fn(),
+  gte: vi.fn((col, bound) => ({ type: "gte", col, bound })),
+  lt: vi.fn((col, bound) => ({ type: "lt", col, bound })),
   asc: vi.fn(),
-  // `sql` is a tagged template literal function that also has properties (e.g. `sql.raw`).
-  // A Proxy lets us intercept both the call (template tag) and property access in one object.
-  sql: new Proxy((..._args: unknown[]) => "sql-fragment", {
-    get: (_t, p) => (p === "raw" ? () => "sql-fragment" : undefined),
-  }),
+  getTableColumns: vi.fn((table: Record<string, unknown>) => table),
+  // Render a tagged template to plain text, marking each parameter, so tests
+  // can read the SQL that was built.
+  sql: vi.fn((strings: TemplateStringsArray, ...values: unknown[]) =>
+    strings.reduce((out, part, i) => out + part + (i < values.length ? `<${values[i]}>` : ""), "")
+  ),
 }));
 
 import { getActivitiesForDateRange } from "../date-queries";
@@ -95,5 +100,45 @@ describe("getActivitiesForDateRange", () => {
     const result = await getActivitiesForDateRange("u1", "2026-01-01", "2026-01-07");
 
     expect(result).toEqual([]);
+  });
+
+  it("bounds the range by the athlete's local midnights, not UTC days", async () => {
+    fromChain.orderBy.mockResolvedValueOnce([]);
+
+    await getActivitiesForDateRange("u1", "2026-04-20", "2026-04-21", "America/Los_Angeles");
+
+    const { gte, lt } = await import("drizzle-orm");
+    expect(gte).toHaveBeenCalledWith(
+      "start_date",
+      "(<2026-04-20>::date::timestamp AT TIME ZONE <America/Los_Angeles>)"
+    );
+    // Exclusive upper bound at the midnight after the last day.
+    expect(lt).toHaveBeenCalledWith(
+      "start_date",
+      "((<2026-04-21>::date + 1)::timestamp AT TIME ZONE <America/Los_Angeles>)"
+    );
+  });
+
+  it("falls back to UTC days when no timezone is given", async () => {
+    fromChain.orderBy.mockResolvedValueOnce([]);
+
+    await getActivitiesForDateRange("u1", "2026-04-20", "2026-04-20");
+
+    const { gte } = await import("drizzle-orm");
+    expect(gte).toHaveBeenCalledWith(
+      "start_date",
+      "(<2026-04-20>::date::timestamp AT TIME ZONE <UTC>)"
+    );
+  });
+
+  it("leaves the raw Strava payload out of what it selects", async () => {
+    fromChain.orderBy.mockResolvedValueOnce([]);
+    const select = vi.spyOn(selectSpy, "select");
+
+    await getActivitiesForDateRange("u1", "2026-04-20", "2026-04-20");
+
+    const columns = select.mock.calls[0][0] as Record<string, unknown>;
+    expect(columns).toHaveProperty("start_date");
+    expect(columns).not.toHaveProperty("raw");
   });
 });

@@ -107,6 +107,10 @@ export function CoachPageClient({
     const id = sessionStorage.getItem("justBuiltPlanId");
     if (id) {
       sessionStorage.removeItem("justBuiltPlanId");
+      // sessionStorage doesn't exist while this renders on the server, so the
+      // flag can only be picked up after mount; as initial state it would
+      // make the server and client markup disagree.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setViewPlanId(id);
     }
   }, []);
@@ -230,17 +234,11 @@ export function CoachPageClient({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [planId]);
 
-  useEffect(() => {
-    const el = streamRef.current;
-    if (!el) return;
-    function onScroll() {
-      const el = streamRef.current;
-      if (!el) return;
-      pinnedRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
-    }
-    el.addEventListener("scroll", onScroll, { passive: true });
-    return () => el.removeEventListener("scroll", onScroll);
-  }, []);
+  // Stay pinned to the newest message unless the user has scrolled up to read.
+  function onStreamScroll(e: React.UIEvent<HTMLDivElement>) {
+    const el = e.currentTarget;
+    pinnedRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+  }
 
   // useLayoutEffect fires before paint — scroll is set before the browser draws the frame,
   // eliminating the visual jump caused by a post-paint scroll correction.
@@ -278,6 +276,8 @@ export function CoachPageClient({
     // Coach turns can create plans, edit workouts, or update notes — invalidate
     // anything plan-shaped so the rest of the app picks up the new state.
     void queryClient.invalidateQueries({ queryKey: ["plans"] });
+    // Today and Training read workouts under their own key.
+    void queryClient.invalidateQueries({ queryKey: ["workouts"] });
     void queryClient.invalidateQueries({ queryKey: ["coach", "notes"] });
     setStreaming(null);
   }
@@ -555,7 +555,7 @@ export function CoachPageClient({
           </Button>
         }
       />
-      <div className={styles.stream} ref={streamRef}>
+      <div className={styles.stream} ref={streamRef} onScroll={onStreamScroll}>
         {timeline.map((entry, i) =>
           entry.kind === "message" ? (
             <MessageBubble key={entry.message.id} message={entry.message} />

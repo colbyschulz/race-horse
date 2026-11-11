@@ -1,7 +1,7 @@
 import { cache } from "react";
 import { db } from "@/server/db";
 import { plans, workouts } from "@/server/db/schema";
-import { and, asc, eq, gt, gte, lte } from "drizzle-orm";
+import { and, asc, eq, getTableColumns, gt, gte, lte } from "drizzle-orm";
 
 export type WorkoutRow = typeof workouts.$inferSelect;
 export type PlanRow = typeof plans.$inferSelect;
@@ -17,19 +17,25 @@ const _getActivePlan = async (userId: string): Promise<PlanRow | null> => {
 
 export const getActivePlan = cache(_getActivePlan);
 
+// Workouts of the user's active plan, in one round trip: the join finds the
+// active plan, so there is no separate lookup before the workouts query.
+function activePlanWorkouts() {
+  return db
+    .select(getTableColumns(workouts))
+    .from(workouts)
+    .innerJoin(plans, eq(plans.id, workouts.plan_id));
+}
+
 export async function getWorkoutsForDateRange(
   userId: string,
   startDate: string,
   endDate: string
 ): Promise<WorkoutRow[]> {
-  const active = await getActivePlan(userId);
-  if (!active) return [];
-  return db
-    .select()
-    .from(workouts)
+  return activePlanWorkouts()
     .where(
       and(
-        eq(workouts.plan_id, active.id),
+        eq(plans.userId, userId),
+        eq(plans.is_active, true),
         gte(workouts.date, startDate),
         lte(workouts.date, endDate)
       )
@@ -42,12 +48,8 @@ export async function getNextWorkouts(
   today: string,
   n: number
 ): Promise<WorkoutRow[]> {
-  const active = await getActivePlan(userId);
-  if (!active) return [];
-  return db
-    .select()
-    .from(workouts)
-    .where(and(eq(workouts.plan_id, active.id), gt(workouts.date, today)))
+  return activePlanWorkouts()
+    .where(and(eq(plans.userId, userId), eq(plans.is_active, true), gt(workouts.date, today)))
     .orderBy(asc(workouts.date))
     .limit(n);
 }

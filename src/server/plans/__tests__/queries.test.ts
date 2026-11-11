@@ -36,7 +36,6 @@ vi.mock("@/server/db/schema", () => ({
 }));
 
 import {
-  listPlans,
   getPlanById,
   createPlan,
   setActivePlan,
@@ -44,25 +43,6 @@ import {
   deletePlan,
   listPlansWithCounts,
 } from "../queries";
-
-describe("listPlans", () => {
-  beforeEach(() => {
-    fromChain.where.mockClear().mockReturnThis();
-    fromChain.orderBy.mockClear().mockReturnThis();
-  });
-
-  it("returns plans for the user, active first then by start_date desc", async () => {
-    const rows = [
-      { id: "p1", userId: "u1", is_active: true, start_date: "2026-01-01" },
-      { id: "p2", userId: "u1", is_active: false, start_date: "2025-09-01" },
-    ];
-    fromChain.orderBy.mockResolvedValueOnce(rows);
-    const result = await listPlans("u1");
-    expect(result).toEqual(rows);
-    expect(fromChain.where).toHaveBeenCalled();
-    expect(fromChain.orderBy).toHaveBeenCalled();
-  });
-});
 
 describe("getPlanById", () => {
   beforeEach(() => {
@@ -141,8 +121,14 @@ describe("setActivePlan", () => {
     const batched = batchMock.mock.calls[0][0] as unknown[];
     expect(batched).toHaveLength(2);
 
-    expect(updateChain.set).toHaveBeenNthCalledWith(1, expect.objectContaining({ is_active: false }));
-    expect(updateChain.set).toHaveBeenNthCalledWith(2, expect.objectContaining({ is_active: true }));
+    expect(updateChain.set).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ is_active: false })
+    );
+    expect(updateChain.set).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ is_active: true })
+    );
   });
 });
 

@@ -1,35 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useMe } from "@/queries/me";
 import { Spinner } from "../spinner/spinner";
 import styles from "./sync-status-banner.module.scss";
 
-interface Props {
-  initialSynced: boolean;
-}
-
-export function SyncStatusBanner({ initialSynced }: Props) {
-  const [synced, setSynced] = useState(initialSynced);
-
-  useEffect(() => {
-    if (synced) return;
-    const interval = setInterval(async () => {
-      try {
-        const res = await fetch("/api/strava/sync-status");
-        if (!res.ok) return;
-        const data = (await res.json()) as { last_synced_at: string | null };
-        if (data.last_synced_at) {
-          setSynced(true);
-          clearInterval(interval);
-        }
-      } catch {
-        // ignore transient errors; next tick will retry
-      }
-    }, 5000);
-    return () => clearInterval(interval);
-  }, [synced]);
-
-  if (synced) return null;
+export function SyncStatusBanner() {
+  const { data: me } = useMe();
+  if (!me || me.synced) return null;
   return (
     <div className={styles.banner} role="status" aria-live="polite">
       <Spinner size="sm" />

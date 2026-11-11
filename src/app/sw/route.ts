@@ -23,9 +23,10 @@ function shellRedirect() {
   return Response.redirect(new URL(SHELL_PATH, self.location.origin).href, 302);
 }
 
-// Re-fetch the signed-in home page for the next launch. The server answers
-// /today itself only for a live session; anything else arrives as a redirect to
-// the sign-in page, which means the cached pages belong to a signed-out user.
+// Re-fetch the signed-in home page for the next launch. The proxy redirects a
+// request with no session cookie to the sign-in page, so a redirect here means
+// the cached pages belong to a signed-out user. (A cookie whose session has
+// died still gets the page; the page's first API call catches that.)
 async function refreshShell() {
   let response;
   try {

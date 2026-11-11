@@ -2,25 +2,20 @@
 import { NextResponse } from "next/server";
 import { db } from "@/server/db";
 import { workouts } from "@/server/db/schema";
-import { auth } from "@/server/auth";
 import { getPlanFileById, setExtractedPlanId } from "@/server/plans/files";
 import { createPlan, deletePlan, setActivePlan } from "@/server/plans/queries";
-import { materializeWorkouts, computeEndDate, type ExtractedWorkout } from "@/server/plans/materialize";
+import {
+  materializeWorkouts,
+  computeEndDate,
+  type ExtractedWorkout,
+} from "@/server/plans/materialize";
 import { ExtractedPlanSchema } from "@/server/extraction/schema";
 import type { Sport, PlanMode, Goal } from "@/server/plans/types";
+import { requireUser } from "@/lib/api-auth";
+import { notFound, badRequest } from "@/lib/api-responses";
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 type Ctx = { params: Promise<{ id: string }> };
-
-function unauthorized() {
-  return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-}
-function notFound() {
-  return NextResponse.json({ error: "not found" }, { status: 404 });
-}
-function badRequest(msg: string) {
-  return NextResponse.json({ error: msg }, { status: 400 });
-}
 
 type SaveBody = {
   title: string;
@@ -50,9 +45,9 @@ function validate(body: unknown): SaveBody | null {
 }
 
 export async function POST(req: Request, ctx: Ctx): Promise<NextResponse> {
-  const session = await auth();
-  if (!session?.user?.id) return unauthorized();
-  const userId = session.user.id;
+  const user = await requireUser();
+  if (user instanceof NextResponse) return user;
+  const userId = user.userId;
   const { id } = await ctx.params;
 
   const file = await getPlanFileById(id, userId);

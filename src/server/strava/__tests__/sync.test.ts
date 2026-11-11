@@ -12,7 +12,7 @@ vi.mock("../upsert", () => ({
   replaceLaps: (...a: unknown[]) => replaceLapsMock(...a),
 }));
 
-import { syncActivities, LIST_PAGE_SIZE } from "../sync";
+import { syncActivities } from "../sync";
 
 describe("syncActivities", () => {
   beforeEach(() => {

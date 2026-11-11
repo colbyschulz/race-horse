@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   mondayOf,
   addDays,
-  formatWeekLabel,
+  localDate,
   formatDayLabel,
   formatLongDate,
   formatDateShort,
@@ -10,7 +10,6 @@ import {
   formatDateRange,
   weekIndexFromStart,
   todayIso,
-  parseIso,
 } from "../dates";
 
 describe("mondayOf", () => {
@@ -37,15 +36,6 @@ describe("addDays", () => {
   });
 });
 
-describe("formatWeekLabel", () => {
-  it("labels a same-month week", () => {
-    expect(formatWeekLabel("2026-04-20")).toBe("Apr 20–26");
-  });
-  it("labels a cross-month week", () => {
-    expect(formatWeekLabel("2026-04-27")).toBe("Apr 27–May 3");
-  });
-});
-
 describe("formatDayLabel", () => {
   it("returns 'Mon 20' format", () => {
     expect(formatDayLabel("2026-04-20")).toBe("Mon 20");
@@ -55,12 +45,6 @@ describe("formatDayLabel", () => {
 describe("formatLongDate", () => {
   it("returns 'Friday, April 24'", () => {
     expect(formatLongDate("2026-04-24")).toBe("Friday, April 24");
-  });
-});
-
-describe("parseIso / round-trip", () => {
-  it("parses then re-formats", () => {
-    expect(addDays(parseIso("2026-04-26"), 0)).toBe("2026-04-26");
   });
 });
 
@@ -104,5 +88,28 @@ describe("weekIndexFromStart", () => {
   });
   it("returns 4 three weeks later", () => {
     expect(weekIndexFromStart("2026-04-20", "2026-05-11")).toBe(4);
+  });
+});
+
+describe("localDate", () => {
+  // 6:30pm on April 20 in Los Angeles is already April 21 in UTC.
+  const eveningRun = "2026-04-21T01:30:00.000Z";
+
+  it("gives the day in the athlete's timezone, not the UTC day", () => {
+    expect(localDate(eveningRun, "America/Los_Angeles")).toBe("2026-04-20");
+    expect(localDate(eveningRun, "UTC")).toBe("2026-04-21");
+  });
+
+  it("accepts a Date as well as an ISO string", () => {
+    expect(localDate(new Date(eveningRun), "America/Los_Angeles")).toBe("2026-04-20");
+  });
+
+  it("uses the UTC day when no timezone is known", () => {
+    expect(localDate(eveningRun)).toBe("2026-04-21");
+  });
+
+  it("handles timezones ahead of UTC", () => {
+    // 11pm UTC on April 20 is 9am April 21 in Sydney.
+    expect(localDate("2026-04-20T23:00:00.000Z", "Australia/Sydney")).toBe("2026-04-21");
   });
 });
