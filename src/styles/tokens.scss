@@ -2,8 +2,8 @@
 
 :root {
   // ── Typography ──
-  --font-display: "Syne", sans-serif;
-  --font-body: "Roboto", sans-serif;
+  --font-display: var(--font-syne), sans-serif;
+  --font-body: var(--font-roboto), sans-serif;
 
   // ── Sand neutrals ──
   --sand-50: #fdfaf5;

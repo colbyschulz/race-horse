@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next";
+import { APP_BACKGROUND } from "@/lib/theme";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
@@ -9,8 +10,8 @@ export default function manifest(): MetadataRoute.Manifest {
     scope: "/",
     display: "standalone",
     orientation: "portrait",
-    background_color: "#f5f0e8",
-    theme_color: "#f5f0e8",
+    background_color: APP_BACKGROUND,
+    theme_color: APP_BACKGROUND,
     categories: ["health", "fitness", "sports"],
     icons: [
       { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
