@@ -7,8 +7,9 @@ import {
 
 // Optimistic check only: this runs on every app navigation and prefetch, so it
 // looks at whether a session cookie exists and never touches the database. The
-// real check is `getSession()` in the (app) layout, which sends a cookie that
-// turns out to be invalid to /session-expired.
+// real check happens wherever data is read: every API route, and the pages
+// that still render on the server. A cookie that turns out to be invalid ends
+// up at /session-expired, which clears it.
 export function proxy(request: NextRequest) {
   const cookie = SESSION_COOKIE_NAMES.map((name) => request.cookies.get(name)).find(Boolean);
   const isHome = request.nextUrl.pathname === "/";

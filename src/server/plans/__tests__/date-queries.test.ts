@@ -7,6 +7,7 @@ const selectChain = {
 };
 
 const fromChain = {
+  innerJoin: vi.fn().mockReturnThis(),
   where: vi.fn().mockReturnThis(),
   orderBy: vi.fn().mockReturnThis(),
   limit: vi.fn().mockReturnThis(),
@@ -41,15 +42,17 @@ vi.mock("drizzle-orm", () => ({
   lte: vi.fn(),
   gt: vi.fn(),
   asc: vi.fn(),
+  getTableColumns: vi.fn((table: unknown) => table),
 }));
 
-import { eq } from "drizzle-orm";
+import { eq, gt } from "drizzle-orm";
 
 import { getActivePlan, getWorkoutsForDateRange, getNextWorkouts } from "../date-queries";
 
 // Helper to reset all chains
 function resetChains() {
   selectChain.from.mockReset().mockReturnValue(fromChain);
+  fromChain.innerJoin.mockReset().mockReturnThis();
   fromChain.where.mockReset().mockReturnThis();
   fromChain.orderBy.mockReset().mockReturnThis();
   fromChain.limit.mockReset().mockReturnThis();
@@ -79,27 +82,27 @@ describe("getActivePlan", () => {
 describe("getWorkoutsForDateRange", () => {
   beforeEach(resetChains);
 
-  it("returns empty array when no active plan", async () => {
-    fromChain.limit.mockResolvedValueOnce([]);
-    const result = await getWorkoutsForDateRange("u1", "2026-04-01", "2026-04-30");
-    expect(result).toEqual([]);
-  });
-
-  it("returns rows when active plan exists", async () => {
-    const plan = { id: "p1", userId: "u1", is_active: true };
+  it("reads the active plan's workouts in a single joined query", async () => {
     const workoutRows = [
       { id: "w1", plan_id: "p1", date: "2026-04-10" },
       { id: "w2", plan_id: "p1", date: "2026-04-15" },
     ];
-    // First call: getActivePlan -> limit resolves
-    fromChain.limit.mockResolvedValueOnce([plan]);
-    // Second call: workouts query -> orderBy resolves
     fromChain.orderBy.mockResolvedValueOnce(workoutRows);
 
     const result = await getWorkoutsForDateRange("u1", "2026-04-01", "2026-04-30");
+
     expect(result).toEqual(workoutRows);
-    expect(fromChain.where).toHaveBeenCalled();
-    expect(fromChain.orderBy).toHaveBeenCalled();
+    expect(selectChain.from).toHaveBeenCalledTimes(1);
+    expect(fromChain.innerJoin).toHaveBeenCalledTimes(1);
+    // Scoped to this user's active plan.
+    expect(eq).toHaveBeenCalledWith("userId", "u1");
+    expect(eq).toHaveBeenCalledWith("is_active", true);
+  });
+
+  it("returns an empty array when the user has no active plan", async () => {
+    fromChain.orderBy.mockResolvedValueOnce([]);
+    const result = await getWorkoutsForDateRange("u1", "2026-04-01", "2026-04-30");
+    expect(result).toEqual([]);
   });
 });
 
@@ -108,26 +111,25 @@ describe("getWorkoutsForDateRange", () => {
 describe("getNextWorkouts", () => {
   beforeEach(resetChains);
 
-  it("returns empty when no active plan", async () => {
+  it("takes the next n workouts after today in a single joined query", async () => {
+    const workoutRows = [{ id: "w1", plan_id: "p1", date: "2026-04-27" }];
+    fromChain.limit.mockResolvedValueOnce(workoutRows);
+
+    const result = await getNextWorkouts("u1", "2026-04-26", 3);
+
+    expect(result).toEqual(workoutRows);
+    expect(selectChain.from).toHaveBeenCalledTimes(1);
+    expect(fromChain.innerJoin).toHaveBeenCalledTimes(1);
+    expect(fromChain.limit).toHaveBeenCalledWith(3);
+    expect(gt).toHaveBeenCalledWith("date", "2026-04-26");
+    expect(eq).toHaveBeenCalledWith("userId", "u1");
+    expect(eq).toHaveBeenCalledWith("is_active", true);
+  });
+
+  it("returns an empty array when the user has no active plan", async () => {
     fromChain.limit.mockResolvedValueOnce([]);
     const result = await getNextWorkouts("u1", "2026-04-26", 5);
     expect(result).toEqual([]);
-  });
-
-  it("calls limit(n) and uses gt filter", async () => {
-    const plan = { id: "p1", userId: "u1", is_active: true };
-    const workoutRows = [{ id: "w1", plan_id: "p1", date: "2026-04-27" }];
-
-    // First call: getActivePlan -> limit resolves with plan
-    fromChain.limit
-      .mockResolvedValueOnce([plan])
-      // Second call: getNextWorkouts -> limit(n) resolves with workouts
-      .mockResolvedValueOnce(workoutRows);
-
-    const result = await getNextWorkouts("u1", "2026-04-26", 3);
-    expect(result).toEqual(workoutRows);
-    // limit should be called twice: once with 1 (getActivePlan), once with n=3
-    expect(fromChain.limit).toHaveBeenCalledWith(3);
   });
 });
 

@@ -1,41 +1,20 @@
-import { Suspense } from "react";
-import { dehydrate, HydrationBoundary, QueryClient } from "@tanstack/react-query";
-import { redirect } from "next/navigation";
-import { getSession } from "@/lib/get-session";
-import { listPlansWithCounts } from "@/server/plans/queries";
-import { listInFlightPlanFiles } from "@/server/plans/files";
+import { CSRSuspense } from "@/lib/csr-suspense";
 import { PageHeader } from "@/components/layout/page-header";
 import { UploadDropzone } from "@/components/plans/upload-dropzone";
 import { PlansListSkeleton } from "@/components/skeletons/plans-list-skeleton";
 import { PlansList } from "./plans-content";
 import styles from "./plans.module.scss";
 
-export default async function PlansPage() {
-  const session = await getSession();
-  if (!session?.user?.id) redirect("/session-expired");
-  const userId = session.user.id;
-  const prefs = session.user.preferences;
-
-  const [plans, planFiles] = await Promise.all([
-    listPlansWithCounts(userId),
-    listInFlightPlanFiles(userId),
-  ]);
-
-  const queryClient = new QueryClient();
-  const s = <T,>(v: T): T => JSON.parse(JSON.stringify(v));
-  queryClient.setQueryData(["preferences"], s(prefs));
-  queryClient.setQueryData(["plans", "list"], s(plans));
-  queryClient.setQueryData(["plans", "files"], s(planFiles));
-
+// A static shell: the data comes from React Query on the client, so switching
+// to this tab never waits on the server.
+export default function PlansPage() {
   return (
-    <HydrationBoundary state={dehydrate(queryClient)}>
-      <div className={styles.page}>
-        <PageHeader title="Plans" />
-        <UploadDropzone />
-        <Suspense fallback={<PlansListSkeleton />}>
-          <PlansList />
-        </Suspense>
-      </div>
-    </HydrationBoundary>
+    <div className={styles.page}>
+      <PageHeader title="Plans" />
+      <UploadDropzone />
+      <CSRSuspense fallback={<PlansListSkeleton />}>
+        <PlansList />
+      </CSRSuspense>
+    </div>
   );
 }

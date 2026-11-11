@@ -276,6 +276,8 @@ export function CoachPageClient({
   async function reloadHistory() {
     await fetchLatestMessages();
     // Coach turns can create plans, edit workouts, or update notes — invalidate
+    // Today and Training read workouts under their own key.
+    void queryClient.invalidateQueries({ queryKey: ["workouts"] });
     // anything plan-shaped so the rest of the app picks up the new state.
     void queryClient.invalidateQueries({ queryKey: ["plans"] });
     void queryClient.invalidateQueries({ queryKey: ["coach", "notes"] });
