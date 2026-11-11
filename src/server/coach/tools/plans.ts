@@ -253,7 +253,7 @@ export const archivePlanTool: Tool = {
 export const finalizePlanTool: Tool = {
   name: "finalize_plan",
   description:
-    "Marks a plan as fully generated (moves it from 'GENERATING' to ready). Also corrects plan metadata if the stub values need updating — the stub is created with start_date=today which is almost always wrong for future plans. Pass start_date as the first workout date, end_date as the actual last race/workout date, and title if you want to refine the stub title. Cold-start plans are auto-finalized at the end of the turn once workouts have been written — calling this explicitly to set correct dates is strongly preferred.",
+    "Marks a plan as fully generated (moves it from 'GENERATING' to ready). Also corrects plan metadata if the stub values need updating — the stub is created with start_date=today which is almost always wrong for future plans. Pass start_date as the first workout date, end_date as the actual last race/workout date, and title if you want to refine the stub title. Cold-start plans are auto-finalized at the end of the turn once workouts have been written — calling this explicitly to set correct dates is strongly preferred. Returns is_active: true when the plan is now the athlete's active plan (it becomes active automatically when they have no other). When false, active_plan_title names the plan that is still active.",
   input_schema: {
     type: "object" as const,
     properties: {
@@ -657,9 +657,17 @@ export const archive_plan_handler: ToolHandler<{ plan_id: string }, { ok: true }
   return { ok: true };
 };
 
+export type FinalizePlanResult = {
+  ok: true;
+  /** Whether this plan is now the athlete's active plan, the one on their calendar. */
+  is_active: boolean;
+  /** The plan that is still active instead, when this one isn't. */
+  active_plan_title?: string;
+};
+
 export const finalize_plan_handler: ToolHandler<
   { plan_id: string; start_date?: string; end_date?: string; title?: string },
-  { ok: true }
+  FinalizePlanResult
 > = async ({ plan_id, start_date, end_date, title }, { userId }) => {
   const plan = await getPlanById(plan_id, userId);
   if (!plan || plan.userId !== userId) {
@@ -675,7 +683,25 @@ export const finalize_plan_handler: ToolHandler<
       ...(title ? { title } : {}),
     })
     .where(and(eq(plans.id, plan_id), eq(plans.userId, userId)));
-  return { ok: true };
+
+  if (plan.is_active) return { ok: true, is_active: true };
+
+  const [current] = await db
+    .select({ title: plans.title })
+    .from(plans)
+    .where(and(eq(plans.userId, userId), eq(plans.is_active, true)))
+    .limit(1);
+  if (current) return { ok: true, is_active: false, active_plan_title: current.title };
+
+  // A plan that has just finished building becomes the active one when the
+  // athlete has no other: there is nothing to choose between, and until a plan
+  // is active it doesn't appear on Today or Training. A plan they already have
+  // active is never displaced here; swapping is their call.
+  if (plan.generation_status === "generating") {
+    await setActivePlan(plan_id, userId);
+    return { ok: true, is_active: true };
+  }
+  return { ok: true, is_active: false };
 };
 
 // Kept for callers that want a date-range query without the mapping layer.

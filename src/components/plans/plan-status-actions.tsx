@@ -1,32 +1,26 @@
 "use client";
 import { useRouter } from "next/navigation";
-import { useState, useTransition, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/button/button";
 import { Badge } from "@/components/badge/badge";
+import { PLAN_STATUS_LABEL, planStatus } from "@/lib/plan-status";
+import { useSetPlanActive } from "@/queries/plans";
 import styles from "./plan-status-actions.module.scss";
 
-type Status = "active" | "upcoming" | "archived";
-
-function statusOf(plan: { is_active: boolean; start_date: string }, today: string): Status {
-  if (plan.is_active) return "active";
-  if (plan.start_date > today) return "upcoming";
-  return "archived";
-}
-
 interface Props {
-  plan: { id: string; title: string; is_active: boolean; start_date: string };
+  plan: { id: string; title: string; is_active: boolean; end_date: string | null };
   today: string;
 }
 
 export function PlanStatusActions({ plan, today }: Props) {
   const router = useRouter();
-  const [pending, startTransition] = useTransition();
+  const setPlanActive = useSetPlanActive();
   const [busy, setBusy] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
-  const status = statusOf(plan, today);
+  const status = planStatus(plan, today);
 
   // Closing the menu also backs out of a half-finished delete confirmation.
   function closeMenu() {
@@ -46,21 +40,13 @@ export function PlanStatusActions({ plan, today }: Props) {
     return () => document.removeEventListener("mousedown", onClickOutside);
   }, [menuOpen]);
 
-  async function patch(body: Record<string, unknown>) {
+  // The page reads the plan from the query cache, which the mutation refreshes.
+  async function setActive(active: boolean) {
     closeMenu();
     setBusy(true);
     try {
-      const res = await fetch(`/api/plans/${plan.id}`, {
-        method: "PATCH",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      if (!res.ok) throw new Error(`PATCH failed: ${res.status}`);
-      if (body.is_active === false) {
-        router.push("/plans");
-      } else {
-        startTransition(() => router.refresh());
-      }
+      await setPlanActive.mutateAsync({ planId: plan.id, active });
+      if (!active) router.push("/plans");
     } catch (err) {
       console.error(err);
       alert("Action failed — please try again.");
@@ -83,14 +69,11 @@ export function PlanStatusActions({ plan, today }: Props) {
     }
   }
 
-  const disabled = busy || pending;
+  const disabled = busy;
 
   return (
     <>
-      <Badge
-        variant={status}
-        label={status === "active" ? "Active" : status === "upcoming" ? "Upcoming" : "Archived"}
-      />
+      <Badge variant={status} label={PLAN_STATUS_LABEL[status]} />
       <div className={styles.menu} ref={menuRef}>
         <Button
           variant="ghost"
@@ -132,7 +115,7 @@ export function PlanStatusActions({ plan, today }: Props) {
               <button
                 type="button"
                 className={styles.item}
-                onClick={() => patch({ is_active: true })}
+                onClick={() => setActive(true)}
               >
                 Set active
               </button>
@@ -141,7 +124,7 @@ export function PlanStatusActions({ plan, today }: Props) {
               <button
                 type="button"
                 className={styles.item}
-                onClick={() => patch({ is_active: false })}
+                onClick={() => setActive(false)}
               >
                 Archive
               </button>

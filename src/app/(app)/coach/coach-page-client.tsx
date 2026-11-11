@@ -30,6 +30,7 @@ import { ThinkingIndicator } from "@/components/coach/thinking-indicator";
 import { MessageInput } from "@/components/coach/message-input";
 import { ClearChatDialog } from "@/components/coach/clear-chat-dialog";
 import { BuildFormCard, type BuildFormCardState } from "@/components/coach/build-form-card";
+import { BuiltPlanActions } from "@/components/coach/built-plan-actions";
 import { usePreferences } from "@/queries/preferences";
 
 interface Props {
@@ -719,9 +720,7 @@ export function CoachPageClient({
       </div>
       {viewPlanId && (
         <div className={styles.viewPlanCta}>
-          <Button href={`/plans/${viewPlanId}`} variant="primary" size="sm">
-            View your plan →
-          </Button>
+          <BuiltPlanActions planId={viewPlanId} />
         </div>
       )}
       <MessageInput

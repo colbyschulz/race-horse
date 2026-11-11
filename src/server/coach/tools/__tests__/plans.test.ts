@@ -43,6 +43,7 @@ import {
   update_workouts_handler,
   set_active_plan_handler,
   archive_plan_handler,
+  finalize_plan_handler,
 } from "../plans";
 
 import {
@@ -539,6 +540,77 @@ describe("update_workouts_handler", () => {
       total_weeks: undefined,
       days: [],
     });
+  });
+});
+
+describe("finalize_plan_handler", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockUpdate.mockReturnValue({
+      set: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) }),
+    });
+    vi.mocked(setActivePlan).mockResolvedValue(undefined);
+  });
+
+  /** What the athlete's currently active plan is, as the handler will find it. */
+  function activePlanIs(rows: { title: string }[]) {
+    mockSelect.mockReturnValue({
+      from: vi.fn().mockReturnThis(),
+      where: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockResolvedValue(rows),
+    });
+  }
+  const building = (overrides: object = {}) =>
+    makePlan({ is_active: false, generation_status: "generating", ...overrides });
+
+  it("makes a newly built plan active when the athlete has no active plan", async () => {
+    vi.mocked(getPlanById).mockResolvedValue(building() as never);
+    activePlanIs([]);
+
+    const result = await finalize_plan_handler({ plan_id: PLAN_ID }, ctx);
+
+    expect(setActivePlan).toHaveBeenCalledWith(PLAN_ID, USER_ID);
+    expect(result).toEqual({ ok: true, is_active: true });
+  });
+
+  it("leaves the athlete's active plan alone and names it", async () => {
+    vi.mocked(getPlanById).mockResolvedValue(building() as never);
+    activePlanIs([{ title: "Spring Marathon" }]);
+
+    const result = await finalize_plan_handler({ plan_id: PLAN_ID }, ctx);
+
+    expect(setActivePlan).not.toHaveBeenCalled();
+    expect(result).toEqual({ ok: true, is_active: false, active_plan_title: "Spring Marathon" });
+  });
+
+  it("reports a plan that is already active without touching anything", async () => {
+    vi.mocked(getPlanById).mockResolvedValue(building({ is_active: true }) as never);
+
+    const result = await finalize_plan_handler({ plan_id: PLAN_ID }, ctx);
+
+    expect(mockSelect).not.toHaveBeenCalled();
+    expect(setActivePlan).not.toHaveBeenCalled();
+    expect(result).toEqual({ ok: true, is_active: true });
+  });
+
+  it("doesn't reactivate a finished plan the athlete had set aside", async () => {
+    vi.mocked(getPlanById).mockResolvedValue(
+      building({ generation_status: "complete" }) as never
+    );
+    activePlanIs([]);
+
+    const result = await finalize_plan_handler({ plan_id: PLAN_ID }, ctx);
+
+    expect(setActivePlan).not.toHaveBeenCalled();
+    expect(result).toEqual({ ok: true, is_active: false });
+  });
+
+  it("refuses a plan that belongs to someone else", async () => {
+    vi.mocked(getPlanById).mockResolvedValue(null);
+    await expect(finalize_plan_handler({ plan_id: PLAN_ID }, ctx)).rejects.toThrow(
+      "plan not found or not owned"
+    );
+    expect(setActivePlan).not.toHaveBeenCalled();
   });
 });
 

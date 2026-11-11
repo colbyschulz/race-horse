@@ -1,6 +1,6 @@
 import styles from "./badge.module.scss";
 
-type Variant = "active" | "upcoming" | "archived" | "generating";
+type Variant = "active" | "inactive" | "archived" | "generating";
 
 interface Props {
   variant: Variant;

@@ -39,3 +39,27 @@ describe("PlanCard", () => {
     expect(href).toContain("from_label=Marathon%20Block");
   });
 });
+
+describe("PlanCard status", () => {
+  it("says a plan that isn't active is not active, even when it starts in the future", () => {
+    render(
+      <PlanCard
+        plan={makePlan({ start_date: "2026-03-02", end_date: "2026-06-01" })}
+        today="2026-02-01"
+        units="mi"
+      />
+    );
+    expect(screen.getByText("Not active")).toBeInTheDocument();
+    expect(screen.queryByText("Upcoming")).not.toBeInTheDocument();
+  });
+
+  it("doesn't call a new plan archived just because it has started", () => {
+    render(<PlanCard plan={makePlan()} today="2026-02-01" units="mi" />);
+    expect(screen.getByText("Not active")).toBeInTheDocument();
+  });
+
+  it("calls a plan archived once it has ended", () => {
+    render(<PlanCard plan={makePlan()} today="2026-05-01" units="mi" />);
+    expect(screen.getByText("Archived")).toBeInTheDocument();
+  });
+});
