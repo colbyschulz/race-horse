@@ -2,6 +2,7 @@ import "server-only";
 import { after } from "next/server";
 import type { SSEEvent } from "@/types/coach";
 import { upsertTurnStatus } from "@/server/coach/turn-status";
+import { athleteMessage } from "@/server/coach/errors";
 import { SSE_HEADERS, sseEvent } from "./sse";
 
 export type TurnTracking = { userId: string; planId: string | null };
@@ -42,7 +43,8 @@ export function sseResponse(gen: AsyncIterable<SSEEvent>, turnTracking?: TurnTra
         );
       }
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "unknown error";
+      console.error("coach stream failed", turnTracking ?? {}, err);
+      const msg = athleteMessage(err);
       if (!clientGone) {
         try {
           controller!.enqueue(enc.encode(sseEvent({ type: "error", error: msg })));
@@ -51,7 +53,11 @@ export function sseResponse(gen: AsyncIterable<SSEEvent>, turnTracking?: TurnTra
         }
       }
       if (turnTracking) {
-        await upsertTurnStatus(turnTracking.userId, turnTracking.planId, "error", msg);
+        try {
+          await upsertTurnStatus(turnTracking.userId, turnTracking.planId, "error", msg);
+        } catch (statusErr) {
+          console.error("recording the failed coach turn failed", turnTracking, statusErr);
+        }
       }
     } finally {
       if (!clientGone) {

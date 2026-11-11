@@ -1,4 +1,4 @@
-import { eq, and, sql, count } from "drizzle-orm";
+import { eq, and, sql, count, min } from "drizzle-orm";
 import { db } from "@/server/db";
 import { users, plans, workouts } from "@/server/db/schema";
 import {
@@ -39,6 +39,7 @@ import {
   withCacheBreakpoint,
   deepPlanningCarriedOver,
 } from "./history";
+import { CoachUserError, athleteMessage } from "./errors";
 
 type Route = "chat" | "build" | "deep";
 
@@ -63,6 +64,15 @@ function routeConfig(route: Route): {
     default:
       return { model: COACH_MODEL, max_tokens: COACH_CHAT_MAX_TOKENS, effort: COACH_CHAT_EFFORT };
   }
+}
+
+/** Date of a plan's first workout, or null while it has none. */
+async function firstWorkoutDate(planId: string): Promise<string | null> {
+  const [row] = await db
+    .select({ first: min(workouts.date) })
+    .from(workouts)
+    .where(eq(workouts.plan_id, planId));
+  return row?.first ?? null;
 }
 
 export interface RunInput {
@@ -103,6 +113,19 @@ export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
   const createdPlanIds: string[] = [];
   const finalizedPlanIds = new Set<string>();
   let buildProgress: BuildProgress | null = null;
+
+  // Timing for the turn log: how long the athlete waited in total, and how long
+  // before anything at all appeared on their screen.
+  const turnStart = Date.now();
+  const timing: {
+    route: Route | null;
+    calls: number;
+    firstOutputMs: number | null;
+    outcome: "done" | "error";
+  } = { route: null, calls: 0, firstOutputMs: null, outcome: "error" };
+  const sawOutput = () => {
+    timing.firstOutputMs ??= Date.now() - turnStart;
+  };
 
   try {
     // 1. Load user context (units + coach_notes + active plan summary)
@@ -305,6 +328,9 @@ export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
     while (true) {
       const cfg = routeConfig(route);
       apiCalls++;
+      timing.route = route;
+      timing.calls = apiCalls;
+      const callStart = Date.now();
 
       const stream = client.messages.stream(
         {
@@ -338,8 +364,10 @@ export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
               inputJson: "",
             });
             // Announced now because writing a large call can take a while.
+            sawOutput();
             yield { type: "tool-start", id: block.id, name: block.name };
           } else if (block.type === "server_tool_use") {
+            sawOutput();
             yield { type: "tool-start", id: block.id, name: block.name };
           } else if (block.type === "web_search_tool_result") {
             yield {
@@ -352,9 +380,11 @@ export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
         } else if (event.type === "content_block_delta") {
           const delta = event.delta;
           if (delta.type === "text_delta") {
+            sawOutput();
             yield { type: "text-delta", delta: delta.text };
           } else if (delta.type === "thinking_delta") {
             if (delta.thinking && delta.thinking !== INTERRUPTED_NOTE) {
+              sawOutput();
               yield { type: "progress-delta", delta: delta.thinking };
             }
           } else if (delta.type === "input_json_delta") {
@@ -388,6 +418,7 @@ export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
           cache_creation_input_tokens: usage.cache_creation_input_tokens ?? 0,
           cache_read_input_tokens: usage.cache_read_input_tokens ?? 0,
           output_tokens: usage.output_tokens ?? 0,
+          duration_ms: Date.now() - callStart,
         })
       );
 
@@ -411,13 +442,13 @@ export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
       const effectiveStopReason = stopReason ?? finalMsg.stop_reason;
 
       if (effectiveStopReason === "max_tokens") {
-        throw new Error(
+        throw new CoachUserError(
           "Response was too long to complete. Try asking for a smaller change (e.g. one week at a time)."
         );
       }
 
       if (effectiveStopReason === "refusal") {
-        throw new Error(
+        throw new CoachUserError(
           "The coach declined to answer that request. Try rephrasing or narrowing it."
         );
       }
@@ -489,6 +520,7 @@ export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
         } catch (err) {
           // Convert handler errors to error result so the tool_result is always
           // persisted and history stays valid for subsequent requests.
+          console.error("coach tool failed", { tool: toolName, userId, planId }, err);
           resultValue = { error: err instanceof Error ? err.message : String(err) };
         }
         const resultText = JSON.stringify(resultValue);
@@ -539,21 +571,11 @@ export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
       if (planId) ids.add(planId);
       for (const id of ids) {
         if (finalizedPlanIds.has(id)) continue;
-        const planWorkouts = await db
-          .select({ date: workouts.date, n: count() })
-          .from(workouts)
-          .where(eq(workouts.plan_id, id));
-        if ((planWorkouts[0]?.n ?? 0) === 0) continue;
-        const allDates = await db
-          .select({ date: workouts.date })
-          .from(workouts)
-          .where(eq(workouts.plan_id, id))
-          .orderBy(workouts.date)
-          .limit(1);
-        const firstWorkoutDate = allDates[0]?.date;
         try {
+          const startDate = await firstWorkoutDate(id);
+          if (!startDate) continue;
           await HANDLERS.finalize_plan(
-            { plan_id: id, ...(firstWorkoutDate ? { start_date: firstWorkoutDate } : {}) },
+            { plan_id: id, start_date: startDate },
             { userId, planId, coldStartBuild: true, today }
           );
           finalizedPlanIds.add(id);
@@ -564,11 +586,26 @@ export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
       }
     }
 
+    timing.outcome = "done";
     yield { type: "done", message_id: assistantMessageId };
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    yield { type: "error", error: message };
+    // The athlete gets a message written for them; the real error goes to the log.
+    console.error("coach turn failed", { userId, planId, coldStartBuild }, err);
+    yield { type: "error", error: athleteMessage(err) };
   } finally {
+    // One line per turn, so slow turns can be found and typical waits measured.
+    console.log(
+      JSON.stringify({
+        evt: "coach_turn",
+        outcome: timing.outcome,
+        route: timing.route,
+        cold_start: coldStartBuild,
+        plan_id: planId,
+        calls: timing.calls,
+        first_output_ms: timing.firstOutputMs,
+        duration_ms: Date.now() - turnStart,
+      })
+    );
     // Safety net: finalize any plan not yet finalized if the loop threw before
     // reaching the eager finalize above. Same guards apply.
     if (coldStartBuild && !isBuildUnfinished(buildProgress)) {
@@ -577,20 +614,10 @@ export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
       for (const id of ids) {
         if (finalizedPlanIds.has(id)) continue;
         try {
-          const [wCnt] = await db
-            .select({ n: count() })
-            .from(workouts)
-            .where(eq(workouts.plan_id, id));
-          if ((wCnt?.n ?? 0) === 0) continue;
-          const allDates = await db
-            .select({ date: workouts.date })
-            .from(workouts)
-            .where(eq(workouts.plan_id, id))
-            .orderBy(workouts.date)
-            .limit(1);
-          const firstWorkoutDate = allDates[0]?.date;
+          const startDate = await firstWorkoutDate(id);
+          if (!startDate) continue;
           await HANDLERS.finalize_plan(
-            { plan_id: id, ...(firstWorkoutDate ? { start_date: firstWorkoutDate } : {}) },
+            { plan_id: id, start_date: startDate },
             { userId, planId, coldStartBuild: true, today }
           );
         } catch (err) {

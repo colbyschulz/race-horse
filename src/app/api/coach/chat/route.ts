@@ -1,12 +1,11 @@
 import { NextResponse } from "next/server";
-import { db } from "@/server/db";
-import { eq } from "drizzle-orm";
-import { users } from "@/server/db/schema";
 import { runCoach } from "@/server/coach/runner";
 import { todayIso } from "@/lib/dates";
 import { sseResponse } from "@/lib/sse-server";
 import type { ChatRequestBody } from "@/server/coach/types";
 import { requireUser } from "@/lib/api-auth";
+import { getTurnStatus } from "@/server/coach/turn-status";
+import { isTurnStale } from "@/lib/turn-poll";
 
 export const maxDuration = 300;
 
@@ -29,14 +28,16 @@ export async function POST(req: Request): Promise<Response> {
     });
   }
 
-  const [userRow] = await db
-    .select({ preferences: users.preferences })
-    .from(users)
-    .where(eq(users.id, user.userId))
-    .limit(1);
-  const tz = (userRow?.preferences as { timezone?: string } | null)?.timezone;
-  const today = todayIso(tz);
+  const today = todayIso(user.preferences?.timezone);
   const planId: string | null = body.plan_id ?? null;
+
+  // One turn at a time per conversation. The app retries a message whose
+  // request was dropped (a phone does this when the app is backgrounded), and
+  // if the first attempt did arrive, the retry must not start a second reply.
+  const turn = await getTurnStatus(user.userId, planId);
+  if (turn?.status === "running" && !isTurnStale(turn.status, turn.started_at, Date.now())) {
+    return NextResponse.json({ error: "a reply is already in progress" }, { status: 409 });
+  }
 
   return sseResponse(
     runCoach({

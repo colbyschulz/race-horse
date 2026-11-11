@@ -63,6 +63,11 @@ export type ChatRequestBody = {
 };
 
 export type BuildRequestBody = {
+  /**
+   * Id for the new plan, chosen by the app so it can find the build again if
+   * the connection drops before the server answers. Generated when absent.
+   */
+  plan_id?: string;
   sport: "run" | "bike";
   goal_type: "race" | "indefinite";
   race_date?: string; // YYYY-MM-DD, required when goal_type === "race"

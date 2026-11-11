@@ -160,6 +160,44 @@ describe("runCoach", () => {
     ]);
   });
 
+  it("logs an unexpected failure and tells the athlete something safe", async () => {
+    const errorLog = vi.spyOn(console, "error").mockImplementation(() => {});
+    const dbError = new Error('Failed query: select "date" from "workout" params: plan-1');
+    mockStream.mockImplementation(() => {
+      throw dbError;
+    });
+
+    const { runCoach } = await import("../runner");
+    const { COACH_FAILED_MESSAGE } = await import("../errors");
+    const events = await collectEvents(
+      runCoach({ userId: "u1", message: "Hi coach", today: "2026-04-26" })
+    );
+
+    expect(events.at(-1)).toEqual({ type: "error", error: COACH_FAILED_MESSAGE });
+    expect(errorLog).toHaveBeenCalledWith(
+      "coach turn failed",
+      expect.objectContaining({ userId: "u1" }),
+      dbError
+    );
+    errorLog.mockRestore();
+  });
+
+  it("says the coach is busy when the model provider is overloaded", async () => {
+    const errorLog = vi.spyOn(console, "error").mockImplementation(() => {});
+    mockStream.mockImplementation(() => {
+      throw Object.assign(new Error("Overloaded"), { status: 529 });
+    });
+
+    const { runCoach } = await import("../runner");
+    const { COACH_BUSY_MESSAGE } = await import("../errors");
+    const events = await collectEvents(
+      runCoach({ userId: "u1", message: "Hi coach", today: "2026-04-26" })
+    );
+
+    expect(events.at(-1)).toEqual({ type: "error", error: COACH_BUSY_MESSAGE });
+    errorLog.mockRestore();
+  });
+
   it("emits text-delta, done; calls appendMessage for user and assistant", async () => {
     // Single turn: text only, no tools
     const streamEvents = [
@@ -190,11 +228,21 @@ describe("runCoach", () => {
       }),
     };
     mockStream.mockReturnValue(fakeStream);
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
 
     const { runCoach } = await import("../runner");
     const events = await collectEvents(
       runCoach({ userId: "u1", message: "Hi coach", fromRoute: "/today", today: "2026-04-26" })
     );
+
+    // One timing line for the turn, saying how long before anything showed.
+    const turnLine = logSpy.mock.calls
+      .map(([line]) => (typeof line === "string" && line.startsWith("{") ? JSON.parse(line) : null))
+      .find((entry) => entry?.evt === "coach_turn");
+    logSpy.mockRestore();
+    expect(turnLine).toMatchObject({ outcome: "done", route: "chat", calls: 1, cold_start: false });
+    expect(typeof turnLine.duration_ms).toBe("number");
+    expect(typeof turnLine.first_output_ms).toBe("number");
 
     // Verify SSE event order
     expect(events[0]).toMatchObject({ type: "text-delta", delta: "Hello!" });
@@ -606,11 +654,9 @@ describe("runCoach", () => {
       }),
     });
 
-    async function run() {
+    async function run(firstWorkout: string | null = "2026-11-09") {
       mockAppendMessage.mockResolvedValue({ id: "msg-any" });
-      workoutSelectChain = makeSelectChain([
-        { n: 84, date: "2026-11-09", total: 84, completed: 0 },
-      ]);
+      workoutSelectChain = makeSelectChain([{ first: firstWorkout, total: 84, completed: 0 }]);
       const { runCoach } = await import("../runner");
       const { HANDLERS, getColdStartTools } = await import("@/server/coach/tools");
       const events = await collectEvents(
@@ -641,7 +687,21 @@ describe("runCoach", () => {
       const { events, HANDLERS } = await run();
 
       expect(HANDLERS.finalize_plan).toHaveBeenCalledTimes(1);
+      expect(HANDLERS.finalize_plan).toHaveBeenCalledWith(
+        { plan_id: "plan-1", start_date: "2026-11-09" },
+        expect.objectContaining({ userId: "u1" })
+      );
       expect(events.map((e) => e.type)).toContain("plan-finalized");
+    });
+
+    it("ends a clarifying-question turn cleanly while the plan has no workouts", async () => {
+      mockLoadHistory.mockResolvedValue([]);
+      mockStream.mockReturnValue(endTurnStream("How should running fit around your riding?"));
+      const { events, HANDLERS } = await run(null);
+
+      expect(HANDLERS.finalize_plan).not.toHaveBeenCalled();
+      expect(events.map((e) => e.type)).not.toContain("error");
+      expect(events.at(-1)).toMatchObject({ type: "done" });
     });
 
     it("refuses the coach's own finalize call while weeks remain", async () => {

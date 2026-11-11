@@ -16,6 +16,12 @@ vi.mock("@/components/coach/message-bubble", () => ({
   ),
 }));
 
+vi.mock("@/components/coach/build-form-card", () => ({
+  BuildFormCard: ({ onSubmit }: { onSubmit: (v: unknown) => void }) => (
+    <button onClick={() => onSubmit({ sport: "run", goal_type: "indefinite" })}>Build plan</button>
+  ),
+}));
+
 import { CoachPageClient } from "../coach-page-client";
 import { COACH_UNREACHABLE_MESSAGE, TURN_CUT_OFF_MESSAGE } from "@/lib/turn-poll";
 
@@ -45,6 +51,7 @@ const runningTurn = (): Turn => ({
 let turnStatus: Turn | Error;
 let serverMessages: StoredMessage[];
 let chatResponse: () => Promise<Response>;
+let buildResponse: (body: { plan_id?: string }) => Promise<Response>;
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
@@ -63,7 +70,7 @@ function sseBody(chunks: string[], fail?: Error): ReadableStream<Uint8Array> {
 
 const textDelta = `event: text-delta\ndata: ${JSON.stringify({ type: "text-delta", delta: "Partial reply" })}\n\n`;
 
-const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
   const url = String(input);
   if (url.startsWith("/api/coach/turn-status")) {
     if (turnStatus instanceof Error) throw turnStatus;
@@ -71,6 +78,7 @@ const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
   }
   if (url.startsWith("/api/coach/messages")) return json({ messages: serverMessages });
   if (url.startsWith("/api/coach/chat")) return chatResponse();
+  if (url.startsWith("/api/coach/build")) return buildResponse(JSON.parse(String(init?.body)));
   throw new Error(`unexpected fetch: ${url}`);
 });
 
@@ -99,6 +107,7 @@ beforeEach(() => {
   turnStatus = doneTurn;
   serverMessages = [];
   chatResponse = async () => new Response(sseBody([]), { status: 200 });
+  buildResponse = async () => new Response(sseBody([]), { status: 200 });
   fetchMock.mockClear();
   alertMock.mockClear();
   vi.stubGlobal("fetch", fetchMock);
@@ -156,10 +165,16 @@ describe("CoachPageClient activity", () => {
     // Named while the call is still being written, before its details arrive.
     expect(await screen.findByText("Updating your plan…")).toBeInTheDocument();
     expect(screen.getByText("Checking your plan first.").tagName).toBe("P");
+    // The turn has a running clock, and nothing yet says it will be a long one.
+    expect(screen.getByRole("status")).toHaveTextContent(/Working\s*0:0\d/);
+    expect(screen.queryByText(/Writing a full plan takes a few minutes/)).not.toBeInTheDocument();
 
     serverMessages = [USER_MSG, FINISHED_REPLY];
     release();
+    // Once the step turns out to be a week of a plan, the athlete is told to expect a wait.
+    expect(await screen.findByText(/Writing a full plan takes a few minutes/)).toBeInTheDocument();
     expect(await screen.findByText("Run easy today.")).toBeInTheDocument();
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
   });
 
   it("collapses a finished turn's steps above the reply", async () => {
@@ -185,6 +200,19 @@ describe("CoachPageClient activity", () => {
     expect(screen.getByText("Checking your laps.")).toBeInTheDocument();
   });
 
+  it("times a turn found already running from when the server says it began", async () => {
+    turnStatus = {
+      status: "running",
+      error_message: null,
+      started_at: new Date(Date.now() - 80_000).toISOString(),
+    };
+    serverMessages = [USER_MSG];
+    renderPage([USER_MSG]);
+
+    const status = await screen.findByRole("status");
+    expect(status).toHaveTextContent(/Working\s*1:2\d/);
+  });
+
   it("shows completed steps and keeps them open when returning to a running turn", async () => {
     turnStatus = runningTurn();
     serverMessages = [
@@ -199,6 +227,50 @@ describe("CoachPageClient activity", () => {
 
     expect(await screen.findByText("Read your plan")).toBeInTheDocument();
     await waitFor(() => expect(container.querySelector("details")).toHaveAttribute("open"));
+  });
+});
+
+describe("CoachPageClient build", () => {
+  function renderBuildForm() {
+    return render(
+      <QueryClientProvider client={new QueryClient()}>
+        <CoachPageClient initialMessages={[]} planId={null} intent="build" />
+      </QueryClientProvider>
+    );
+  }
+
+  it("re-sends a dropped build under the same plan and follows it if the first one arrived", async () => {
+    const replaceState = vi.spyOn(window.history, "replaceState").mockImplementation(() => {});
+    const sentPlanIds: (string | undefined)[] = [];
+    buildResponse = async (body) => {
+      sentPlanIds.push(body.plan_id);
+      if (sentPlanIds.length === 1) throw new TypeError("Load failed");
+      return new Response(JSON.stringify({ error: "this build has already started" }), {
+        status: 409,
+      });
+    };
+    renderBuildForm();
+    await userEvent.click(await screen.findByRole("button", { name: "Build plan" }));
+
+    await waitFor(() => expect(replaceState).toHaveBeenCalled(), { timeout: 4000 });
+    expect(sentPlanIds).toHaveLength(2);
+    expect(sentPlanIds[0]).toMatch(/^[0-9a-f-]{36}$/);
+    expect(sentPlanIds[1]).toBe(sentPlanIds[0]);
+    expect(replaceState).toHaveBeenCalledWith(null, "", `/coach?plan_id=${sentPlanIds[0]}`);
+    expect(alertMock).not.toHaveBeenCalled();
+  });
+
+  it("keeps the form and says so when a build can't be sent at all", async () => {
+    buildResponse = async () => {
+      throw new TypeError("Failed to fetch");
+    };
+    renderBuildForm();
+    await userEvent.click(await screen.findByRole("button", { name: "Build plan" }));
+
+    await waitFor(() => expect(alertMock).toHaveBeenCalledWith(COACH_UNREACHABLE_MESSAGE), {
+      timeout: 4000,
+    });
+    expect(screen.getByRole("button", { name: "Build plan" })).toBeInTheDocument();
   });
 });
 
@@ -255,9 +327,53 @@ describe("CoachPageClient reconnect", () => {
     renderPage();
     await sendMessage("Hello coach");
 
-    await waitFor(() => expect(alertMock).toHaveBeenCalledWith(COACH_UNREACHABLE_MESSAGE));
+    await waitFor(() => expect(alertMock).toHaveBeenCalledWith(COACH_UNREACHABLE_MESSAGE), {
+      timeout: 4000,
+    });
+    expect(callsTo("/api/coach/chat")).toBe(2);
     expect(screen.queryByText("Hello coach")).not.toBeInTheDocument();
   });
+
+  it("quietly re-sends a message whose first request was dropped", async () => {
+    const done = sse({ type: "done", message_id: "m2" });
+    let attempts = 0;
+    chatResponse = async () => {
+      attempts += 1;
+      if (attempts === 1) throw new TypeError("Load failed");
+      serverMessages = [USER_MSG, FINISHED_REPLY];
+      return new Response(sseBody([done]), { status: 200 });
+    };
+    renderPage();
+    await sendMessage("What should I run?");
+
+    expect(await screen.findByText("Run easy today.", {}, { timeout: 4000 })).toBeInTheDocument();
+    expect(attempts).toBe(2);
+    expect(alertMock).not.toHaveBeenCalled();
+  });
+
+  it("follows the reply already under way when the dropped request did arrive", async () => {
+    serverMessages = [USER_MSG];
+    let attempts = 0;
+    chatResponse = async () => {
+      attempts += 1;
+      if (attempts === 1) {
+        turnStatus = runningTurn();
+        throw new TypeError("Load failed");
+      }
+      return new Response(JSON.stringify({ error: "a reply is already in progress" }), {
+        status: 409,
+      });
+    };
+    renderPage();
+    await sendMessage("What should I run?");
+    await waitFor(() => expect(attempts).toBe(2), { timeout: 4000 });
+    await waitFor(() => expect(screen.getByRole("textbox")).toBeDisabled());
+
+    turnStatus = doneTurn;
+    serverMessages = [USER_MSG, FINISHED_REPLY];
+    expect(await screen.findByText("Run easy today.", {}, { timeout: 6000 })).toBeInTheDocument();
+    expect(alertMock).not.toHaveBeenCalled();
+  }, 15000);
 
   it("still shows the coach's own error message", async () => {
     const errorEvent = `event: error\ndata: ${JSON.stringify({ type: "error", error: "Too long" })}\n\n`;

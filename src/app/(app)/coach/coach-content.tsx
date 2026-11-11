@@ -128,6 +128,7 @@ function CoachWithPlanLabel({
       planId={planId}
       planFileId={planFileId}
       intent={intent}
+      planGenerating={plan?.generation_status === "generating"}
     />
   );
 }
