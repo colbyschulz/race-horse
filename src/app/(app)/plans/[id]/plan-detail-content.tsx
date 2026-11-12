@@ -8,7 +8,7 @@ import { useWorkoutSheet } from "@/lib/use-workout-sheet";
 import { PlanView } from "@/components/plans/plan-view";
 import { PlanStatusActions } from "@/components/plans/plan-status-actions";
 import { PlanActivateBanner } from "@/components/plans/plan-activate-banner";
-import { planHasEnded, planStatus } from "@/lib/plan-status";
+import { planStatus } from "@/lib/plan-status";
 import { WorkoutDetailSheet } from "@/components/workouts/workout-detail-sheet";
 import { CoachLink } from "@/components/layout/coach-link";
 import { usePreferences } from "@/queries/preferences";
@@ -56,11 +56,10 @@ export function PlanDetailContent({ planId }: PlanDetailContentProps) {
   const { prevDisabled, nextDisabled } = planNavBounds(plan.start_date, effectiveEndDate, monday);
   const isCurrentWeek = monday === mondayOf(today);
 
-  // A plan that isn't active but still has days ahead can be picked up, so the
-  // page says it isn't on the calendar and offers the switch. One that is over
-  // keeps the switch in its menu, where it doesn't push the plan down the page.
-  const offerActivate =
-    planStatus(plan) === "inactive" && !planHasEnded(effectiveEndDate, today);
+  // Every inactive plan says it isn't on the calendar and offers the switch,
+  // old ones included: a banner on some inactive plans and not others would
+  // have no explanation the athlete could see.
+  const offerActivate = planStatus(plan) === "inactive";
 
   return (
     <PlanWeek
