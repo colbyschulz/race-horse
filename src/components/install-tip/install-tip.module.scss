@@ -1,0 +1,38 @@
+.tip {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  max-width: 480px;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-brown) 10%, transparent);
+}
+
+.text {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--color-fg-secondary);
+
+  strong {
+    font-weight: 600;
+    color: var(--color-fg-primary);
+  }
+}
+
+// Keeps the share icon on the same line as its word.
+.together {
+  white-space: nowrap;
+}
+
+.icon {
+  display: inline-block;
+  width: 1.1em;
+  height: 1.1em;
+  margin-right: 0.25em;
+  vertical-align: -0.2em;
+  color: var(--color-fg-primary);
+}

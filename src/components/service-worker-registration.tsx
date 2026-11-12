@@ -1,9 +1,13 @@
 "use client";
 import { useEffect } from "react";
 import { QUERY_CACHE_STORAGE_KEY } from "@/lib/query-cache-key";
+import { watchInstall } from "@/lib/install";
 
 export function ServiceWorkerRegistration() {
   useEffect(() => {
+    // The browser can offer to install the app at any point after load, so
+    // listen from the start; Settings is where the offer gets used.
+    watchInstall();
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker
         .register("/sw", { scope: "/", updateViaCache: "none" })
