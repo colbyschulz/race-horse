@@ -177,9 +177,6 @@ export function CoachPageClient({
   // (e.g. the user navigated away or closed the app mid-reply and came back).
   const [turnInFlight, setTurnInFlight] = useState(false);
 
-  // When the turn in progress began, for the running clock under it.
-  const [turnStartedAt, setTurnStartedAt] = useState<number | null>(null);
-
   // True until the first turn-status check resolves. Input stays disabled
   // through this window too — otherwise a message sent in the single
   // round-trip before we know a turn is already running would race it.
@@ -246,11 +243,6 @@ export function CoachPageClient({
       if (outcome.kind === "keep-polling") {
         observedRunning = true;
         setTurnInFlight(true);
-        // A turn this page started is timed from the send; one found already
-        // running is timed from when the server says it began.
-        if (!streamActiveRef.current && turn) {
-          setTurnStartedAt(new Date(turn.started_at).getTime());
-        }
         // Each finished step is saved as it happens, so a returning athlete can
         // follow along even without the live stream.
         pollsWhileRunning += 1;
@@ -463,7 +455,6 @@ export function CoachPageClient({
     streamAbortRef.current = controller;
     streamActiveRef.current = true;
     lastAlertRef.current = null;
-    setTurnStartedAt(Date.now());
     return controller;
   }
 
@@ -638,7 +629,7 @@ export function CoachPageClient({
   const timeline = useMemo(() => buildTimeline(messages), [messages]);
 
   // What the line under a turn in progress says. A step being carried out has
-  // its own pulsing dot and label, so the line goes quiet apart from the clock.
+  // its own pulsing dot and label, so the line steps aside while one is showing.
   const lastItem = streaming?.items.at(-1);
   const steps =
     streaming?.items.filter(
@@ -702,21 +693,18 @@ export function CoachPageClient({
                 />
               )
             )}
-            {/* Stays for the whole turn, across its steps, so the athlete
-                always knows the run is still going and for how long. */}
+            {/* Between steps and while the reply is written, so the athlete
+                always knows the run is still going. */}
             {!streaming.done && (
               <ThinkingIndicator
-                label={stepInFlight || lastItem?.kind === "text" ? "Working" : "Thinking"}
-                dots={!stepInFlight}
-                startedAt={turnStartedAt}
+                label={lastItem?.kind === "text" ? "Working" : "Thinking"}
+                stepShowing={stepInFlight}
                 expectation={expectation}
               />
             )}
           </>
         )}
-        {!streaming && turnInFlight && (
-          <ThinkingIndicator label="Working" startedAt={turnStartedAt} />
-        )}
+        {!streaming && turnInFlight && <ThinkingIndicator label="Working" />}
       </div>
       {viewPlanId && (
         <div className={styles.viewPlanCta}>

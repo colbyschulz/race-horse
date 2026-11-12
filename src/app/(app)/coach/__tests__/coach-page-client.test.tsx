@@ -165,9 +165,9 @@ describe("CoachPageClient activity", () => {
     // Named while the call is still being written, before its details arrive.
     expect(await screen.findByText("Updating your plan…")).toBeInTheDocument();
     expect(screen.getByText("Checking your plan first.").tagName).toBe("P");
-    // The turn has a running clock, and nothing yet says it will be a long one.
-    expect(screen.getByRole("status")).toHaveTextContent(/Working\s*0:0\d/);
-    expect(screen.queryByText(/Writing a full plan takes a few minutes/)).not.toBeInTheDocument();
+    // The step row says what's happening, so the line under the turn steps
+    // aside, and nothing yet says it will be a long one.
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
 
     serverMessages = [USER_MSG, FINISHED_REPLY];
     release();
@@ -200,17 +200,12 @@ describe("CoachPageClient activity", () => {
     expect(screen.getByText("Checking your laps.")).toBeInTheDocument();
   });
 
-  it("times a turn found already running from when the server says it began", async () => {
-    turnStatus = {
-      status: "running",
-      error_message: null,
-      started_at: new Date(Date.now() - 80_000).toISOString(),
-    };
+  it("shows the coach is still working on a turn found already running", async () => {
+    turnStatus = runningTurn();
     serverMessages = [USER_MSG];
     renderPage([USER_MSG]);
 
-    const status = await screen.findByRole("status");
-    expect(status).toHaveTextContent(/Working\s*1:2\d/);
+    expect(await screen.findByRole("status")).toHaveTextContent(/^Working$/);
   });
 
   it("shows completed steps and keeps them open when returning to a running turn", async () => {
