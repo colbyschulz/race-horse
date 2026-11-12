@@ -3,7 +3,7 @@ import Link from "next/link";
 import styles from "./plan-card.module.scss";
 import { Badge } from "@/components/badge/badge";
 import { computeWeeksLeft } from "@/lib/plan-format";
-import { PLAN_STATUS_LABEL, planStatus } from "@/lib/plan-status";
+import { PLAN_STATUS_LABEL, planHasEnded, planStatus } from "@/lib/plan-status";
 import { formatDistance } from "@/lib/format";
 import { formatDateRange } from "@/lib/dates";
 import type { PlanWithCounts } from "@/types/plans";
@@ -21,10 +21,12 @@ interface Props {
 }
 
 export function PlanCard({ plan, today, units }: Props) {
-  const status = planStatus(plan, today);
+  const status = planStatus(plan);
   const goalLine = plan.goal?.target_time ?? plan.goal?.race_distance ?? null;
   const weeks = totalWeeks(plan.start_date, plan.end_date);
-  const weeksLeft = status !== "archived" ? computeWeeksLeft(plan.end_date, today) : null;
+  // A plan that is over, and isn't the one being followed, has no weeks left to count.
+  const over = status === "inactive" && planHasEnded(plan.end_date, today);
+  const weeksLeft = over ? null : computeWeeksLeft(plan.end_date, today);
 
   // A plan still being built may be incomplete or waiting at a check-in, and its
   // detail page has no way back to the coach conversation, so route straight

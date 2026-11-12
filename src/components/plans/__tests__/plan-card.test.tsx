@@ -41,25 +41,29 @@ describe("PlanCard", () => {
 });
 
 describe("PlanCard status", () => {
-  it("says a plan that isn't active is not active, even when it starts in the future", () => {
-    render(
+  it("calls a plan that isn't active inactive, whether it starts later or has started", () => {
+    const { unmount } = render(
       <PlanCard
         plan={makePlan({ start_date: "2026-03-02", end_date: "2026-06-01" })}
         today="2026-02-01"
         units="mi"
       />
     );
-    expect(screen.getByText("Not active")).toBeInTheDocument();
-    expect(screen.queryByText("Upcoming")).not.toBeInTheDocument();
-  });
+    expect(screen.getByText("Inactive")).toBeInTheDocument();
+    unmount();
 
-  it("doesn't call a new plan archived just because it has started", () => {
     render(<PlanCard plan={makePlan()} today="2026-02-01" units="mi" />);
-    expect(screen.getByText("Not active")).toBeInTheDocument();
+    expect(screen.getByText("Inactive")).toBeInTheDocument();
   });
 
-  it("calls a plan archived once it has ended", () => {
+  it("still calls it inactive, not archived, once it has ended", () => {
     render(<PlanCard plan={makePlan()} today="2026-05-01" units="mi" />);
-    expect(screen.getByText("Archived")).toBeInTheDocument();
+    expect(screen.getByText("Inactive")).toBeInTheDocument();
+    expect(screen.queryByText("Archived")).not.toBeInTheDocument();
+  });
+
+  it("calls the plan being followed active", () => {
+    render(<PlanCard plan={makePlan({ is_active: true })} today="2026-02-01" units="mi" />);
+    expect(screen.getByText("Active")).toBeInTheDocument();
   });
 });

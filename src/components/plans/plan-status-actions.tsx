@@ -8,11 +8,12 @@ import { useSetPlanActive } from "@/queries/plans";
 import styles from "./plan-status-actions.module.scss";
 
 interface Props {
-  plan: { id: string; title: string; is_active: boolean; end_date: string | null };
-  today: string;
+  plan: { id: string; title: string; is_active: boolean };
+  /** Off when something else on the page already says where the plan stands. */
+  showBadge?: boolean;
 }
 
-export function PlanStatusActions({ plan, today }: Props) {
+export function PlanStatusActions({ plan, showBadge = true }: Props) {
   const router = useRouter();
   const setPlanActive = useSetPlanActive();
   const [busy, setBusy] = useState(false);
@@ -20,7 +21,7 @@ export function PlanStatusActions({ plan, today }: Props) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
-  const status = planStatus(plan, today);
+  const status = planStatus(plan);
 
   // Closing the menu also backs out of a half-finished delete confirmation.
   function closeMenu() {
@@ -73,7 +74,7 @@ export function PlanStatusActions({ plan, today }: Props) {
 
   return (
     <>
-      <Badge variant={status} label={PLAN_STATUS_LABEL[status]} />
+      {showBadge && <Badge variant={status} label={PLAN_STATUS_LABEL[status]} />}
       <div className={styles.menu} ref={menuRef}>
         <Button
           variant="ghost"
@@ -117,7 +118,7 @@ export function PlanStatusActions({ plan, today }: Props) {
                 className={styles.item}
                 onClick={() => setActive(true)}
               >
-                Set active
+                Make active
               </button>
             )}
             {status === "active" && (
@@ -126,7 +127,7 @@ export function PlanStatusActions({ plan, today }: Props) {
                 className={styles.item}
                 onClick={() => setActive(false)}
               >
-                Archive
+                Make inactive
               </button>
             )}
             {confirmDelete ? (

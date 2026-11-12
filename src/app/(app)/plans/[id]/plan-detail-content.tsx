@@ -7,6 +7,8 @@ import { planNavBounds } from "@/lib/plan-nav";
 import { useWorkoutSheet } from "@/lib/use-workout-sheet";
 import { PlanView } from "@/components/plans/plan-view";
 import { PlanStatusActions } from "@/components/plans/plan-status-actions";
+import { PlanActivateBanner } from "@/components/plans/plan-activate-banner";
+import { planHasEnded, planStatus } from "@/lib/plan-status";
 import { WorkoutDetailSheet } from "@/components/workouts/workout-detail-sheet";
 import { CoachLink } from "@/components/layout/coach-link";
 import { usePreferences } from "@/queries/preferences";
@@ -28,7 +30,7 @@ export function PlanDetailContent({ planId }: PlanDetailContentProps) {
 
   const today = todayIso(prefs.timezone);
 
-  // For inactive (archived) plans cap navigation at the last workout's week.
+  // For inactive plans cap navigation at the last workout's week.
   // Without this, indefinite plans (no end_date) default to today and allow
   // navigating into future empty weeks.
   const lastWorkoutDate =
@@ -54,6 +56,12 @@ export function PlanDetailContent({ planId }: PlanDetailContentProps) {
   const { prevDisabled, nextDisabled } = planNavBounds(plan.start_date, effectiveEndDate, monday);
   const isCurrentWeek = monday === mondayOf(today);
 
+  // A plan that isn't active but still has days ahead can be picked up, so the
+  // page says it isn't on the calendar and offers the switch. One that is over
+  // keeps the switch in its menu, where it doesn't push the plan down the page.
+  const offerActivate =
+    planStatus(plan) === "inactive" && !planHasEnded(effectiveEndDate, today);
+
   return (
     <PlanWeek
       plan={plan}
@@ -63,6 +71,7 @@ export function PlanDetailContent({ planId }: PlanDetailContentProps) {
       nextHref={nextDisabled ? null : `/plans/${planId}?week=${addDays(monday, 7)}`}
       todayHref={`/plans/${planId}`}
       isCurrentWeek={isCurrentWeek}
+      offerActivate={offerActivate}
       today={today}
       units={prefs.units}
     />
@@ -77,6 +86,7 @@ interface PlanWeekProps {
   nextHref: string | null;
   todayHref: string;
   isCurrentWeek: boolean;
+  offerActivate: boolean;
   today: string;
   units: "mi" | "km";
 }
@@ -89,6 +99,7 @@ function PlanWeek({
   nextHref,
   todayHref,
   isCurrentWeek,
+  offerActivate,
   today,
   units,
 }: PlanWeekProps) {
@@ -101,7 +112,9 @@ function PlanWeek({
         today={today}
         units={units}
         allWorkouts={allWorkouts}
-        headerActions={<PlanStatusActions plan={plan} today={today} />}
+        // The banner already says where the plan stands, so the badge steps aside.
+        headerActions={<PlanStatusActions plan={plan} showBadge={!offerActivate} />}
+        notice={offerActivate ? <PlanActivateBanner planId={plan.id} /> : undefined}
         subheaderAction={<CoachLink />}
         currentWeek={{
           monday,

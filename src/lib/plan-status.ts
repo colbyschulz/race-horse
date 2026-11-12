@@ -1,28 +1,26 @@
-export type PlanStatus = "generating" | "active" | "inactive" | "archived";
+export type PlanStatus = "generating" | "active" | "inactive";
 
 export const PLAN_STATUS_LABEL: Record<PlanStatus, string> = {
   active: "Active",
   generating: "In progress",
-  inactive: "Not active",
-  archived: "Archived",
+  inactive: "Inactive",
 };
 
 /**
  * Where a plan stands for the athlete. Only one plan is active at a time, and
- * only the active plan appears on Today and Training. A plan that isn't active
- * is "archived" once its end date has passed; until then it is simply not
- * active, whether it starts next week or was set aside mid-block.
+ * only the active plan appears on Today and Training. Every other finished
+ * plan is inactive, whether it starts next week, was set aside mid-block or
+ * ended last year: the app stores nothing that tells those apart.
  */
-export function planStatus(
-  plan: {
-    is_active: boolean;
-    end_date: string | null;
-    generation_status?: "generating" | "complete";
-  },
-  today: string
-): PlanStatus {
+export function planStatus(plan: {
+  is_active: boolean;
+  generation_status?: "generating" | "complete";
+}): PlanStatus {
   if (plan.generation_status === "generating") return "generating";
-  if (plan.is_active) return "active";
-  if (plan.end_date != null && plan.end_date < today) return "archived";
-  return "inactive";
+  return plan.is_active ? "active" : "inactive";
+}
+
+/** Whether a plan's last day is behind the athlete. An open-ended plan never ends. */
+export function planHasEnded(endDate: string | null, today: string): boolean {
+  return endDate != null && endDate < today;
 }

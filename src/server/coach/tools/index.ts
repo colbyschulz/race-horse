@@ -166,7 +166,7 @@ export function summarizeToolResult(name: ToolName, result: unknown): string {
     case "set_active_plan":
       return "Made this your active plan";
     case "archive_plan":
-      return "Archived plan";
+      return "Made plan inactive";
     case "finalize_plan":
       return (result as { is_active?: boolean } | null)?.is_active
         ? "Plan ready and on your calendar"

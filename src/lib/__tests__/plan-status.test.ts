@@ -1,33 +1,42 @@
 import { describe, it, expect } from "vitest";
-import { planStatus } from "../plan-status";
-
-const TODAY = "2026-11-11";
-const plan = (overrides: object = {}) => ({
-  is_active: false,
-  end_date: "2027-03-01" as string | null,
-  generation_status: "complete" as const,
-  ...overrides,
-});
+import { PLAN_STATUS_LABEL, planHasEnded, planStatus } from "../plan-status";
 
 describe("planStatus", () => {
   it("is in progress while the coach is still building it", () => {
-    expect(planStatus(plan({ generation_status: "generating", is_active: true }), TODAY)).toBe(
-      "generating"
-    );
+    expect(planStatus({ is_active: true, generation_status: "generating" })).toBe("generating");
   });
 
   it("is active when it is the plan on the calendar", () => {
-    expect(planStatus(plan({ is_active: true }), TODAY)).toBe("active");
+    expect(planStatus({ is_active: true, generation_status: "complete" })).toBe("active");
   });
 
-  it("is not active, rather than upcoming or archived, when it hasn't ended", () => {
-    expect(planStatus(plan(), TODAY)).toBe("inactive");
-    expect(planStatus(plan({ end_date: TODAY }), TODAY)).toBe("inactive");
-    // An open-ended plan has no end to pass.
-    expect(planStatus(plan({ end_date: null }), TODAY)).toBe("inactive");
+  it("is inactive otherwise, whenever it starts or ends", () => {
+    expect(planStatus({ is_active: false, generation_status: "complete" })).toBe("inactive");
+    expect(planStatus({ is_active: false })).toBe("inactive");
   });
 
-  it("is archived once its end date has passed", () => {
-    expect(planStatus(plan({ end_date: "2026-11-10" }), TODAY)).toBe("archived");
+  it("has a label for every status, and none of them is 'archived' or 'upcoming'", () => {
+    expect(PLAN_STATUS_LABEL).toEqual({
+      active: "Active",
+      generating: "In progress",
+      inactive: "Inactive",
+    });
+  });
+});
+
+describe("planHasEnded", () => {
+  const TODAY = "2026-11-12";
+
+  it("is true once the last day is behind the athlete", () => {
+    expect(planHasEnded("2026-11-11", TODAY)).toBe(true);
+  });
+
+  it("is false on the last day and before it", () => {
+    expect(planHasEnded(TODAY, TODAY)).toBe(false);
+    expect(planHasEnded("2027-03-07", TODAY)).toBe(false);
+  });
+
+  it("is false for an open-ended plan", () => {
+    expect(planHasEnded(null, TODAY)).toBe(false);
   });
 });

@@ -41,6 +41,8 @@ interface Props {
   headerActions?: React.ReactNode;
   actionsBar?: React.ReactNode;
   subheaderAction?: React.ReactNode;
+  /** Sits between the title and the tabs: for what matters before anything below. */
+  notice?: React.ReactNode;
   banner?: React.ReactNode;
   currentWeek?: CurrentWeek;
 }
@@ -53,6 +55,7 @@ export function PlanView({
   headerActions,
   actionsBar,
   subheaderAction,
+  notice,
   banner,
   currentWeek,
 }: Props) {
@@ -84,6 +87,7 @@ export function PlanView({
     <>
       <div className={styles.topSection}>
         <PlanHeading title={plan.title} actions={headerActions} subRow={actionsBar} />
+        {notice}
         <div className={styles.segmentRow}>
           <div className={styles.viewSegment}>
           <button

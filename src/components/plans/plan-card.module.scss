@@ -22,9 +22,6 @@
 .card_active {
   border: 2px solid var(--color-brown);
 }
-.card_inactive {
-  border-color: var(--color-terra);
-}
 .card_generating {
   border-color: var(--color-fg-tertiary);
   border-style: dashed;

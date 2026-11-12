@@ -58,7 +58,7 @@ export function describeToolInProgress(name: string, input?: unknown): string {
     case "set_active_plan":
       return "Changing your active plan…";
     case "archive_plan":
-      return "Archiving a plan…";
+      return "Making a plan inactive…";
     case "finalize_plan":
       return "Finishing your plan…";
     case "get_recent_activities":
@@ -126,7 +126,7 @@ export function describeToolDone(name: string, input?: unknown): string {
     case "set_active_plan":
       return "Changed your active plan";
     case "archive_plan":
-      return "Archived a plan";
+      return "Made a plan inactive";
     case "finalize_plan":
       return "Finished your plan";
     case "get_recent_activities":
