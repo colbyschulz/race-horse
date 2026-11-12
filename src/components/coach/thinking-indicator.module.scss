@@ -15,25 +15,21 @@
   gap: 6px;
 }
 
-.label,
-.elapsed {
+.label {
   font-family: var(--font-body);
   font-size: 0.8125rem;
+  font-style: italic;
   color: var(--color-fg-secondary);
 }
 
-.label {
-  font-style: italic;
-}
-
-.elapsed {
-  color: var(--color-fg-tertiary);
-  // Equal-width digits, so the clock doesn't shift as it ticks.
-  font-variant-numeric: tabular-nums;
-}
-
 .hint {
-  margin: var(--space-1) 0 0;
+  margin: 0;
+
+  // Sits a little below the dots when both are showing.
+  .row + & {
+    margin-top: var(--space-1);
+  }
+
   font-family: var(--font-body);
   font-size: 0.8125rem;
   line-height: 1.4;
