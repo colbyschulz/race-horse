@@ -515,6 +515,14 @@ export function CoachPageClient({
     }
   }
 
+  // Points the page at the conversation a build lives under. A build keeps
+  // streaming after the athlete leaves the page, and by then the address
+  // belongs to wherever they went, so only a page still on screen may change it.
+  function showPlanConversation(id: string) {
+    if (!mountedRef.current) return;
+    window.history.replaceState(null, "", `/coach?plan_id=${encodeURIComponent(id)}`);
+  }
+
   async function buildSubmit(values: BuildFormInput) {
     setSending(true);
     setBuildState({ kind: "submitting", values });
@@ -569,15 +577,14 @@ export function CoachPageClient({
         // Only show the "View your plan" CTA when the plan was actually finalized
         // (plan has workouts). A clarifying-question turn ends the stream too but
         // planFinalizedRef stays false, so the button doesn't appear prematurely.
-        if (planFinalizedRef.current) {
+        // The flag is read by the page that remounts after the URL changes. With
+        // the athlete gone there is no remount, and a flag left behind would
+        // show this plan's button on whichever conversation they open next.
+        if (planFinalizedRef.current && mountedRef.current) {
           sessionStorage.setItem("justBuiltPlanId", receivedPlanIdRef.current);
-          planFinalizedRef.current = false;
         }
-        window.history.replaceState(
-          null,
-          "",
-          `/coach?plan_id=${encodeURIComponent(receivedPlanIdRef.current)}`
-        );
+        planFinalizedRef.current = false;
+        showPlanConversation(receivedPlanIdRef.current);
         receivedPlanIdRef.current = null;
       }
       setBuildState(null);
@@ -587,18 +594,14 @@ export function CoachPageClient({
         // at its plan; the conversation loads there and follows the build.
         setStreaming(null);
         setBuildState(null);
-        window.history.replaceState(null, "", `/coach?plan_id=${encodeURIComponent(newPlanId)}`);
+        showPlanConversation(newPlanId);
       } else if (!controller.signal.aborted) {
         const stillRunning = recoverFromLostStream(err, res);
         // Nothing reached the server, so keep the form available for a retry.
         setBuildState(!res || !res.ok ? { kind: "editable" } : null);
         if (stillRunning && receivedPlanIdRef.current) {
           // The build carries on under its plan, so point the page at it.
-          window.history.replaceState(
-            null,
-            "",
-            `/coach?plan_id=${encodeURIComponent(receivedPlanIdRef.current)}`
-          );
+          showPlanConversation(receivedPlanIdRef.current);
           receivedPlanIdRef.current = null;
         }
       } else {

@@ -255,6 +255,63 @@ describe("CoachPageClient build", () => {
     expect(alertMock).not.toHaveBeenCalled();
   });
 
+  /** A build whose stream stays open until the test lets it finish. */
+  function gatedBuild(events: Record<string, unknown>[]) {
+    let release: () => void = () => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    buildResponse = async () => {
+      const enc = new TextEncoder();
+      const body = new ReadableStream<Uint8Array>({
+        async start(c) {
+          await gate;
+          for (const ev of events) c.enqueue(enc.encode(sse(ev)));
+          c.close();
+        },
+      });
+      return new Response(body, { status: 200 });
+    };
+    return () => release();
+  }
+
+  it("keeps a way back to the plans list on screen while a plan is being built", async () => {
+    const finish = gatedBuild([{ type: "done" }]);
+    renderBuildForm();
+    expect(await screen.findByRole("link", { name: /Back to Plans/ })).toHaveAttribute(
+      "href",
+      "/plans"
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: "Build plan" }));
+    await waitFor(() => expect(callsTo("/api/coach/build")).toBe(1));
+    expect(screen.getByRole("link", { name: /Back to Plans/ })).toHaveAttribute("href", "/plans");
+    finish();
+  });
+
+  it("leaves the address alone when a build finishes after the athlete has left", async () => {
+    const replaceState = vi.spyOn(window.history, "replaceState").mockImplementation(() => {});
+    const finish = gatedBuild([
+      { type: "plan-created", plan_id: "new-plan" },
+      { type: "plan-finalized" },
+      { type: "done" },
+    ]);
+    const { unmount } = renderBuildForm();
+    await userEvent.click(await screen.findByRole("button", { name: "Build plan" }));
+    await waitFor(() => expect(callsTo("/api/coach/build")).toBe(1));
+
+    unmount();
+    finish();
+
+    // The plan lookup is the last thing a finished build does before the URL.
+    await waitFor(() => expect(callsTo("/api/plans/new-plan")).toBe(1));
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    });
+    expect(replaceState).not.toHaveBeenCalled();
+    expect(sessionStorage.getItem("justBuiltPlanId")).toBeNull();
+  });
+
   it("keeps the form and says so when a build can't be sent at all", async () => {
     buildResponse = async () => {
       throw new TypeError("Failed to fetch");
