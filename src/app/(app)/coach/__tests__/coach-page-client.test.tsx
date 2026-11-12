@@ -24,6 +24,7 @@ vi.mock("@/components/coach/build-form-card", () => ({
 
 import { CoachPageClient } from "../coach-page-client";
 import { COACH_UNREACHABLE_MESSAGE, TURN_CUT_OFF_MESSAGE } from "@/lib/turn-poll";
+import { hasBuiltPlanOffer, rememberBuild } from "@/lib/built-plan-offer";
 
 function stored(id: string, role: "user" | "assistant", text: string): StoredMessage {
   return {
@@ -52,6 +53,7 @@ let turnStatus: Turn | Error;
 let serverMessages: StoredMessage[];
 let chatResponse: () => Promise<Response>;
 let buildResponse: (body: { plan_id?: string }) => Promise<Response>;
+let serverPlans: Record<string, { id: string; is_active: boolean; generation_status: string }>;
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
@@ -79,6 +81,10 @@ const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => 
   if (url.startsWith("/api/coach/messages")) return json({ messages: serverMessages });
   if (url.startsWith("/api/coach/chat")) return chatResponse();
   if (url.startsWith("/api/coach/build")) return buildResponse(JSON.parse(String(init?.body)));
+  if (url.startsWith("/api/plans/")) {
+    const plan = serverPlans[url.slice("/api/plans/".length)];
+    return plan ? json({ plan }) : json({ error: "not found" }, 404);
+  }
   throw new Error(`unexpected fetch: ${url}`);
 });
 
@@ -114,6 +120,8 @@ beforeEach(() => {
   vi.stubGlobal("alert", alertMock);
   vi.spyOn(console, "error").mockImplementation(() => {});
   sessionStorage.clear();
+  localStorage.clear();
+  serverPlans = { p1: { id: "p1", is_active: true, generation_status: "complete" } };
 });
 
 afterEach(() => {
@@ -289,6 +297,39 @@ describe("CoachPageClient build", () => {
     finish();
   });
 
+  it("offers the new plan when its build finishes", async () => {
+    vi.spyOn(window.history, "replaceState").mockImplementation(() => {});
+    serverPlans["new-plan"] = { id: "new-plan", is_active: true, generation_status: "generating" };
+    const finish = gatedBuild([{ type: "plan-created", plan_id: "new-plan" }, { type: "done" }]);
+    renderBuildForm();
+    await userEvent.click(await screen.findByRole("button", { name: "Build plan" }));
+    await waitFor(() => expect(callsTo("/api/coach/build")).toBe(1));
+
+    serverPlans["new-plan"].generation_status = "complete";
+    finish();
+
+    expect(await screen.findByRole("link", { name: /View your plan/ })).toHaveAttribute(
+      "href",
+      "/plans/new-plan"
+    );
+  });
+
+  it("doesn't offer a plan whose build stopped to ask a question", async () => {
+    const replaceState = vi.spyOn(window.history, "replaceState").mockImplementation(() => {});
+    serverPlans["new-plan"] = { id: "new-plan", is_active: false, generation_status: "generating" };
+    const finish = gatedBuild([{ type: "plan-created", plan_id: "new-plan" }, { type: "done" }]);
+    renderBuildForm();
+    await userEvent.click(await screen.findByRole("button", { name: "Build plan" }));
+    await waitFor(() => expect(callsTo("/api/coach/build")).toBe(1));
+
+    finish();
+
+    await waitFor(() => expect(replaceState).toHaveBeenCalled());
+    expect(screen.queryByRole("link", { name: /View your plan/ })).toBeNull();
+    // Still remembered, so it is offered once a later turn finishes the plan.
+    expect(hasBuiltPlanOffer("new-plan")).toBe(true);
+  });
+
   it("leaves the address alone when a build finishes after the athlete has left", async () => {
     const replaceState = vi.spyOn(window.history, "replaceState").mockImplementation(() => {});
     const finish = gatedBuild([
@@ -309,7 +350,8 @@ describe("CoachPageClient build", () => {
       await new Promise((resolve) => setTimeout(resolve, 50));
     });
     expect(replaceState).not.toHaveBeenCalled();
-    expect(sessionStorage.getItem("justBuiltPlanId")).toBeNull();
+    // The finished plan is still offered when they open its conversation.
+    expect(hasBuiltPlanOffer("new-plan")).toBe(true);
   });
 
   it("keeps the form and says so when a build can't be sent at all", async () => {
@@ -323,6 +365,102 @@ describe("CoachPageClient build", () => {
       timeout: 4000,
     });
     expect(screen.getByRole("button", { name: "Build plan" })).toBeInTheDocument();
+  });
+});
+
+describe("CoachPageClient built plan", () => {
+  const viewPlan = () => screen.queryByRole("link", { name: /View your plan/ });
+
+  async function settle() {
+    await waitFor(() => expect(callsTo("/api/plans/p1")).toBeGreaterThan(0));
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    });
+  }
+
+  it("offers a plan built earlier when its conversation is opened", async () => {
+    rememberBuild("p1");
+    renderPage();
+    expect(await screen.findByRole("link", { name: /View your plan/ })).toHaveAttribute(
+      "href",
+      "/plans/p1"
+    );
+  });
+
+  it("doesn't offer one plan on another plan's conversation", async () => {
+    rememberBuild("other-plan");
+    renderPage();
+    await settle();
+    expect(viewPlan()).toBeNull();
+    expect(hasBuiltPlanOffer("other-plan")).toBe(true);
+  });
+
+  it("doesn't offer a plan nobody saw being built", async () => {
+    renderPage();
+    await settle();
+    expect(viewPlan()).toBeNull();
+  });
+
+  it("offers the plan once a turn finishes building it, not before", async () => {
+    serverPlans.p1.generation_status = "generating";
+    chatResponse = async () => {
+      serverPlans.p1.generation_status = "complete";
+      return new Response(sseBody([sse({ type: "done" })]), { status: 200 });
+    };
+    renderPage();
+    await waitFor(() => expect(hasBuiltPlanOffer("p1")).toBe(true));
+    expect(viewPlan()).toBeNull();
+
+    await sendMessage("Looks good, carry on");
+
+    expect(await screen.findByRole("link", { name: /View your plan/ })).toHaveAttribute(
+      "href",
+      "/plans/p1"
+    );
+  });
+
+  it("stops offering the plan once the athlete says something more", async () => {
+    rememberBuild("p1");
+    chatResponse = async () => new Response(sseBody([sse({ type: "done" })]), { status: 200 });
+    renderPage();
+    await screen.findByRole("link", { name: /View your plan/ });
+
+    await sendMessage("Can you move my long run?");
+
+    await waitFor(() => expect(viewPlan()).toBeNull());
+    expect(hasBuiltPlanOffer("p1")).toBe(false);
+  });
+
+  it("stops offering the plan once the athlete opens it", async () => {
+    rememberBuild("p1");
+    renderPage();
+    const link = await screen.findByRole("link", { name: /View your plan/ });
+    link.addEventListener("click", (e) => e.preventDefault());
+
+    await userEvent.click(link);
+
+    await waitFor(() => expect(viewPlan()).toBeNull());
+    expect(hasBuiltPlanOffer("p1")).toBe(false);
+  });
+
+  it("offers a new plan the coach built from another plan's conversation", async () => {
+    serverPlans.p2 = { id: "p2", is_active: false, generation_status: "complete" };
+    chatResponse = async () =>
+      new Response(
+        sseBody([
+          sse({ type: "tool-use", id: "t1", name: "finalize_plan", input: { plan_id: "p2" } }),
+          sse({ type: "done" }),
+        ]),
+        { status: 200 }
+      );
+    renderPage();
+
+    await sendMessage("Build me a 10k plan too");
+
+    expect(await screen.findByRole("link", { name: /View your plan/ })).toHaveAttribute(
+      "href",
+      "/plans/p2"
+    );
   });
 });
 

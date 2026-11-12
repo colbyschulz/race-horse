@@ -50,9 +50,16 @@ export function usePlan(id: string) {
   return useSuspenseQuery({ queryKey: ["plans", id], queryFn: () => fetchPlan(id) });
 }
 
-/** The same plan without suspending, for a part of a screen that can render before it loads. */
-export function usePlanIfLoaded(id: string) {
-  return useQuery({ queryKey: ["plans", id], queryFn: () => fetchPlan(id) });
+/**
+ * The same plan without suspending, for a part of a screen that can render
+ * before it loads. With no id yet there is nothing to load.
+ */
+export function usePlanIfLoaded(id: string | null | undefined) {
+  return useQuery({
+    queryKey: ["plans", id],
+    queryFn: () => (id ? fetchPlan(id) : null),
+    enabled: Boolean(id),
+  });
 }
 
 /**

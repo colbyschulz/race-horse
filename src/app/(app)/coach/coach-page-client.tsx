@@ -32,6 +32,8 @@ import { ClearChatDialog } from "@/components/coach/clear-chat-dialog";
 import { BuildFormCard, type BuildFormCardState } from "@/components/coach/build-form-card";
 import { BuiltPlanActions } from "@/components/coach/built-plan-actions";
 import { usePreferences } from "@/queries/preferences";
+import { usePlanIfLoaded } from "@/queries/plans";
+import { dismissBuiltPlanOffer, hasBuiltPlanOffer, rememberBuild } from "@/lib/built-plan-offer";
 
 interface Props {
   initialMessages: StoredMessage[];
@@ -143,11 +145,6 @@ export function CoachPageClient({
   // mid-stream (window.history.replaceState triggers useSearchParams re-render).
   const receivedPlanIdRef = useRef<string | null>(null);
 
-  // Set when the plan is actually finalized (plan-finalized SSE event or finalize_plan
-  // tool-use seen). Used to gate the "View your plan" CTA so it only appears once
-  // the plan has workouts — not after a clarifying-question turn.
-  const planFinalizedRef = useRef(false);
-
   // Tracks the in-flight reloadHistory promise so buildSubmit can await it before
   // calling replaceState — ensuring messages and plan are in the RQ cache before the
   // component remounts, preventing CoachWithPlanLabel from suspending on mount.
@@ -157,21 +154,38 @@ export function CoachPageClient({
     intent === "build" ? { kind: "editable" } : null
   );
 
-  // Set to the plan ID when a build stream completes, to show a "View plan" CTA.
-  // sessionStorage carries the value across the component remount that follows
-  // window.history.replaceState (which triggers useSearchParams → CoachContent re-render).
-  const [viewPlanId, setViewPlanId] = useState<string | null>(null);
+  // The plan whose "view it / make it active" buttons are showing. They belong
+  // to the plan this conversation built: seeing it being built is remembered,
+  // and once it is complete (it has workouts, so not after a turn that only
+  // asked a question) the buttons show here and on any later visit, until the
+  // athlete opens the plan or says something more. The page remounts when a
+  // build's URL changes, and the remembered build carries the buttons across.
+  const { data: plan } = usePlanIfLoaded(planId);
+  const planStatus = plan?.generation_status;
+  const [offeredPlanId, setOfferedPlanId] = useState<string | null>(null);
   useEffect(() => {
-    const id = sessionStorage.getItem("justBuiltPlanId");
-    if (id) {
-      sessionStorage.removeItem("justBuiltPlanId");
-      // sessionStorage doesn't exist while this renders on the server, so the
-      // flag can only be picked up after mount; as initial state it would
-      // make the server and client markup disagree.
+    if (!planId || !planStatus) return;
+    if (planStatus === "generating") {
+      rememberBuild(planId);
+    } else if (hasBuiltPlanOffer(planId)) {
+      // Storage doesn't exist while this renders on the server, so it can only
+      // be read after mount; as initial state it would make the server and
+      // client markup disagree.
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      setViewPlanId(id);
+      setOfferedPlanId(planId);
     }
-  }, []);
+  }, [planId, planStatus]);
+
+  // A plan the coach finished during the turn being streamed. It matters when
+  // the coach builds a new plan from inside another plan's conversation: this
+  // page never loads that plan, so its status can't be what shows the buttons.
+  const finalizedPlanIdRef = useRef<string | null>(null);
+
+  function dismissPlanOffer() {
+    if (!offeredPlanId) return;
+    dismissBuiltPlanOffer(offeredPlanId);
+    setOfferedPlanId(null);
+  }
 
   // True while a mount-time poll has found a turn still running server-side
   // (e.g. the user navigated away or closed the app mid-reply and came back).
@@ -348,6 +362,9 @@ export function CoachPageClient({
     if (ev.type === "plan-created") {
       receivedPlanIdRef.current = ev.plan_id;
       setPlanId(ev.plan_id);
+      // Remembered straight away, so the finished plan is offered even if the
+      // athlete leaves before this page has loaded the plan itself.
+      rememberBuild(ev.plan_id);
       // Do NOT call window.history.replaceState here — it triggers useSearchParams()
       // to update, which causes CoachContent to remount CoachPageClient mid-stream.
       // URL is updated after consumeStream resolves (see buildSubmit).
@@ -359,13 +376,12 @@ export function CoachPageClient({
       return;
     }
     if (ev.type === "plan-finalized") {
-      // Auto-finalize path: server confirmed the plan has workouts and is complete.
-      planFinalizedRef.current = true;
+      finalizedPlanIdRef.current = ev.plan_id;
       return;
     }
     if (ev.type === "tool-use" && ev.name === "finalize_plan") {
-      // Explicit finalize_plan call by the coach — plan is about to be finalized.
-      planFinalizedRef.current = true;
+      const id = (ev.input as { plan_id?: unknown } | null)?.plan_id;
+      if (typeof id === "string") finalizedPlanIdRef.current = id;
     }
     if (ev.type === "text-delta") {
       const last = assembled.items[assembled.items.length - 1];
@@ -413,12 +429,12 @@ export function CoachPageClient({
     } else if (ev.type === "done") {
       // Mark done immediately so the working-indicator hides before reloadHistory resolves.
       setStreaming((s) => (s ? { ...s, done: true } : s));
-      // For continuation turns (send(), not buildSubmit): plan finalized in this
-      // stream — show CTA directly since there's no replaceState/remount.
-      if (planFinalizedRef.current && !receivedPlanIdRef.current) {
-        const effectiveId = planId ?? null;
-        if (effectiveId) setViewPlanId(effectiveId);
-        planFinalizedRef.current = false;
+      // This conversation's own plan shows its buttons when the reload below
+      // finds it complete. Another plan finished here is offered directly.
+      const finalized = finalizedPlanIdRef.current;
+      finalizedPlanIdRef.current = null;
+      if (finalized && finalized !== (receivedPlanIdRef.current ?? planId)) {
+        setOfferedPlanId(finalized);
       }
       reloadHistoryPromiseRef.current = reloadHistory();
     } else if (ev.type === "error") {
@@ -464,6 +480,8 @@ export function CoachPageClient({
   }
 
   async function send(text: string) {
+    // The conversation has moved on from the plan being finished.
+    dismissPlanOffer();
     pinnedRef.current = true;
     setSending(true);
     const tmpId = `tmp-${Date.now()}`;
@@ -574,16 +592,6 @@ export function CoachPageClient({
       // All caches are warm — safe to update the URL now. The remounted component
       // sees data instantly with no loading flash or suspension.
       if (receivedPlanIdRef.current) {
-        // Only show the "View your plan" CTA when the plan was actually finalized
-        // (plan has workouts). A clarifying-question turn ends the stream too but
-        // planFinalizedRef stays false, so the button doesn't appear prematurely.
-        // The flag is read by the page that remounts after the URL changes. With
-        // the athlete gone there is no remount, and a flag left behind would
-        // show this plan's button on whichever conversation they open next.
-        if (planFinalizedRef.current && mountedRef.current) {
-          sessionStorage.setItem("justBuiltPlanId", receivedPlanIdRef.current);
-        }
-        planFinalizedRef.current = false;
         showPlanConversation(receivedPlanIdRef.current);
         receivedPlanIdRef.current = null;
       }
@@ -709,9 +717,9 @@ export function CoachPageClient({
         )}
         {!streaming && turnInFlight && <ThinkingIndicator label="Working" />}
       </div>
-      {viewPlanId && (
+      {offeredPlanId && (
         <div className={styles.viewPlanCta}>
-          <BuiltPlanActions planId={viewPlanId} />
+          <BuiltPlanActions planId={offeredPlanId} onView={dismissPlanOffer} />
         </div>
       )}
       <MessageInput

@@ -9,7 +9,7 @@ import { usePlanIfLoaded, useSetPlanActive } from "@/queries/plans";
  * the swap as a button, because the new plan won't reach their calendar until
  * they make it.
  */
-export function BuiltPlanActions({ planId }: { planId: string }) {
+export function BuiltPlanActions({ planId, onView }: { planId: string; onView?: () => void }) {
   const { data: plan } = usePlanIfLoaded(planId);
   const setActive = useSetPlanActive();
   const canActivate = plan != null && !plan.is_active && plan.generation_status === "complete";
@@ -31,7 +31,12 @@ export function BuiltPlanActions({ planId }: { planId: string }) {
           Make this my active plan
         </Button>
       )}
-      <Button href={`/plans/${planId}`} variant={canActivate ? "ghost" : "primary"} size="sm">
+      <Button
+        href={`/plans/${planId}`}
+        variant={canActivate ? "ghost" : "primary"}
+        size="sm"
+        onClick={onView}
+      >
         View your plan →
       </Button>
     </>
