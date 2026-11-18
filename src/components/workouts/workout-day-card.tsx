@@ -1,6 +1,8 @@
 "use client";
 import { formatDayLabel } from "@/lib/dates";
 import { formatDistance, formatDuration } from "@/lib/format";
+import { secondarySport } from "@/lib/plan-stats";
+import { hasSportIcon } from "@/lib/workout-headline";
 import { WorkoutBadge } from "./workout-badge";
 import { SportIcon } from "./sport-icon";
 import type { WorkoutRow } from "@/types/plans";
@@ -46,6 +48,11 @@ export function WorkoutDayCard({
     secondary?.duration_minutes != null ? formatDuration(secondary.duration_minutes * 60) : null;
   const secStat = secDist ? `${secDist} ${units}` : secDur;
 
+  // The icon is what tells a ride from a run when the badge only says "Easy",
+  // so it shows even on a session with no distance or time.
+  const showIcon = !isRest && hasSportIcon(workout!.type);
+  const showSecIcon = !!secondary && hasSportIcon(secondary.type);
+
   return (
     <div className={`${styles.card} ${isToday ? styles.cardToday : ""}`}>
       <button
@@ -64,10 +71,10 @@ export function WorkoutDayCard({
             </span>
             <WorkoutBadge type={isRest ? "rest" : workout!.type} size="sm" />
           </div>
-          {!isRest && stat && (
+          {!isRest && (stat || showIcon) && (
             <div className={styles.statGroup}>
-              <SportIcon type={workout!.sport} className={styles.sportIcon} />
-              <span className={styles.statValue}>{stat}</span>
+              {showIcon && <SportIcon type={workout!.sport} className={styles.sportIcon} />}
+              {stat && <span className={styles.statValue}>{stat}</span>}
             </div>
           )}
         </div>
@@ -82,10 +89,12 @@ export function WorkoutDayCard({
           <div className={styles.secondary}>
             <div className={styles.secondaryRow}>
               <WorkoutBadge type={secondary.type} size="sm" />
-              {secStat && (
+              {(secStat || showSecIcon) && (
                 <div className={styles.statGroup}>
-                  <SportIcon type={workout!.sport} className={styles.sportIcon} />
-                  <span className={styles.secStatValue}>{secStat}</span>
+                  {showSecIcon && (
+                    <SportIcon type={secondarySport(workout!)} className={styles.sportIcon} />
+                  )}
+                  {secStat && <span className={styles.secStatValue}>{secStat}</span>}
                 </div>
               )}
             </div>

@@ -8,6 +8,7 @@ import styles from "./plan-detail.module.scss";
 interface Props {
   workouts: WorkoutRow[];
   units: "mi" | "km";
+  planSport: string;
   planStartDate: string;
 }
 
@@ -17,13 +18,13 @@ function weekIndexFromMonday(planStart: string, monday: string): number {
   return Math.round(ms / (7 * 24 * 60 * 60 * 1000)) + 1;
 }
 
-export function MileageChart({ workouts, units, planStartDate }: Props) {
+export function MileageChart({ workouts, units, planSport, planStartDate }: Props) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const barRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const [activeIdx, setActiveIdx] = useState<number | null>(null);
   const [tooltipLeft, setTooltipLeft] = useState(0);
 
-  const weeks = weeklyMileage(workouts, units);
+  const weeks = weeklyMileage(workouts, units, planSport);
 
   // Measures where the tooltip goes in the same event that shows it, so it
   // never renders once in the old position first.

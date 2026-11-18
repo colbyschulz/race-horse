@@ -122,11 +122,17 @@ export function PlanView({
             <PlanStats
               workouts={allWorkouts}
               units={units}
+              planSport={plan.sport}
               planStartDate={plan.start_date}
               planEndDate={plan.end_date}
               today={today}
             />
-            <MileageChart workouts={allWorkouts} units={units} planStartDate={plan.start_date} />
+            <MileageChart
+              workouts={allWorkouts}
+              units={units}
+              planSport={plan.sport}
+              planStartDate={plan.start_date}
+            />
             {plan.coach_notes && <PlanArc notes={plan.coach_notes} />}
           </>
         )}
@@ -146,6 +152,7 @@ export function PlanView({
               activitiesByDate={currentWeek.activitiesByDate}
               today={today}
               units={units}
+              planSport={plan.sport}
               isActivePlan={currentWeek.isActivePlan}
               onDayClick={currentWeek.onWorkoutClick}
               showNotes

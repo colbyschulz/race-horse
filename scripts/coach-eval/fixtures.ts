@@ -16,11 +16,13 @@ export function dayName(iso) {
   return DAY_NAMES[new Date(`${iso}T12:00:00Z`).getUTCDay()];
 }
 
-function workout(date, type, mi, notes = "", secondary = null) {
+// `sport` is left unset for the plan's own sport; the harness fills it in.
+function workout(date, type, mi, notes = "", secondary = null, sport = undefined) {
   return {
     id: `w-${date}`,
     plan_id: "plan",
     date,
+    ...(sport ? { sport } : {}),
     type,
     distance_meters: mi != null ? String(Math.round(mi * MI)) : null,
     duration_seconds: null,
@@ -34,7 +36,7 @@ function buildWorkouts(start, end, pattern, overrides) {
   for (let d = start; d <= end; d = addDays(d, 1)) {
     const o = overrides[d] ?? pattern[dayName(d)];
     if (!o) continue;
-    out.push(workout(d, o[0], o[1], o[2] ?? ""));
+    out.push(workout(d, o[0], o[1], o[2] ?? "", null, o[3]));
   }
   return out;
 }
@@ -130,7 +132,7 @@ function athleteA() {
       "2026-11-01": ["intervals", 13, "4 × 1 mile @ 5:35–5:40/mi, 90 sec jog, then 8 × 400 m @ 72–75 s, 60 sec jog. 2 mi warm-up and cool-down. Intent: threshold and speed."],
       "2026-11-04": ["threshold", 13, "6 × 1 mile @ 5:30–5:35/mi (≈ 5:33 per rep), 60 sec jog. 3 mi warm-up and cool-down. Intent: threshold, gliding toward HMP."],
       "2026-11-06": ["threshold", 11, "8 × 1 km @ 3:26–3:30/km (≈ 3:28 per rep), 60 sec jog. 2 mi warm-up and cool-down. Intent: threshold."],
-      "2026-11-07": ["cross", 100, "Charity century ride, steady moderate effort."],
+      "2026-11-07": ["long", 100, "Charity century ride, steady moderate effort.", "bike"],
       "2026-11-08": ["recovery", 5],
       "2026-11-11": ["threshold", 13, "7 × 1 mile @ 5:30/mi (≈ 5:30 per rep), 60 sec jog. 3 mi warm-up and cool-down. Intent: threshold."],
       "2026-11-14": ["intervals", 13, "10 × 1 km @ 3:20–3:24/km (≈ 3:22 per rep), 90 sec jog. 2 mi warm-up and cool-down. Intent: VO2max."],

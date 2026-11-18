@@ -14,7 +14,8 @@ Conventions:
 - If the file uses absolute dates, calculate offsets from the earliest workout's date.
 - If the file uses "Week N, Day M" notation, day_offset = (N-1)*7 + (M-1) where Day 1 = Monday.
 - "tentative_start_date": YYYY-MM-DD if the file gave an explicit start (or earliest absolute workout date); otherwise null.
-- Workout types: easy, long, tempo, threshold, intervals, recovery, race, rest, cross.
+- Workout types: easy, long, tempo, threshold, intervals, recovery, race, rest.
+- Each workout has its own \`sport\`. A ride inside a run plan is sport "bike" with its real type (easy, long, …), and a run inside a bike plan is sport "run". Sessions are running or cycling only: put anything else, such as swimming or strength, in the notes of that day's session.
 - target_intensity may include any of: pace (min/max seconds_per_km), power (min/max watts), hr (min/max bpm or {zone}), rpe (1-10).
 - If this isn't a training plan, set is_training_plan: false and leave the rest as empty defaults: title="", sport="run", mode="indefinite", goal=null, tentative_start_date=null, workouts=[].
 - Doubles (two-a-days): if a day has two distinct sessions (e.g. "AM: 8mi easy. PM: 3mi shakeout"), use the primary workout for the main session and populate \`secondary\` for the second. The primary workout's \`distance_meters\`/\`duration_seconds\` must be ONLY that first session's own numbers (8mi in the example) — never the combined day total (11mi) — since the UI sums primary + secondary for the displayed total automatically. Set \`secondary.distance_meters\` and/or \`secondary.duration_seconds\` to the second session's own numbers only, and put any description in \`secondary.notes\`. If the day has only one session, set \`secondary: null\`.

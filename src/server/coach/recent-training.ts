@@ -7,31 +7,17 @@ import type { SecondaryWorkout } from "@/server/db/schema";
 import { getActivitiesForDateRange } from "@/server/strava/date-queries";
 import { addDays, localDate } from "@/lib/dates";
 import { formatDistance, formatDuration, formatPace } from "@/lib/format";
+import { activitySport, type Sport } from "@/lib/activity-sport";
 
 export const RECENT_TRAINING_LOOKBACK_DAYS = 14;
 export const RECENT_TRAINING_LOOKAHEAD_DAYS = 7;
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
 
-const RUN_TYPES = new Set(["run", "virtualrun", "trailrun"]);
-const BIKE_TYPES = new Set(["ride", "virtualride", "ebikeride", "gravelride", "mountainbikeride"]);
-
 // Sessions whose shape matters to the next coaching decision. Easy and recovery
 // notes are left out to keep this block small.
-const DETAILED_WORKOUT_TYPES = new Set([
-  "tempo",
-  "threshold",
-  "intervals",
-  "long",
-  "race",
-  "cross",
-]);
+const DETAILED_WORKOUT_TYPES = new Set(["tempo", "threshold", "intervals", "long", "race"]);
 const SESSION_DETAIL_MAX_CHARS = 140;
-
-function matchesSport(activityType: string, sport: "run" | "bike"): boolean {
-  const t = activityType.toLowerCase();
-  return sport === "run" ? RUN_TYPES.has(t) : BIKE_TYPES.has(t);
-}
 
 function dayName(iso: string): string {
   return DAY_NAMES[new Date(`${iso}T12:00:00`).getDay()];
@@ -39,6 +25,7 @@ function dayName(iso: string): string {
 
 type PlannedRow = {
   date: string;
+  sport: "run" | "bike";
   type: string;
   distance_meters: string | null;
   duration_seconds: number | null;
@@ -87,6 +74,7 @@ export async function fetchRecentTraining(params: {
     db
       .select({
         date: workouts.date,
+        sport: workouts.sport,
         type: workouts.type,
         distance_meters: workouts.distance_meters,
         duration_seconds: workouts.duration_seconds,
@@ -107,6 +95,7 @@ export async function fetchRecentTraining(params: {
 
   const planned: PlannedRow[] = plannedRows.map((r) => ({
     date: r.date,
+    sport: r.sport,
     type: r.type,
     distance_meters: r.distance_meters,
     duration_seconds: r.duration_seconds,
@@ -150,6 +139,11 @@ function fmtPlanned(
   return parts.join(" ");
 }
 
+/** Names the sport only when it isn't the plan's, e.g. "bike easy" in a run plan. */
+function typeLabel(type: string, sport: string, planSport: string): string {
+  return sport === planSport ? type : `${sport} ${type}`;
+}
+
 function sessionDetail(type: string, notes: string): string | null {
   if (!DETAILED_WORKOUT_TYPES.has(type)) return null;
   const text = notes.replace(/\s+/g, " ").trim();
@@ -187,8 +181,9 @@ export function renderRecentTraining(rt: RecentTraining, units: "mi" | "km"): st
     actualByDate.set(a.date, arr);
   }
 
-  let plannedMeters = 0;
-  let actualMeters = 0;
+  // Kept per sport so a ride never inflates running volume, or the other way round.
+  const plannedMeters: Record<Sport, number> = { run: 0, bike: 0 };
+  const actualMeters: Record<Sport, number> = { run: 0, bike: 0 };
   const lines: string[] = [];
 
   for (let d = rt.from; d <= rt.lookahead_to; d = addDays(d, 1)) {
@@ -199,23 +194,25 @@ export function renderRecentTraining(rt: RecentTraining, units: "mi" | "km"): st
 
     let plannedText = "rest";
     if (p && p.type !== "rest") {
-      plannedText = fmtPlanned(p.type, p.distance_meters, p.duration_seconds, units);
+      const secSport = p.secondary?.sport ?? p.sport;
+      plannedText = fmtPlanned(
+        typeLabel(p.type, p.sport, rt.sport),
+        p.distance_meters,
+        p.duration_seconds,
+        units
+      );
       const detail = sessionDetail(p.type, p.notes);
       if (detail) plannedText += ` [${detail}]`;
       if (p.secondary) {
         const secMeters = p.secondary.distance_km != null ? p.secondary.distance_km * 1000 : null;
         const secSeconds =
           p.secondary.duration_minutes != null ? p.secondary.duration_minutes * 60 : null;
-        plannedText += ` + PM ${fmtPlanned(p.secondary.type, secMeters, secSeconds, units)}`;
+        plannedText += ` + PM ${fmtPlanned(typeLabel(p.secondary.type, secSport, rt.sport), secMeters, secSeconds, units)}`;
       }
       if (!isFuture) {
-        // Completed distance only counts the plan's own sport, so planned cross
-        // days must stay out of this total or the percentage reads falsely low.
-        if (p.type !== "cross" && p.distance_meters != null) {
-          plannedMeters += Number(p.distance_meters);
-        }
-        if (p.secondary?.distance_km != null && p.secondary.type !== "cross") {
-          plannedMeters += p.secondary.distance_km * 1000;
+        if (p.distance_meters != null) plannedMeters[p.sport] += Number(p.distance_meters);
+        if (p.secondary?.distance_km != null) {
+          plannedMeters[secSport] += p.secondary.distance_km * 1000;
         }
       }
     }
@@ -232,20 +229,32 @@ export function renderRecentTraining(rt: RecentTraining, units: "mi" | "km"): st
           : "none"
         : acts.map((a) => fmtActual(a, units)).join("; ");
     for (const a of acts) {
-      if (matchesSport(a.type, rt.sport)) actualMeters += a.distance_meters ?? 0;
+      const sport = activitySport(a.type);
+      if (sport) actualMeters[sport] += a.distance_meters ?? 0;
     }
     lines.push(`${label} | planned: ${plannedText} | actual: ${actualText}`);
   }
 
-  const pct = plannedMeters > 0 ? Math.round((actualMeters / plannedMeters) * 100) : null;
-  const summary =
-    `Last ${RECENT_TRAINING_LOOKBACK_DAYS} days (${rt.sport}): planned ${formatDistance(plannedMeters, units)} ${units}, ` +
-    `completed ${formatDistance(actualMeters, units)} ${units}` +
-    (pct != null ? ` (${pct}%)` : "");
+  const summary = (sport: Sport) => {
+    const planned = plannedMeters[sport];
+    const actual = actualMeters[sport];
+    const pct = planned > 0 ? Math.round((actual / planned) * 100) : null;
+    return (
+      `Last ${RECENT_TRAINING_LOOKBACK_DAYS} days (${sport}): planned ${formatDistance(planned, units)} ${units}, ` +
+      `completed ${formatDistance(actual, units)} ${units}` +
+      (pct != null ? ` (${pct}%)` : "")
+    );
+  };
+  // The plan's own sport always gets a line; the other only when there was any.
+  const otherSport: Sport = rt.sport === "run" ? "bike" : "run";
+  const summaries = [summary(rt.sport)];
+  if (plannedMeters[otherSport] > 0 || actualMeters[otherSport] > 0) {
+    summaries.push(summary(otherSport));
+  }
 
   return [
     `Recent training — planned vs actual for the last ${RECENT_TRAINING_LOOKBACK_DAYS} days, then the next ${RECENT_TRAINING_LOOKAHEAD_DAYS} days planned:`,
-    summary,
+    ...summaries,
     ...lines,
   ].join("\n");
 }

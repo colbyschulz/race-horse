@@ -32,7 +32,6 @@ const WorkoutTypeZ = z.enum([
   "recovery",
   "race",
   "rest",
-  "cross",
 ]);
 
 export const ExtractedPlanSchema = z.object({

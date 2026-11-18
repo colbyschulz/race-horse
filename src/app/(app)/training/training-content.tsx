@@ -84,6 +84,7 @@ export function TrainingContent() {
             units={prefs.units}
             timezone={prefs.timezone}
             planId={activePlan.id}
+            planSport={activePlan.sport}
           />
         </Suspense>
       </div>
@@ -98,9 +99,18 @@ interface WeekAgendaProps {
   units: "mi" | "km";
   timezone: string;
   planId: string;
+  planSport: string;
 }
 
-function WeekAgenda({ monday, sunday, today, units, timezone, planId }: WeekAgendaProps) {
+function WeekAgenda({
+  monday,
+  sunday,
+  today,
+  units,
+  timezone,
+  planId,
+  planSport,
+}: WeekAgendaProps) {
   const { data: workouts } = useWorkouts(monday, sunday);
   const { data: activities } = useActivities(monday, sunday);
 
@@ -119,6 +129,7 @@ function WeekAgenda({ monday, sunday, today, units, timezone, planId }: WeekAgen
         activitiesByDate={activitiesByDate}
         today={today}
         units={units}
+        planSport={planSport}
         isActivePlan={true}
         onDayClick={sheet.open}
       />

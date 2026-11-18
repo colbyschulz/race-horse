@@ -1,22 +1,13 @@
 "use client";
 
-import { WorkoutBadge, type WorkoutType } from "@/components/workouts/workout-badge";
+import { WorkoutBadge } from "@/components/workouts/workout-badge";
+import { SportIcon } from "@/components/workouts/sport-icon";
 import type { TargetIntensity } from "@/types/preferences";
 import { formatDistance, formatDuration, formatPaceRange } from "@/lib/format";
+import { secondarySport } from "@/lib/plan-stats";
+import { hasSportIcon, workoutHeadline } from "@/lib/workout-headline";
 import { useWorkouts } from "@/queries/workouts";
 import styles from "./today.module.scss";
-
-const TYPE_HEADLINE: Record<WorkoutType, string> = {
-  easy: "Easy Run",
-  long: "Long Run",
-  tempo: "Tempo Run",
-  threshold: "Threshold",
-  intervals: "Intervals",
-  recovery: "Recovery",
-  race: "Race Day",
-  rest: "Rest",
-  cross: "Cross Train",
-};
 
 export function HeroWorkout({ units, today }: { units: "mi" | "km"; today: string }) {
   const { data: workouts } = useWorkouts(today, today);
@@ -42,8 +33,11 @@ export function HeroWorkout({ units, today }: { units: "mi" | "km"; today: strin
     <article className={styles.hero}>
       <div className={styles.heroHead}>
         <WorkoutBadge type={workout.type} />
+        {hasSportIcon(workout.type) && (
+          <SportIcon type={workout.sport} className={styles.sportIcon} />
+        )}
       </div>
-      <h2 className={styles.headline}>{TYPE_HEADLINE[workout.type] ?? workout.type}</h2>
+      <h2 className={styles.headline}>{workoutHeadline(workout.type, workout.sport)}</h2>
       <div className={styles.statRow}>
         <div className={styles.stat}>
           <span className={styles.statValue}>
@@ -102,6 +96,9 @@ export function HeroWorkout({ units, today }: { units: "mi" | "km"; today: strin
           <div className={styles.heroSecondaryHead}>
             <span className={styles.lbl}>Second session</span>
             <WorkoutBadge type={secondary.type} size="sm" />
+            {hasSportIcon(secondary.type) && (
+              <SportIcon type={secondarySport(workout)} className={styles.sportIcon} />
+            )}
             {secStat && <span className={styles.heroSecondaryStat}>{secStat}</span>}
           </div>
           {secondary.notes && <p className={styles.description}>{secondary.notes}</p>}

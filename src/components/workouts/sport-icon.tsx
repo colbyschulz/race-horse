@@ -1,12 +1,13 @@
+import { activitySport } from "@/lib/activity-sport";
+
 interface Props {
+  /** A workout's sport ("run" or "bike") or a Strava activity type. */
   type: string;
   className?: string;
 }
 
 export function SportIcon({ type, className }: Props) {
-  const t = type.toLowerCase();
-
-  if (t === "bike" || t === "ride" || t === "virtualride" || t === "ebikeride") {
+  if (type.toLowerCase() === "bike" || activitySport(type) === "bike") {
     return (
       <svg
         viewBox="0 0 24 24"

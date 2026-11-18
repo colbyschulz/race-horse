@@ -28,6 +28,11 @@ describe("WorkoutDetailSheet", () => {
     expect(screen.getByText(/Saturday, April 25/)).toBeInTheDocument();
     expect(screen.getByText(/Hold steady tempo/)).toBeInTheDocument();
   });
+  it("titles a bike session as a ride", () => {
+    const ride = { ...(w as object), sport: "bike", type: "long" } as never;
+    render(<WorkoutDetailSheet workout={ride} planId="p1" units="mi" onClose={() => {}} />);
+    expect(screen.getByText("Long Ride")).toBeInTheDocument();
+  });
   it("calls onClose when backdrop clicked", () => {
     const onClose = vi.fn();
     render(<WorkoutDetailSheet workout={w} planId="p1" units="mi" onClose={onClose} />);

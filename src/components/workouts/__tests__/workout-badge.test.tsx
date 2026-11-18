@@ -13,7 +13,6 @@ describe("WorkoutBadge", () => {
       "recovery",
       "race",
       "rest",
-      "cross",
     ] as const;
     for (const t of types) {
       const { unmount } = render(<WorkoutBadge type={t} />);

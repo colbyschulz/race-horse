@@ -48,7 +48,6 @@ export const workoutTypeEnum = pgEnum("workout_type", [
   "recovery",
   "race",
   "rest",
-  "cross",
 ]);
 
 export const messageRoleEnum = pgEnum("message_role", ["user", "assistant"]);
@@ -84,16 +83,9 @@ export type IntervalSpec = {
 };
 
 export type SecondaryWorkout = {
-  type:
-    | "easy"
-    | "long"
-    | "tempo"
-    | "threshold"
-    | "intervals"
-    | "recovery"
-    | "race"
-    | "rest"
-    | "cross";
+  type: "easy" | "long" | "tempo" | "threshold" | "intervals" | "recovery" | "race" | "rest";
+  /** Set only when the second session is a different sport from the first. */
+  sport?: "run" | "bike";
   distance_km?: number;
   duration_minutes?: number;
   notes?: string;

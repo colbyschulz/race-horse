@@ -15,6 +15,7 @@ const base: RecentTraining = {
     // Mon Aug 24 — easy 8 km, done
     {
       date: "2026-08-24",
+      sport: "run" as const,
       type: "easy",
       distance_meters: "8000",
       duration_seconds: null,
@@ -24,6 +25,7 @@ const base: RecentTraining = {
     // Tue Aug 25 — intervals + PM double, missed entirely
     {
       date: "2026-08-25",
+      sport: "run" as const,
       type: "intervals",
       distance_meters: "10000",
       duration_seconds: null,
@@ -33,6 +35,7 @@ const base: RecentTraining = {
     // Sun Sep 6 — long run, came in short
     {
       date: "2026-09-06",
+      sport: "run" as const,
       type: "long",
       distance_meters: "30000",
       duration_seconds: null,
@@ -42,6 +45,7 @@ const base: RecentTraining = {
     // Tue Sep 8 — future
     {
       date: "2026-09-08",
+      sport: "run" as const,
       type: "tempo",
       distance_meters: "12000",
       duration_seconds: null,
@@ -89,8 +93,10 @@ describe("renderRecentTraining", () => {
     const out = renderRecentTraining(base, "km");
     const lines = out.split("\n");
 
-    // 15 past days + 7 future days, plus header + summary
-    expect(lines).toHaveLength(2 + 15 + 7);
+    // 15 past days + 7 future days, plus the header and a summary per sport
+    // (the unplanned Strava ride gives rides a line of their own).
+    expect(lines).toHaveLength(3 + 15 + 7);
+    expect(lines[2]).toBe("Last 14 days (bike): planned 0.0 km, completed 30.0 km");
 
     // Summary: planned 8 + 10 + 4 (double) + 30 = 52 km; completed runs 8.1 + 22 = 30.1 km
     expect(lines[1]).toContain("planned 52.0 km");
@@ -126,6 +132,7 @@ describe("renderRecentTraining", () => {
         planned: [
           {
             date: "2026-08-24",
+            sport: "run" as const,
             type: "easy",
             distance_meters: "8000",
             duration_seconds: null,
@@ -134,6 +141,7 @@ describe("renderRecentTraining", () => {
           },
           {
             date: "2026-08-25",
+            sport: "run" as const,
             type: "threshold",
             distance_meters: "12000",
             duration_seconds: null,
@@ -153,31 +161,59 @@ describe("renderRecentTraining", () => {
     expect(line).not.toContain("x".repeat(200));
   });
 
-  it("keeps planned cross days out of the completion percentage", () => {
-    const cross = (date: string) => ({
-      date,
-      type: "cross",
-      distance_meters: "160000",
+  it("names a planned ride in a run plan and keeps it out of the completion percentage", () => {
+    const ride = {
+      date: "2026-08-29",
+      sport: "bike" as const,
+      type: "long",
+      distance_meters: "100000",
       duration_seconds: null,
-      notes: "Long ride",
+      notes: "Steady endurance",
       secondary: null,
-    });
-    const crossSecondary = {
+    };
+    const runThenSpin = {
       date: "2026-08-26",
+      sport: "run" as const,
       type: "easy",
       distance_meters: "5000",
       duration_seconds: null,
       notes: "",
-      secondary: { type: "cross" as const, distance_km: 40 },
+      secondary: { type: "easy" as const, sport: "bike" as const, distance_km: 20 },
     };
     const out = renderRecentTraining(
-      { ...base, planned: [...base.planned, cross("2026-08-29"), crossSecondary] },
+      { ...base, planned: [...base.planned, ride, runThenSpin] },
       "km"
     );
 
-    // The base 52 km plus the 5 km easy run; the ride and the PM cross session don't count.
+    // The base 52 km plus the 5 km easy run; neither ride counts as running.
     expect(out.split("\n")[1]).toContain("planned 57.0 km");
-    expect(out).toContain("2026-08-29 Sat | planned: cross 160.0 km [Long ride]");
+    expect(out).toContain("2026-08-29 Sat | planned: bike long 100.0 km [Steady endurance]");
+    expect(out).toContain("2026-08-26 Wed | planned: easy 5.0 km + PM bike easy 20.0 km");
+  });
+
+  it("counts a walk or swim toward neither sport, and gives no ride line without rides", () => {
+    const out = renderRecentTraining(
+      {
+        ...base,
+        actual: [
+          ...base.actual.filter((a) => a.type !== "Ride"),
+          {
+            date: "2026-08-28",
+            name: "Dog walk",
+            type: "Walk",
+            distance_meters: 6000,
+            moving_time_seconds: 4000,
+            avg_pace_seconds_per_km: null,
+            avg_hr: 95,
+            matched: false,
+          },
+        ],
+      },
+      "km"
+    );
+    const [, runSummary, next] = out.split("\n");
+    expect(runSummary).toContain("completed 30.1 km");
+    expect(next).not.toContain("(bike)");
   });
 
   it("omits the percentage when nothing was planned", () => {

@@ -20,13 +20,21 @@ function calendarWeeks(startIso: string, endIso: string | null): number {
 interface Props {
   workouts: WorkoutRow[];
   units: "mi" | "km";
+  planSport: string;
   planStartDate: string;
   planEndDate: string | null;
   today: string;
 }
 
-export function PlanStats({ workouts, units, planStartDate, planEndDate, today }: Props) {
-  const s = computePlanStats(workouts, units);
+export function PlanStats({
+  workouts,
+  units,
+  planSport,
+  planStartDate,
+  planEndDate,
+  today,
+}: Props) {
+  const s = computePlanStats(workouts, units, planSport);
   const weeks = calendarWeeks(planStartDate, planEndDate);
   const weeksLeft = computeWeeksLeft(planEndDate, today);
   return (
@@ -40,7 +48,7 @@ export function PlanStats({ workouts, units, planStartDate, planEndDate, today }
         sub={s.peakWeek ? fmtDate(s.peakWeek.mondayIso) : undefined}
       />
       <Stat
-        label="Longest run"
+        label={planSport === "bike" ? "Longest ride" : "Longest run"}
         value={s.longestRun ? s.longestRun.distance.toFixed(1) : "—"}
         unit={s.longestRun ? units : undefined}
         sub={s.longestRun ? fmtDate(s.longestRun.dateIso) : undefined}

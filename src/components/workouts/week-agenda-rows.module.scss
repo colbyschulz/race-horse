@@ -12,6 +12,16 @@
   margin-top: var(--space-2);
 }
 
+.sportTotal {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+
+  & + & {
+    margin-top: var(--space-2);
+  }
+}
+
 .totalRow {
   display: flex;
   align-items: baseline;

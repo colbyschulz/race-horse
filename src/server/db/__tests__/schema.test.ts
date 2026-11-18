@@ -181,7 +181,7 @@ describe("enums", () => {
   it("planModeEnum declares goal and indefinite", () => {
     expect(planModeEnum.enumValues).toEqual(["goal", "indefinite"]);
   });
-  it("workoutTypeEnum declares the 9 types", () => {
+  it("workoutTypeEnum declares the 8 types", () => {
     expect(workoutTypeEnum.enumValues).toEqual([
       "easy",
       "long",
@@ -191,7 +191,6 @@ describe("enums", () => {
       "recovery",
       "race",
       "rest",
-      "cross",
     ]);
   });
 });

@@ -139,6 +139,7 @@ describe("get_active_plan_handler", () => {
       id: "w1",
       plan_id: PLAN_ID,
       date: "2026-06-03",
+      sport: "run",
       type: "easy",
       distance_meters: "8000",
       duration_seconds: null,
@@ -263,6 +264,7 @@ describe("get_plan_handler", () => {
       id: "w1",
       plan_id: PLAN_ID,
       date: "2026-06-03",
+      sport: "run",
       type: "easy",
       distance_meters: "8000",
       duration_seconds: null,
@@ -284,6 +286,39 @@ describe("get_plan_handler", () => {
     // 8km primary + 3km secondary = 11km, not just the primary's 8km.
     expect(result.weekly_totals).toEqual([
       { week_start: "2026-06-01", total_mi: 6.8, total_km: 11 },
+    ]);
+  });
+
+  it("reports ride distance apart from a run plan's weekly total", async () => {
+    vi.mocked(getPlanById).mockResolvedValue(makePlan() as never);
+    const row = (date: string, sport: string, meters: string, secondary: unknown = null) => ({
+      id: `w-${date}`,
+      plan_id: PLAN_ID,
+      date,
+      sport,
+      type: "easy",
+      distance_meters: meters,
+      duration_seconds: null,
+      notes: "",
+      secondary,
+    });
+    mockSelect.mockReturnValue({
+      from: vi.fn().mockReturnThis(),
+      where: vi.fn().mockReturnThis(),
+      orderBy: vi.fn().mockResolvedValue([
+        // Week 1: a run with a PM spin, and a long ride.
+        row("2026-06-03", "run", "10000", { type: "easy", sport: "bike", distance_km: 20 }),
+        row("2026-06-06", "bike", "80000"),
+        // Week 2: runs only.
+        row("2026-06-09", "run", "12000"),
+      ]),
+    });
+
+    const result = await get_plan_handler({ plan_id: PLAN_ID }, ctx);
+
+    expect(result.weekly_totals).toEqual([
+      { week_start: "2026-06-01", total_mi: 6.2, total_km: 10, bike_mi: 62.1, bike_km: 100 },
+      { week_start: "2026-06-08", total_mi: 7.5, total_km: 12 },
     ]);
   });
 
@@ -405,7 +440,7 @@ describe("update_workouts_handler", () => {
       deleted: 0,
       week_number: undefined,
       total_weeks: undefined,
-      days: [{ date: "2026-03-01", day: "Sun", type: "easy", secondary: null }],
+      days: [{ date: "2026-03-01", day: "Sun", sport: "run", type: "easy", secondary: null }],
     });
   });
 
@@ -418,6 +453,7 @@ describe("update_workouts_handler", () => {
         id: "w1",
         plan_id: PLAN_ID,
         date: "2026-03-01",
+        sport: "run",
         type: "intervals",
         secondary: existingSecondary,
       },
@@ -439,6 +475,85 @@ describe("update_workouts_handler", () => {
     expect(result.days[0]).toMatchObject({ type: "tempo", secondary: "easy" });
   });
 
+  it("writes the plan's sport by default and the workout's own sport when given", async () => {
+    const plan = makePlan();
+    vi.mocked(getPlanById).mockResolvedValue(plan as never);
+    const { insertValues } = wireWriteMocks([]);
+
+    const result = await update_workouts_handler(
+      {
+        plan_id: PLAN_ID,
+        operations: [
+          { op: "upsert", date: "2026-03-01", workout: { type: "easy", distance_km: 8 } },
+          {
+            op: "upsert",
+            date: "2026-03-02",
+            workout: { type: "long", sport: "bike", distance_km: 80 },
+            // A PM run after the ride differs from the primary, so it is stored;
+            // a second ride matches it, so it would not be.
+            secondary: { type: "easy", sport: "run", distance_km: 5 },
+          },
+          {
+            op: "upsert",
+            date: "2026-03-03",
+            workout: { type: "easy", sport: "bike" },
+            secondary: { type: "recovery", sport: "bike" },
+          },
+        ],
+      },
+      ctx
+    );
+
+    expect(insertValues).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ date: "2026-03-01", sport: "run" })
+    );
+    expect(insertValues).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        date: "2026-03-02",
+        sport: "bike",
+        type: "long",
+        secondary: expect.objectContaining({ type: "easy", sport: "run" }),
+      })
+    );
+    expect(insertValues.mock.calls[2][0].secondary).not.toHaveProperty("sport");
+    expect(result.days.map((d) => d.sport)).toEqual(["run", "bike", "bike"]);
+  });
+
+  it("keeps a kept second session's sport true when the primary changes sport", async () => {
+    const plan = makePlan();
+    vi.mocked(getPlanById).mockResolvedValue(plan as never);
+    // A run day with a PM run (no stored sport: it matched the primary).
+    const { insertValues } = wireWriteMocks([
+      {
+        id: "w1",
+        plan_id: PLAN_ID,
+        date: "2026-03-01",
+        sport: "run",
+        type: "easy",
+        secondary: { type: "easy", distance_km: 5 },
+      },
+    ]);
+
+    await update_workouts_handler(
+      {
+        plan_id: PLAN_ID,
+        operations: [
+          { op: "upsert", date: "2026-03-01", workout: { type: "easy", sport: "bike" } },
+        ],
+      },
+      ctx
+    );
+
+    expect(insertValues).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sport: "bike",
+        secondary: { type: "easy", distance_km: 5, sport: "run" },
+      })
+    );
+  });
+
   it("removes the second session when the upsert passes `secondary: null`", async () => {
     const plan = makePlan();
     vi.mocked(getPlanById).mockResolvedValue(plan as never);
@@ -447,6 +562,7 @@ describe("update_workouts_handler", () => {
         id: "w1",
         plan_id: PLAN_ID,
         date: "2026-03-01",
+        sport: "run",
         type: "intervals",
         secondary: { type: "easy", distance_km: 5 },
       },
@@ -469,7 +585,7 @@ describe("update_workouts_handler", () => {
     const plan = makePlan();
     vi.mocked(getPlanById).mockResolvedValue(plan as never);
     const { updateSet } = wireWriteMocks([
-      { id: "w1", plan_id: PLAN_ID, date: "2026-03-01", type: "intervals", secondary: null },
+      { id: "w1", plan_id: PLAN_ID, date: "2026-03-01", sport: "run", type: "intervals", secondary: null },
     ]);
 
     const result = await update_workouts_handler(

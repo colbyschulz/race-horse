@@ -8,19 +8,10 @@ import type { TargetIntensity } from "@/types/preferences";
 import { Button } from "@/components/button/button";
 import { formatDistance, formatDuration, formatPaceRange } from "@/lib/format";
 import { useBodyLock } from "@/lib/use-body-lock";
+import { secondarySport } from "@/lib/plan-stats";
+import { hasSportIcon, workoutHeadline } from "@/lib/workout-headline";
+import { SportIcon } from "./sport-icon";
 import styles from "./workout-detail-sheet.module.scss";
-
-const TYPE_HEADLINE: Record<string, string> = {
-  easy: "Easy Run",
-  long: "Long Run",
-  tempo: "Tempo Run",
-  threshold: "Threshold",
-  intervals: "Intervals",
-  recovery: "Recovery",
-  race: "Race Day",
-  rest: "Rest",
-  cross: "Cross Train",
-};
 
 interface Props {
   workout: WorkoutRow | null;
@@ -48,7 +39,7 @@ export function WorkoutDetailSheet({ workout, planId = "", units, onClose }: Pro
   const t = hasNotes
     ? ({} as TargetIntensity)
     : ((workout.target_intensity ?? {}) as TargetIntensity);
-  const headline = TYPE_HEADLINE[workout.type] ?? workout.type;
+  const headline = workoutHeadline(workout.type, workout.sport);
   const coachHref = `/coach?from=${encodeURIComponent(`/plans/${planId}`)}&from_label=${encodeURIComponent(`${headline} — ${workout.date}`)}`;
   const paceText = t.pace ? formatPaceRange(t.pace, units) : null;
 
@@ -69,7 +60,12 @@ export function WorkoutDetailSheet({ workout, planId = "", units, onClose }: Pro
         className={styles.sheet}
       >
         <div className={styles.header}>
-          <WorkoutBadge type={workout.type} />
+          <div className={styles.badgeRow}>
+            <WorkoutBadge type={workout.type} />
+            {hasSportIcon(workout.type) && (
+              <SportIcon type={workout.sport} className={styles.sportIcon} />
+            )}
+          </div>
           <h2 className={styles.headline}>{headline}</h2>
           <p className={styles.day}>{formatLongDate(workout.date)}</p>
         </div>
@@ -135,6 +131,9 @@ export function WorkoutDetailSheet({ workout, planId = "", units, onClose }: Pro
             <div className={styles.secondaryHead}>
               <span className={styles.h3}>Second session</span>
               <WorkoutBadge type={secondary.type} size="sm" />
+              {hasSportIcon(secondary.type) && (
+                <SportIcon type={secondarySport(workout)} className={styles.sportIcon} />
+              )}
             </div>
             <div className={styles.statRow}>
               <div className={styles.stat}>

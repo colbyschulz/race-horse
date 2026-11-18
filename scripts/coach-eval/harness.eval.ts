@@ -20,6 +20,7 @@ import { renderRecentTraining as renderNew } from "@/server/coach/recent-trainin
 import { renderRecentTraining as renderOld } from "./baseline/recent-training";
 import { renderContextPrefix } from "@/server/coach/context";
 import { getTools, getColdStartTools } from "@/server/coach/tools/index";
+import { dayMeters } from "@/lib/plan-stats";
 import { FIXTURES, TODAY, addDays, dayName } from "./fixtures";
 import { SCENARIOS, PAIR_RUBRIC, CHAT_ARMS, BUILD_ARMS } from "./scenarios";
 
@@ -103,12 +104,13 @@ function getClient() {
 
 // ---------- Fake tool backend ----------
 
-function mapWorkout(w) {
+function mapWorkout(w, planSport) {
   const m = w.distance_meters != null ? parseFloat(w.distance_meters) : null;
   return {
     id: w.id,
     date: w.date,
     day: dayName(w.date),
+    sport: w.sport ?? planSport,
     type: w.type,
     distance_mi: m != null ? Math.round((m / 1609.344) * 10) / 10 : null,
     distance_km: m != null ? Math.round((m / 1000) * 10) / 10 : null,
@@ -118,21 +120,30 @@ function mapWorkout(w) {
   };
 }
 
-function weeklyTotals(rows) {
+// Mirrors the real tool: total_* is the plan's sport, the other sport is separate.
+function weeklyTotals(rows, planSport) {
+  const other = planSport === "run" ? "bike" : "run";
   const totals = {};
+  const otherTotals = {};
   for (const w of rows) {
-    let m = w.distance_meters != null ? parseFloat(w.distance_meters) : 0;
-    if (w.secondary?.distance_km != null) m += w.secondary.distance_km * 1000;
+    const row = { ...w, sport: w.sport ?? planSport };
     const d = new Date(`${w.date}T12:00:00Z`);
     const mon = addDays(w.date, -((d.getUTCDay() + 6) % 7));
-    totals[mon] = (totals[mon] ?? 0) + m;
+    totals[mon] = (totals[mon] ?? 0) + dayMeters(row, planSport);
+    const o = dayMeters(row, other);
+    if (o > 0) otherTotals[mon] = (otherTotals[mon] ?? 0) + o;
   }
+  const mi = (m) => Math.round((m / 1609.344) * 10) / 10;
+  const km = (m) => Math.round((m / 1000) * 10) / 10;
   return Object.entries(totals)
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([week_start, m]) => ({
       week_start,
-      total_mi: Math.round((m / 1609.344) * 10) / 10,
-      total_km: Math.round((m / 1000) * 10) / 10,
+      total_mi: mi(m),
+      total_km: km(m),
+      ...(otherTotals[week_start]
+        ? { [`${other}_mi`]: mi(otherTotals[week_start]), [`${other}_km`]: km(otherTotals[week_start]) }
+        : {}),
     }));
 }
 
@@ -142,8 +153,8 @@ function readPlan(store, input) {
   const inWindow = store.workouts.filter((w) => (!from || w.date >= from) && (!to || w.date <= to));
   return {
     plan: store.plan,
-    workouts: inWindow.map(mapWorkout),
-    weekly_totals: weeklyTotals(store.workouts),
+    workouts: inWindow.map((w) => mapWorkout(w, store.plan.sport)),
+    weekly_totals: weeklyTotals(store.workouts, store.plan.sport),
     window: {
       from,
       to,
@@ -193,6 +204,7 @@ function runTool(store, name, input) {
             id: `w-${op.date}`,
             plan_id: store.plan.id,
             date: op.date,
+            sport: op.workout.sport ?? store.plan.sport,
             type: op.workout.type,
             distance_meters: op.workout.distance_km != null ? String(op.workout.distance_km * 1000) : null,
             duration_seconds: op.workout.duration_minutes != null ? op.workout.duration_minutes * 60 : null,
@@ -320,6 +332,7 @@ function contextFor(store, arm, scenario, { firstTurn }) {
         .filter((w) => w.date >= from && w.date <= lookahead)
         .map((w) => ({
           date: w.date,
+          sport: w.sport ?? store.plan.sport,
           type: w.type,
           distance_meters: w.distance_meters,
           duration_seconds: w.duration_seconds,

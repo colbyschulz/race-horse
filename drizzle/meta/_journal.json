@@ -78,6 +78,13 @@
       "when": 1793065068531,
       "tag": "0010_coach_turns",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1795009650179,
+      "tag": "0011_remove_cross_type",
+      "breakpoints": true
     }
   ]
 }

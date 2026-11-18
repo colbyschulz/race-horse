@@ -13,6 +13,7 @@ import {
   archivePlan,
 } from "@/server/plans/queries";
 import { addDays } from "@/lib/dates";
+import { dayMeters } from "@/lib/plan-stats";
 import type { ToolHandler } from "../types";
 
 type Tool = Anthropic.Messages.Tool;
@@ -31,12 +32,18 @@ const WORKOUT_TYPES = [
   "recovery",
   "race",
   "rest",
-  "cross",
 ] as const;
+
+const SPORTS = ["run", "bike"] as const;
+type WorkoutSport = (typeof SPORTS)[number];
+
+const SPORT_DESCRIPTION =
+  "Sport of THIS session. Omit it for the plan's own sport. Set it when the session is the other sport: a ride in a run plan is sport 'bike' with its real type (easy, long, tempo, …), and a run in a bike plan is sport 'run'.";
 
 const WINDOW_DESCRIPTION =
   `Optional YYYY-MM-DD bounds for the workouts returned. Omit both to get the default window (${PLAN_READ_LOOKBACK_DAYS} days back through ${PLAN_READ_LOOKAHEAD_DAYS} days ahead of today). ` +
-  `Weekly totals for the WHOLE plan are always returned regardless of the window, so widen the window only for the weeks you intend to read or edit.`;
+  `Weekly totals for the WHOLE plan are always returned regardless of the window, so widen the window only for the weeks you intend to read or edit. ` +
+  `Weekly total_mi/total_km count the plan's own sport only. Distance in the other sport is reported separately as bike_mi/bike_km (run plans) or run_mi/run_km (bike plans), only for weeks that have some.`;
 
 // ---------------------------------------------------------------------------
 // Tool definitions
@@ -130,6 +137,12 @@ const SECONDARY_SCHEMA = {
     "Second session on the same day (doubles — e.g. PM shakeout after AM intervals). Rendered as its own row; the day's displayed total is primary + secondary, computed automatically.",
   properties: {
     type: { type: "string", enum: [...WORKOUT_TYPES] },
+    sport: {
+      type: "string",
+      enum: [...SPORTS],
+      description:
+        "Sport of this second session. Omit it when it matches the day's primary session; set it for a different one, e.g. a PM spin after an AM run.",
+    },
     distance_km: {
       type: "number",
       description: "Distance for this second session only — not the combined day total.",
@@ -143,7 +156,7 @@ const SECONDARY_SCHEMA = {
 export const updateWorkoutsTool: Tool = {
   name: "update_workouts",
   description:
-    "Upserts or deletes workouts within a plan by date. Operations: `upsert` replaces the day's primary session (omit `secondary` to KEEP an existing second session, pass `secondary: null` to remove it, or pass an object to set it); `set_secondary` changes only the second session on a day that already has a primary; `delete` removes the whole day. During cold-start plan builds, call once per week and set week_number + total_weeks so the user sees per-week progress. The result echoes each written date with its day-of-week — check it.",
+    "Upserts or deletes workouts within a plan by date. Operations: `upsert` replaces the day's primary session (omit `secondary` to KEEP an existing second session, pass `secondary: null` to remove it, or pass an object to set it); `set_secondary` changes only the second session on a day that already has a primary; `delete` removes the whole day. An upsert that omits `sport` writes the plan's own sport, so pass it again when rewriting a session in the other sport. During cold-start plan builds, call once per week and set week_number + total_weeks so the user sees per-week progress. The result echoes each written date with its day-of-week — check it.",
   input_schema: {
     type: "object" as const,
     properties: {
@@ -175,8 +188,9 @@ export const updateWorkoutsTool: Tool = {
                       type: "string",
                       enum: [...WORKOUT_TYPES],
                       description:
-                        "Workout type. Use 'cross' for cross-training (cycling, swimming, etc.) within a run or bike plan — never remove a cross-training day just because it differs from the plan sport.",
+                        "Workout type. A ride in a run plan, or a run in a bike plan, keeps its real type and sets `sport`.",
                     },
+                    sport: { type: "string", enum: [...SPORTS], description: SPORT_DESCRIPTION },
                     distance_km: {
                       type: "number",
                       description:
@@ -294,6 +308,7 @@ function mapWorkout(w: typeof workouts.$inferSelect) {
     id: w.id,
     date: w.date,
     day: dayName(w.date),
+    sport: w.sport,
     type: w.type,
     distance_mi: m != null ? Math.round((m / 1609.344) * 10) / 10 : null,
     distance_km: m != null ? Math.round((m / 1000) * 10) / 10 : null,
@@ -304,27 +319,51 @@ function mapWorkout(w: typeof workouts.$inferSelect) {
 }
 
 function computeWeeklyTotals(
-  rows: Pick<typeof workouts.$inferSelect, "date" | "distance_meters" | "secondary">[]
-): { week_start: string; total_mi: number; total_km: number }[] {
+  rows: Pick<typeof workouts.$inferSelect, "date" | "sport" | "distance_meters" | "secondary">[],
+  planSport: WorkoutSport
+): WeeklyTotal[] {
+  const otherSport: WorkoutSport = planSport === "run" ? "bike" : "run";
   const weekTotals: Record<string, number> = {};
+  const otherTotals: Record<string, number> = {};
   for (const w of rows) {
-    let meters = w.distance_meters != null ? parseFloat(w.distance_meters) : 0;
-    if (w.secondary?.distance_km != null) meters += w.secondary.distance_km * 1000;
+    // Each sport is totalled on its own, so a ride never inflates running
+    // volume. total_* is the plan's sport, the same rule the athlete's week
+    // total uses.
+    const meters = dayMeters(w, planSport);
+    const otherMeters = dayMeters(w, otherSport);
     const d = new Date(`${w.date}T12:00:00`);
     const daysToMon = (d.getDay() + 6) % 7;
     const mon = new Date(d);
     mon.setDate(d.getDate() - daysToMon);
     const key = mon.toISOString().slice(0, 10);
     weekTotals[key] = (weekTotals[key] ?? 0) + meters;
+    if (otherMeters > 0) otherTotals[key] = (otherTotals[key] ?? 0) + otherMeters;
   }
+  const mi = (m: number) => Math.round((m / 1609.344) * 10) / 10;
+  const km = (m: number) => Math.round((m / 1000) * 10) / 10;
   return Object.entries(weekTotals)
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([week_start, meters]) => ({
-      week_start,
-      total_mi: Math.round((meters / 1609.344) * 10) / 10,
-      total_km: Math.round((meters / 1000) * 10) / 10,
-    }));
+    .map(([week_start, meters]) => {
+      const other = otherTotals[week_start];
+      return {
+        week_start,
+        total_mi: mi(meters),
+        total_km: km(meters),
+        ...(other ? { [`${otherSport}_mi`]: mi(other), [`${otherSport}_km`]: km(other) } : {}),
+      };
+    });
 }
+
+/** total_* is the plan's own sport; the other sport's distance, when there is any, is separate. */
+export type WeeklyTotal = {
+  week_start: string;
+  total_mi: number;
+  total_km: number;
+  bike_mi?: number;
+  bike_km?: number;
+  run_mi?: number;
+  run_km?: number;
+};
 
 type ReadWindow = {
   from: string | null;
@@ -355,6 +394,7 @@ function resolveWindow(
 
 async function readPlanWorkouts(
   planId: string,
+  planSport: WorkoutSport,
   window: { from: string | null; to: string | null }
 ): Promise<{
   workouts: ReturnType<typeof mapWorkout>[];
@@ -379,7 +419,7 @@ async function readPlanWorkouts(
 
   return {
     workouts: inWindow.map(mapWorkout),
-    weekly_totals: computeWeeklyTotals(all),
+    weekly_totals: computeWeeklyTotals(all, planSport),
     window: {
       from: window.from,
       to: window.to,
@@ -395,7 +435,7 @@ export const get_active_plan_handler: ToolHandler<
   {
     plan: typeof plans.$inferSelect | null;
     workouts: ReturnType<typeof mapWorkout>[];
-    weekly_totals: { week_start: string; total_mi: number; total_km: number }[];
+    weekly_totals: WeeklyTotal[];
     window?: ReadWindow;
   }
 > = async (input, { userId, today }) => {
@@ -410,7 +450,7 @@ export const get_active_plan_handler: ToolHandler<
     return { plan: null, workouts: [], weekly_totals: [] };
   }
 
-  const read = await readPlanWorkouts(plan.id, resolveWindow(input ?? {}, today));
+  const read = await readPlanWorkouts(plan.id, plan.sport, resolveWindow(input ?? {}, today));
   return { plan, ...read };
 };
 
@@ -427,7 +467,7 @@ export const get_plan_handler: ToolHandler<
   {
     plan: typeof plans.$inferSelect;
     workouts: ReturnType<typeof mapWorkout>[];
-    weekly_totals: { week_start: string; total_mi: number; total_km: number }[];
+    weekly_totals: WeeklyTotal[];
     window: ReadWindow;
   }
 > = async (input, { userId, today }) => {
@@ -436,7 +476,7 @@ export const get_plan_handler: ToolHandler<
     throw new Error("plan not found or not owned");
   }
 
-  const read = await readPlanWorkouts(input.plan_id, resolveWindow(input, today));
+  const read = await readPlanWorkouts(input.plan_id, plan.sport, resolveWindow(input, today));
   return { plan, ...read };
 };
 
@@ -476,6 +516,7 @@ export const create_plan_handler: ToolHandler<
 
 type SecondaryInput = {
   type: string;
+  sport?: string;
   distance_km?: number;
   duration_minutes?: number;
   notes?: string;
@@ -486,6 +527,7 @@ type UpsertOp = {
   date: string;
   workout: {
     type: string;
+    sport?: string;
     distance_km?: number;
     duration_minutes?: number;
     notes?: string;
@@ -507,14 +549,43 @@ type DeleteOp = {
 
 type WorkoutOperation = UpsertOp | SetSecondaryOp | DeleteOp;
 
-function toSecondary(input: SecondaryInput | null | undefined): SecondaryWorkout | null {
+function isSport(value: unknown): value is WorkoutSport {
+  return SPORTS.includes(value as WorkoutSport);
+}
+
+/**
+ * `primarySport` is the sport of the day's first session. The second session
+ * stores its own sport only when it differs, so a day whose primary later
+ * changes sport doesn't leave a stale copy behind.
+ */
+function toSecondary(
+  input: SecondaryInput | null | undefined,
+  primarySport: WorkoutSport
+): SecondaryWorkout | null {
   if (!input) return null;
   return {
     type: input.type as SecondaryWorkout["type"],
+    ...(isSport(input.sport) && input.sport !== primarySport ? { sport: input.sport } : {}),
     distance_km: input.distance_km,
     duration_minutes: input.duration_minutes,
     notes: input.notes,
   };
+}
+
+/**
+ * The second session an upsert leaves in place. Its sport was stored relative
+ * to the old primary, so it is re-expressed against the new one: a PM run kept
+ * under a primary that changes from run to bike must still read as a run.
+ */
+function keptSecondary(
+  existing: typeof workouts.$inferSelect | null,
+  primarySport: WorkoutSport
+): SecondaryWorkout | null {
+  const kept = (existing?.secondary as SecondaryWorkout | null | undefined) ?? null;
+  if (!existing || !kept) return null;
+  const { sport: storedSport, ...rest } = kept;
+  const actualSport = storedSport ?? existing.sport;
+  return actualSport === primarySport ? rest : { ...rest, sport: actualSport };
 }
 
 export const update_workouts_handler: ToolHandler<
@@ -529,7 +600,7 @@ export const update_workouts_handler: ToolHandler<
     deleted: number;
     week_number?: number;
     total_weeks?: number;
-    days: { date: string; day: string; type: string; secondary?: string | null }[];
+    days: { date: string; day: string; sport: string; type: string; secondary?: string | null }[];
     warnings?: string[];
   }
 > = async ({ plan_id, operations, week_number, total_weeks }, { userId }) => {
@@ -540,7 +611,13 @@ export const update_workouts_handler: ToolHandler<
 
   let upserted = 0;
   let deleted = 0;
-  const days: { date: string; day: string; type: string; secondary?: string | null }[] = [];
+  const days: {
+    date: string;
+    day: string;
+    sport: string;
+    type: string;
+    secondary?: string | null;
+  }[] = [];
   const warnings: string[] = [];
 
   for (const op of operations) {
@@ -572,7 +649,7 @@ export const update_workouts_handler: ToolHandler<
         );
         continue;
       }
-      const secondary = toSecondary(op.secondary);
+      const secondary = toSecondary(op.secondary, existing.sport);
       await db
         .update(workouts)
         .set({ secondary })
@@ -581,6 +658,7 @@ export const update_workouts_handler: ToolHandler<
       days.push({
         date: op.date,
         day: dayName(op.date),
+        sport: existing.sport,
         type: existing.type,
         secondary: secondary?.type ?? null,
       });
@@ -588,11 +666,13 @@ export const update_workouts_handler: ToolHandler<
     }
 
     if (op.op === "upsert") {
+      const sport = isSport(op.workout.sport) ? op.workout.sport : plan.sport;
+
       // undefined → keep what's there; null → remove; object → replace.
       const secondary: SecondaryWorkout | null =
         op.secondary === undefined
-          ? ((existing?.secondary as SecondaryWorkout | null | undefined) ?? null)
-          : toSecondary(op.secondary);
+          ? keptSecondary(existing, sport)
+          : toSecondary(op.secondary, sport);
 
       // No unique constraint on (plan_id, date) — use delete + insert.
       await db
@@ -602,7 +682,7 @@ export const update_workouts_handler: ToolHandler<
       await db.insert(workouts).values({
         plan_id,
         date: op.date,
-        sport: plan.sport,
+        sport,
         type: op.workout.type as (typeof workouts.$inferInsert)["type"],
         distance_meters:
           op.workout.distance_km != null ? String(op.workout.distance_km * 1000) : null,
@@ -617,6 +697,7 @@ export const update_workouts_handler: ToolHandler<
       days.push({
         date: op.date,
         day: dayName(op.date),
+        sport,
         type: op.workout.type,
         secondary: secondary?.type ?? null,
       });

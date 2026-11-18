@@ -8,8 +8,7 @@ export type WorkoutType =
   | "intervals"
   | "recovery"
   | "race"
-  | "rest"
-  | "cross";
+  | "rest";
 
 const LABELS: Record<WorkoutType, string> = {
   easy: "Easy",
@@ -20,7 +19,6 @@ const LABELS: Record<WorkoutType, string> = {
   recovery: "Recovery",
   race: "Race",
   rest: "Rest",
-  cross: "Cross",
 };
 
 interface Props {

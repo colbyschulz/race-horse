@@ -13,8 +13,7 @@ type WorkoutType =
   | "intervals"
   | "recovery"
   | "race"
-  | "rest"
-  | "cross";
+  | "rest";
 
 export type ExtractedWorkout = {
   day_offset: number;

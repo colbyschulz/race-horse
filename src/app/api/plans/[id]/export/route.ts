@@ -69,7 +69,14 @@ export async function GET(_req: Request, ctx: Ctx): Promise<NextResponse | Respo
       lastWeek = weekNum;
     }
 
-    const details = [w.type, fmtMeters(w.distance_meters), fmtSeconds(w.duration_seconds)]
+    // Name the sport only where it isn't the plan's, e.g. "bike easy" in a run plan.
+    const typeLabel = (type: string, sport: string) =>
+      sport === plan.sport ? type : `${sport} ${type}`;
+    const details = [
+      typeLabel(w.type, w.sport),
+      fmtMeters(w.distance_meters),
+      fmtSeconds(w.duration_seconds),
+    ]
       .filter(Boolean)
       .join(" — ");
     lines.push(`**${fmtDate(w.date)}** — ${details}`);
@@ -77,7 +84,7 @@ export async function GET(_req: Request, ctx: Ctx): Promise<NextResponse | Respo
     if (w.secondary) {
       const sec = w.secondary;
       const secDetails = [
-        sec.type,
+        typeLabel(sec.type, sec.sport ?? w.sport),
         sec.distance_km != null ? fmtMeters(sec.distance_km * 1000) : null,
         sec.duration_minutes != null ? fmtSeconds(sec.duration_minutes * 60) : null,
       ]
