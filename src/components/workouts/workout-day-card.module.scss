@@ -7,8 +7,12 @@
   // The workout-type badge is the only carrier of type color on the card.
 }
 
+// Today keeps the normal surface and takes a brown outline. A tinted fill
+// sank into the page background, which is nearly the same color. The extra
+// 0.5px sits in a shadow ring so the card's content doesn't shift.
 .cardToday {
-  background: var(--color-brown-subtle);
+  border-color: var(--color-brown);
+  box-shadow: 0 0 0 0.5px var(--color-brown);
 }
 
 // Hover: a clear tint plus a brown border. Pointer devices only — on touch,
@@ -20,8 +24,8 @@
   }
 
   .cardToday:has(.dayBtn:not(:disabled):hover) {
-    background: color-mix(in srgb, var(--color-brown) 13%, var(--color-bg-surface));
-    border-color: color-mix(in srgb, var(--color-brown) 45%, var(--color-border-subtle));
+    border-color: var(--color-brown-hover);
+    box-shadow: 0 0 0 0.5px var(--color-brown-hover);
   }
 }
 
