@@ -8,11 +8,25 @@
 }
 
 // Today keeps the normal surface and takes a brown outline. A tinted fill
-// sank into the page background, which is nearly the same color. The extra
-// 0.5px sits in a shadow ring so the card's content doesn't shift.
+// sank into the page background, which is nearly the same color.
+//
+// The outline is the brown 1px border plus a 0.5px ring drawn just inside it,
+// so the card's content doesn't shift. The ring has to stay inside the card:
+// drawn outside (as a box-shadow), the scrolling page clips it wherever the
+// card meets the screen edge, which on a phone is both sides.
 .cardToday {
   border-color: var(--color-brown);
-  box-shadow: 0 0 0 0.5px var(--color-brown);
+
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border: 0.5px solid var(--color-brown);
+    border-radius: calc(var(--radius-lg) - 1px);
+    // Above the Strava rows (z-index 1), and never in the way of a tap.
+    z-index: 2;
+    pointer-events: none;
+  }
 }
 
 // Hover: a clear tint plus a brown border. Pointer devices only — on touch,
@@ -25,7 +39,10 @@
 
   .cardToday:has(.dayBtn:not(:disabled):hover) {
     border-color: var(--color-brown-hover);
-    box-shadow: 0 0 0 0.5px var(--color-brown-hover);
+
+    &::after {
+      border-color: var(--color-brown-hover);
+    }
   }
 }
 
