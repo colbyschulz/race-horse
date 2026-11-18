@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { renderContextPrefix } from "../context";
+import { renderContextPrefix, renderRecentTrainingMessage } from "../context";
 import { routeLabel } from "@/lib/route-label";
 
 describe("routeLabel", () => {
@@ -59,8 +59,19 @@ describe("renderContextPrefix", () => {
   });
 });
 
-describe("renderContextPrefix recent training / from detail / deep planning", () => {
-  it("wraps the recent-training block in tags and appends the from detail", () => {
+describe("renderRecentTrainingMessage", () => {
+  it("wraps the recent-training block in tags", () => {
+    const out = renderRecentTrainingMessage(
+      "Recent training — planned vs actual\n2026-09-06 Sun | planned: long 16.0 mi | actual: none\n"
+    );
+    expect(out).toBe(
+      "<recent_training>\nRecent training — planned vs actual\n2026-09-06 Sun | planned: long 16.0 mi | actual: none\n</recent_training>"
+    );
+  });
+});
+
+describe("renderContextPrefix from detail / deep planning", () => {
+  it("appends the from detail and the deep planning flag, with no recent training", () => {
     const out = renderContextPrefix({
       today: "2026-09-07",
       units: "mi",
@@ -68,16 +79,13 @@ describe("renderContextPrefix recent training / from detail / deep planning", ()
       coachNotes: "",
       fromLabel: "Plan detail (plan id: abc)",
       fromDetail: "Threshold — 2026-09-10",
-      recentTraining:
-        "Recent training — planned vs actual\n2026-09-06 Sun | planned: long 16.0 mi | actual: none",
       deepPlanning: true,
     });
     expect(out).toContain(
       "User opened coach from: Plan detail (plan id: abc) — specifically: Threshold — 2026-09-10"
     );
-    expect(out).toContain("<recent_training>\nRecent training — planned vs actual");
-    expect(out).toContain("actual: none\n</recent_training>");
     expect(out).toContain("Deep planning mode: active");
+    expect(out).not.toContain("<recent_training>");
   });
 
   it("omits those sections when absent", () => {

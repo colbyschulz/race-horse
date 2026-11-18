@@ -18,7 +18,13 @@ import { COACH_SYSTEM_PROMPT as NEW_PROMPT } from "@/server/coach/system-prompt"
 import { COACH_SYSTEM_PROMPT as OLD_PROMPT } from "./baseline/system-prompt";
 import { renderRecentTraining as renderNew } from "@/server/coach/recent-training";
 import { renderRecentTraining as renderOld } from "./baseline/recent-training";
-import { renderContextPrefix } from "@/server/coach/context";
+import { renderContextPrefix, renderRecentTrainingMessage } from "@/server/coach/context";
+import {
+  compactOlderHistory,
+  withCacheBreakpoint,
+  turnScopedSystemMessage,
+  CLEAR_AT_BETA,
+} from "@/server/coach/history";
 import { getTools, getColdStartTools } from "@/server/coach/tools/index";
 import { dayMeters } from "@/lib/plan-stats";
 import { FIXTURES, TODAY, addDays, dayName } from "./fixtures";
@@ -266,55 +272,24 @@ function runTool(store, name, input) {
   }
 }
 
-// ---------- Mirrors of runner.ts request shaping ----------
+// ---------- Request shaping (shared with runner.ts via history.ts) ----------
 
-function withCacheBreakpoint(messages) {
-  if (messages.length < 2) return messages;
-  const out = messages.map((m) => ({ ...m }));
-  const target = out[out.length - 2];
-  const content = Array.isArray(target.content) ? [...target.content] : [{ type: "text", text: target.content }];
-  if (content.length > 0) {
-    content[content.length - 1] = { ...content[content.length - 1], cache_control: CACHE_1H };
-    out[out.length - 2] = { ...target, content };
+// Claude Sonnet 5 doesn't accept mid-conversation system messages, so its arms
+// keep the recent training block inside the context prefix, where it used to be.
+const takesSystemMessages = (armCfg) => armCfg.model !== "claude-sonnet-5";
+
+// The athlete's message for one turn, as runner.ts stores it: the context
+// prefix and message, then the recent training as a turn-scoped system message.
+function humanTurn(armCfg, { prefix, training }, text) {
+  if (!training) return [{ role: "user", content: [{ type: "text", text: `${prefix}\n\n${text}` }] }];
+  if (!takesSystemMessages(armCfg)) {
+    const inline = prefix.replace(/\n<\/context>$/, `\n\n${training}\n</context>`);
+    return [{ role: "user", content: [{ type: "text", text: `${inline}\n\n${text}` }] }];
   }
-  return out;
-}
-
-const RT_RE = /<recent_training>[\s\S]*?<\/recent_training>/g;
-const LIMIT = 3000;
-
-function isHuman(m) {
-  if (m.role !== "user") return false;
-  return typeof m.content === "string" || m.content.some((b) => b.type === "text");
-}
-
-function compactOlder(messages) {
-  let boundary = -1;
-  for (let i = messages.length - 1; i >= 0; i--) {
-    if (isHuman(messages[i])) {
-      boundary = i;
-      break;
-    }
-  }
-  if (boundary <= 0) return messages;
-  return messages.map((m, i) => {
-    if (i >= boundary || !Array.isArray(m.content)) return m;
-    const content = m.content.map((b) => {
-      if (b.type === "tool_result") {
-        const text = typeof b.content === "string" ? b.content : JSON.stringify(b.content);
-        return text.length <= LIMIT ? b : { ...b, content: text.slice(0, LIMIT) + "…[truncated]" };
-      }
-      if (b.type === "tool_use") {
-        const text = JSON.stringify(b.input);
-        return text.length <= LIMIT ? b : { ...b, input: { _truncated: text.slice(0, LIMIT) + "…" } };
-      }
-      if (b.type === "text" && m.role === "user" && b.text.includes("<recent_training>")) {
-        return { ...b, text: b.text.replace(RT_RE, "<recent_training>(elided — superseded by the latest message)</recent_training>") };
-      }
-      return b;
-    });
-    return { ...m, content };
-  });
+  return [
+    { role: "user", content: [{ type: "text", text: `${prefix}\n\n${text}` }] },
+    turnScopedSystemMessage(training),
+  ];
 }
 
 function contextFor(store, arm, scenario, { firstTurn }) {
@@ -363,7 +338,7 @@ function contextFor(store, arm, scenario, { firstTurn }) {
       }
     : null;
   const rows = store.activities;
-  return renderContextPrefix({
+  const prefix = renderContextPrefix({
     today: TODAY,
     units: store.units,
     activePlan: active,
@@ -386,9 +361,9 @@ function contextFor(store, arm, scenario, { firstTurn }) {
         : null,
     coldStartBuild: cold,
     coldStartPlanId: cold ? store.plan.id : null,
-    recentTraining,
     deepPlanning: false,
   });
+  return { prefix, training: recentTraining?.trim() ? renderRecentTrainingMessage(recentTraining) : null };
 }
 
 function toolsFor(store, arm, scenario) {
@@ -420,15 +395,18 @@ async function runTurn(client, ctx, messages, transcript) {
         : route === "deep"
           ? { model: armCfg.model, effort: armCfg.effort, max_tokens: armCfg.buildMax ?? BUILD_MAX }
           : { model: armCfg.model, effort: armCfg.effort, max_tokens: armCfg.chatMax ?? CHAT_MAX };
-    const stream = client.messages.stream({
-      model: cfg.model,
-      max_tokens: cfg.max_tokens,
-      thinking: { type: "adaptive" },
-      ...(cfg.effort ? { output_config: { effort: cfg.effort } } : {}),
-      system: [{ type: "text", text: armCfg.prompt, cache_control: CACHE_1H }],
-      tools,
-      messages: withCacheBreakpoint(messages),
-    });
+    const stream = client.messages.stream(
+      {
+        model: cfg.model,
+        max_tokens: cfg.max_tokens,
+        thinking: { type: "adaptive" },
+        ...(cfg.effort ? { output_config: { effort: cfg.effort } } : {}),
+        system: [{ type: "text", text: armCfg.prompt, cache_control: CACHE_1H }],
+        tools,
+        messages: withCacheBreakpoint(messages),
+      },
+      takesSystemMessages(armCfg) ? { headers: { "anthropic-beta": CLEAR_AT_BETA } } : undefined
+    );
     const final = await stream.finalMessage();
     const c = cost(cfg.model, final.usage);
     record.cost += c;
@@ -464,6 +442,8 @@ async function runTurn(client, ctx, messages, transcript) {
       results.push({ type: "tool_result", tool_use_id: b.id, content: JSON.stringify(value) });
     }
     messages.push({ role: "user", content: results });
+    // As in runner.ts: the tool results clear the training copy, so add a fresh one.
+    if (ctx.training && takesSystemMessages(armCfg)) messages.push(turnScopedSystemMessage(ctx.training));
   }
 }
 
@@ -494,11 +474,13 @@ async function runOne(client, scenario, arm, rep) {
   };
   const ctx = { armCfg, scenario, tools: toolsFor(store, arm, scenario), store, record };
   const messages = [];
-  record.context = contextFor(store, arm, scenario, { firstTurn: true });
+  // A string, as the judge reads it: the prefix, then the training block if any.
+  const firstContext = contextFor(store, arm, scenario, { firstTurn: true });
+  record.context = [firstContext.prefix, firstContext.training].filter(Boolean).join("\n\n");
   const startedAt = Date.now();
   try {
     for (const h of scenario.history ?? []) {
-      messages.push({ role: "user", content: [{ type: "text", text: `${contextFor(store, arm, scenario, { firstTurn: true })}\n\n${h.user}` }] });
+      messages.push(...humanTurn(armCfg, contextFor(store, arm, scenario, { firstTurn: true }), h.user));
       messages.push({ role: "assistant", content: [{ type: "text", text: h.assistant }] });
       record.transcript.push({ human: h.user }, { text: h.assistant, fixed: true });
     }
@@ -506,9 +488,11 @@ async function runOne(client, scenario, arm, rep) {
     let first = true;
     const replies = [...(scenario.replies ?? [])];
     while (true) {
-      messages.push({ role: "user", content: [{ type: "text", text: `${contextFor(store, arm, scenario, { firstTurn: first })}\n\n${msg}` }] });
+      const turnContext = contextFor(store, arm, scenario, { firstTurn: first });
+      ctx.training = turnContext.training;
+      messages.push(...humanTurn(armCfg, turnContext, msg));
       record.transcript.push({ human: msg });
-      const compacted = [...compactOlder(messages)];
+      const compacted = [...compactOlderHistory(messages)];
       messages.length = 0;
       messages.push(...compacted);
       await runTurn(client, ctx, messages, record.transcript);

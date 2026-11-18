@@ -1,6 +1,7 @@
 import type { Anthropic } from "@anthropic-ai/sdk";
 
-export type Role = "user" | "assistant";
+/** "system" is a turn-scoped system message: sent to the model, never shown in the chat. */
+export type Role = "user" | "assistant" | "system";
 
 // Re-shaped subset of Anthropic message content blocks we care about.
 export type ContentBlock = Anthropic.ContentBlockParam;

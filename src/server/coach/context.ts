@@ -19,6 +19,15 @@ type PlanFileSummary = {
 export const RECENT_TRAINING_OPEN = "<recent_training>";
 export const RECENT_TRAINING_CLOSE = "</recent_training>";
 
+/**
+ * The per-turn planned-vs-actual block, sent as a turn-scoped system message
+ * after the athlete's message (see history.ts). It used to sit inside the
+ * context prefix; older stored messages still carry it there.
+ */
+export function renderRecentTrainingMessage(recentTraining: string): string {
+  return `${RECENT_TRAINING_OPEN}\n${recentTraining.trim()}\n${RECENT_TRAINING_CLOSE}`;
+}
+
 export function renderContextPrefix(params: {
   today: string;
   units: "mi" | "km";
@@ -32,8 +41,6 @@ export function renderContextPrefix(params: {
   stravaPreload?: StravaPreload | null;
   coldStartBuild?: boolean;
   coldStartPlanId?: string | null;
-  /** Pre-rendered planned-vs-actual block (see recent-training.ts). */
-  recentTraining?: string | null;
   /** Set when the previous turn escalated to deep planning. */
   deepPlanning?: boolean;
 }): string {
@@ -107,12 +114,6 @@ export function renderContextPrefix(params: {
       lines.push(``);
       lines.push(`Strava history: minimal`);
     }
-  }
-  if (params.recentTraining?.trim()) {
-    lines.push(``);
-    lines.push(RECENT_TRAINING_OPEN);
-    lines.push(params.recentTraining.trim());
-    lines.push(RECENT_TRAINING_CLOSE);
   }
   lines.push(`</context>`);
   return lines.join("\n");

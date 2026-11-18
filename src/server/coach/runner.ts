@@ -13,9 +13,9 @@ import {
   COACH_BUILD_MAX_TOKENS,
 } from "./anthropic";
 import { COACH_SYSTEM_PROMPT } from "./system-prompt";
-import { renderContextPrefix } from "./context";
+import { renderContextPrefix, renderRecentTrainingMessage } from "./context";
 import { routeLabel } from "@/lib/route-label";
-import { loadHistory, appendMessage } from "./messages";
+import { loadModelHistory, appendMessage } from "./messages";
 import { getTools, getColdStartTools, HANDLERS, summarizeToolResult } from "./tools/index";
 import { fetchRecentTraining, renderRecentTraining } from "./recent-training";
 import {
@@ -32,9 +32,14 @@ import {
   CACHE_1H,
   THINKING_DISPLAY_UPDATES,
   THINKING_UPDATES_BETA,
+  CLEAR_AT_BETA,
   INTERRUPTED_NOTE,
+  type CoachMessage,
+  toCoachMessages,
+  turnScopedSystemMessage,
   stripUnknownToolBlocks,
   sanitizeMessages,
+  dropMisplacedSystemMessages,
   compactOlderHistory,
   withCacheBreakpoint,
   deepPlanningCarriedOver,
@@ -247,11 +252,7 @@ export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
     }
 
     // 2. Decide the route before rendering context (the prefix mentions carried-over deep mode).
-    const priorHistory = await loadHistory(userId, planId);
-    const priorMessages: Anthropic.MessageParam[] = priorHistory.map((m) => ({
-      role: m.role,
-      content: m.content as Anthropic.ContentBlockParam[],
-    }));
+    const priorMessages = toCoachMessages(await loadModelHistory(userId, planId));
     // The current human message hasn't been appended yet, so the "previous
     // turn" is everything after the last human message in prior history.
     const carriedOver =
@@ -276,27 +277,27 @@ export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
       stravaPreload: input.stravaPreload ?? null,
       coldStartBuild,
       coldStartPlanId: coldStartBuild ? planId : null,
-      recentTraining,
       deepPlanning: route === "deep",
     });
 
-    // 4. Persist user message
+    // 4. Persist user message, then the planned-vs-actual block as a
+    // turn-scoped system message: the model sees it this turn, and it stays in
+    // history unchanged afterwards (see history.ts).
     await appendMessage(
       userId,
       "user",
       [{ type: "text", text: `${contextPrefix}\n\n${message}` }],
       planId
     );
+    const trainingText = recentTraining?.trim() ? renderRecentTrainingMessage(recentTraining) : null;
+    if (trainingText) {
+      await appendMessage(userId, "system", [{ type: "text", text: trainingText }], planId);
+    }
 
     // 5. Reload full history
-    const history = await loadHistory(userId, planId);
-
-    const rawMessages: Anthropic.MessageParam[] = history.map((m) => ({
-      role: m.role,
-      content: m.content as Anthropic.ContentBlockParam[],
-    }));
+    const rawMessages = toCoachMessages(await loadModelHistory(userId, planId));
     const anthropicMessages = compactOlderHistory(
-      sanitizeMessages(stripUnknownToolBlocks(rawMessages))
+      dropMisplacedSystemMessages(sanitizeMessages(stripUnknownToolBlocks(rawMessages)))
     );
 
     // 6. Call Anthropic SDK with streaming
@@ -321,7 +322,7 @@ export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
       ? getColdStartTools(planId, { canReadPlan: buildProgress != null })
       : getTools(planId);
 
-    let currentMessages = [...anthropicMessages];
+    let currentMessages: CoachMessage[] = [...anthropicMessages];
     let assistantMessageId = "";
     let apiCalls = 0;
 
@@ -344,9 +345,10 @@ export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
           output_config: { effort: cfg.effort },
           system: systemBlocks,
           tools,
-          messages: withCacheBreakpoint(currentMessages),
+          // Turn-scoped system messages aren't in the SDK's types yet.
+          messages: withCacheBreakpoint(currentMessages) as Anthropic.MessageParam[],
         },
-        { headers: { "anthropic-beta": THINKING_UPDATES_BETA } }
+        { headers: { "anthropic-beta": `${THINKING_UPDATES_BETA},${CLEAR_AT_BETA}` } }
       );
 
       // Track tool use blocks being built: index -> partial block
@@ -422,22 +424,11 @@ export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
         })
       );
 
-      // Build turn blocks from final message content (authoritative). Thinking
-      // blocks are kept — they must be replayed unchanged on later requests
-      // (the API drops what a different model can't read, unbilled).
-      const finalTurnBlocks: ContentBlock[] = finalMsg.content.map((block) => {
-        if (block.type === "text") {
-          return { type: "text", text: block.text };
-        } else if (block.type === "tool_use") {
-          return {
-            type: "tool_use",
-            id: block.id,
-            name: block.name,
-            input: block.input,
-          };
-        }
-        return block as ContentBlock;
-      });
+      // Persist the final message content exactly as returned. Thinking blocks
+      // are checked against everything before them on later requests, so no
+      // block in the turn may be rebuilt or trimmed (e.g. a text block's web
+      // search citations, or a tool call's caller).
+      const finalTurnBlocks = finalMsg.content as unknown as ContentBlock[];
 
       const effectiveStopReason = stopReason ?? finalMsg.stop_reason;
 
@@ -557,6 +548,14 @@ export async function* runCoach(input: RunInput): AsyncGenerator<SSEEvent> {
       await appendMessage(userId, "user", toolResultContent as ContentBlock[], planId);
 
       currentMessages = [...currentMessages, { role: "user" as const, content: toolResultContent }];
+
+      // The tool results clear the previous copy of the training block, so add
+      // a fresh one to keep it in view for the rest of the turn. Earlier copies
+      // stay where they are, at no input cost.
+      if (trainingText) {
+        await appendMessage(userId, "system", [{ type: "text", text: trainingText }], planId);
+        currentMessages = [...currentMessages, turnScopedSystemMessage(trainingText)];
+      }
     }
 
     // Eagerly finalize before yielding "done" so the client's plan invalidation

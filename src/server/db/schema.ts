@@ -50,7 +50,9 @@ export const workoutTypeEnum = pgEnum("workout_type", [
   "rest",
 ]);
 
-export const messageRoleEnum = pgEnum("message_role", ["user", "assistant"]);
+// "system" rows are turn-scoped system messages (the per-turn recent training
+// block). They go to the model, never to the chat UI.
+export const messageRoleEnum = pgEnum("message_role", ["user", "assistant", "system"]);
 export const coachTurnStatusEnum = pgEnum("coach_turn_status", ["running", "done", "error"]);
 
 export const planFileStatusEnum = pgEnum("plan_file_status", ["extracting", "extracted", "failed"]);

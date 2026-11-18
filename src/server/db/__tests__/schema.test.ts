@@ -169,8 +169,8 @@ describe("messages table", () => {
 });
 
 describe("messageRoleEnum", () => {
-  it("declares user and assistant", () => {
-    expect(messageRoleEnum.enumValues).toEqual(["user", "assistant"]);
+  it("declares user, assistant, and system", () => {
+    expect(messageRoleEnum.enumValues).toEqual(["user", "assistant", "system"]);
   });
 });
 

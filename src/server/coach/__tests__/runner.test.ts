@@ -74,7 +74,7 @@ const mockLoadHistory = vi.fn();
 
 vi.mock("@/server/coach/messages", () => ({
   appendMessage: (...args: unknown[]) => mockAppendMessage(...args),
-  loadHistory: (...args: unknown[]) => mockLoadHistory(...args),
+  loadModelHistory: (...args: unknown[]) => mockLoadHistory(...args),
 }));
 
 // ---------------------------------------------------------------------------
@@ -143,11 +143,10 @@ describe("runCoach", () => {
     planSelectChain = makeSelectChain([mockPlanRow]);
     workoutSelectChain = makeSelectChain([mockWorkoutCounts]);
 
-    // appendMessage: first call (user), returns nothing important
-    // second call (assistant), returns { id: "msg-asst-1" }
-    mockAppendMessage
-      .mockResolvedValueOnce({ id: "msg-user-1" })
-      .mockResolvedValueOnce({ id: "msg-asst-1" });
+    // appendMessage returns an id per role; the assistant's is "msg-asst-1".
+    mockAppendMessage.mockReset().mockImplementation(async (_userId: string, role: string) => ({
+      id: role === "assistant" ? "msg-asst-1" : `msg-${role}-1`,
+    }));
 
     // loadHistory returns a simple user message
     mockLoadHistory.mockResolvedValue([
@@ -248,10 +247,8 @@ describe("runCoach", () => {
     expect(events[0]).toMatchObject({ type: "text-delta", delta: "Hello!" });
     expect(events[events.length - 1]).toMatchObject({ type: "done", message_id: "msg-asst-1" });
 
-    // appendMessage called for user and assistant
-    expect(mockAppendMessage).toHaveBeenCalledTimes(2);
-    expect(mockAppendMessage.mock.calls[0][1]).toBe("user");
-    expect(mockAppendMessage.mock.calls[1][1]).toBe("assistant");
+    // appendMessage called for the user message, its recent training, and the reply
+    expect(mockAppendMessage.mock.calls.map((c) => c[1])).toEqual(["user", "system", "assistant"]);
 
     // Chat route: chat model, adaptive thinking, explicit effort, 1h cache on system.
     const params = mockStream.mock.calls[0][0] as {
@@ -263,17 +260,27 @@ describe("runCoach", () => {
     expect(params.model).toBe("claude-test");
     expect(params.thinking).toEqual({ type: "adaptive", display: "updates" });
     expect(mockStream.mock.calls[0][1]).toEqual({
-      headers: { "anthropic-beta": "thinking-display-updates-2026-08-18" },
+      headers: {
+        "anthropic-beta":
+          "thinking-display-updates-2026-08-18,mid-conversation-system-clear-at-2026-08-21",
+      },
     });
     expect(params.output_config).toEqual({ effort: "xhigh" });
     expect(params.system[0].cache_control).toEqual({ type: "ephemeral", ttl: "1h" });
 
-    // The planned-vs-actual block is injected for the active plan.
+    // The planned-vs-actual block goes in a turn-scoped system message after
+    // the athlete's message, not in the message itself.
     expect(mockFetchRecentTraining).toHaveBeenCalledWith(
       expect.objectContaining({ userId: "u1", planId: "plan-1", today: "2026-04-26" })
     );
     const userText = (mockAppendMessage.mock.calls[0][2] as { text: string }[])[0].text;
-    expect(userText).toContain("<recent_training>");
+    expect(userText).not.toContain("<recent_training>");
+    expect(mockAppendMessage.mock.calls[1][2]).toEqual([
+      {
+        type: "text",
+        text: "<recent_training>\nRecent training — planned vs actual (stub)\n</recent_training>",
+      },
+    ]);
   });
 
   it("uses the build model with high effort on cold-start builds and skips recent training", async () => {
@@ -597,6 +604,75 @@ describe("runCoach", () => {
     expect(start).toBeLessThan(use);
     expect(use).toBeLessThan(result);
     expect(events[result]).toMatchObject({ id: "tu-9" });
+  });
+
+  it("stores and replays a turn's blocks exactly as the API returned them", async () => {
+    // Thinking blocks are checked against everything before them, so fields
+    // like a text block's citations or a tool call's caller must survive.
+    const toolTurn = [
+      { type: "thinking", thinking: "", signature: "sig-1" },
+      {
+        type: "server_tool_use",
+        id: "srvtoolu_1",
+        name: "web_search",
+        input: { query: "taper" },
+        caller: { type: "direct" },
+      },
+      { type: "web_search_tool_result", tool_use_id: "srvtoolu_1", content: [] },
+      {
+        type: "text",
+        text: "Two weeks is typical.",
+        citations: [{ type: "web_search_result_location", url: "https://x.test", cited_text: "two weeks" }],
+      },
+      { type: "thinking", thinking: "", signature: "sig-2" },
+      {
+        type: "tool_use",
+        id: "tu-9",
+        name: "get_active_plan",
+        input: {},
+        caller: { type: "direct" },
+      },
+    ];
+    const done = (content: unknown[]) => ({
+      [Symbol.asyncIterator]: async function* () {
+        yield {
+          type: "message_delta",
+          delta: { stop_reason: content === toolTurn ? "tool_use" : "end_turn" },
+          usage: { output_tokens: 1 },
+        };
+      },
+      finalMessage: vi.fn().mockResolvedValue({
+        id: "msg-api",
+        stop_reason: content === toolTurn ? "tool_use" : "end_turn",
+        content,
+      }),
+    });
+    const finalTurn = [{ type: "text", text: "Done.", citations: null }];
+    mockStream.mockReturnValueOnce(done(toolTurn)).mockReturnValueOnce(done(finalTurn));
+    mockAppendMessage.mockReset().mockResolvedValue({ id: "msg-x" });
+
+    const { runCoach } = await import("../runner");
+    await collectEvents(runCoach({ userId: "u1", message: "Taper?", today: "2026-04-26" }));
+
+    const stored = mockAppendMessage.mock.calls.filter(([, role]) => role === "assistant");
+    expect(stored.map(([, , content]) => content)).toEqual([toolTurn, finalTurn]);
+
+    // The tool results clear the first training copy, so a fresh one follows them.
+    expect(mockAppendMessage.mock.calls.map(([, role]) => role)).toEqual([
+      "user",
+      "system",
+      "assistant",
+      "user",
+      "system",
+      "assistant",
+    ]);
+    const second = mockStream.mock.calls[1][0] as { messages: { role: string; content: unknown }[] };
+    expect(second.messages.at(-1)).toMatchObject({ role: "system", clear_at: "next_user_message" });
+
+    // The second request carries the tool turn unchanged. (The cache
+    // breakpoint sits on the tool results, before the training copy.)
+    const replayed = second.messages.find((m) => m.role === "assistant");
+    expect(replayed?.content).toEqual(toolTurn);
   });
 
   describe("plans paused at a check-in", () => {

@@ -1,4 +1,4 @@
-import { and, asc, eq, isNull } from "drizzle-orm";
+import { and, asc, eq, isNull, ne } from "drizzle-orm";
 import { db } from "@/server/db";
 import { messages } from "@/server/db/schema";
 import type { ContentBlock, Role, StoredMessage } from "./types";
@@ -9,7 +9,20 @@ function planFilter(userId: string, planId: string | null) {
     : and(eq(messages.user_id, userId), isNull(messages.plan_id));
 }
 
+/** The conversation as the athlete sees it: no turn-scoped system messages. */
 export async function loadHistory(userId: string, planId: string | null): Promise<StoredMessage[]> {
+  return db
+    .select()
+    .from(messages)
+    .where(and(planFilter(userId, planId), ne(messages.role, "system")))
+    .orderBy(asc(messages.created_at)) as Promise<StoredMessage[]>;
+}
+
+/** The conversation as the model sees it, system messages included, in stored order. */
+export async function loadModelHistory(
+  userId: string,
+  planId: string | null
+): Promise<StoredMessage[]> {
   return db
     .select()
     .from(messages)
